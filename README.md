@@ -35,6 +35,8 @@ Serve the production build over HTTPS (or localhost). Open once while online and
 
 ## Cloudflare Pages (free tier)
 
+For a temporary phone/desktop preview before merging, use the [tested upload bundle and device checklist](DEPLOYMENT.md). Successful Quality runs publish the `folio-phase-1-preview` build artifact for 7 days; they do not deploy it.
+
 1. Push the reviewed branch to GitHub; merge only after review.
 2. In Cloudflare Pages, connect this repository. Framework: Vite; build command: `npm run build`; output directory: `dist`; root: repository root. Use Node 22.12+ or 24 (for example `NODE_VERSION=24`).
 3. Choose a branch preview or production branch intentionally. No secrets or environment variables are needed for Phase 1.
@@ -56,6 +58,6 @@ Do not configure real data for Phase 1. When Phase 2 is approved:
 
 ## Documentation
 
-[Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Validation](VALIDATION.md)
+[Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Validation](VALIDATION.md) · [Device preview and deployment](DEPLOYMENT.md)
 
 Original app icons can be regenerated with `python scripts/generate-icons.py` (requires Pillow). UI uses system fonts with no external font requests. Only appearance is persisted; no analytics or private API caching is included.

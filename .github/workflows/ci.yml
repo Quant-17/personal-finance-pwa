@@ -1,5 +1,7 @@
 name: Quality
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,3 +18,10 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - name: Upload tested Cloudflare Pages build
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-phase-1-preview
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

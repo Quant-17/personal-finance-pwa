@@ -39,6 +39,12 @@ Reviewed the money engine and validation boundaries, synthetic fixtures, simulat
 
 Both regression tests failed before the fixes and passed afterward, alongside the existing browser suite (6 total browser checks). Finance tests remain at 26 and the financial calculation engine is unchanged. No additional blocking defects were identified in the reviewed Phase 1 paths; this does not replace the physical-device checks below.
 
+## Deployment packaging
+
+The Quality workflow uploads `dist/` as `folio-phase-1-preview` only after all checks pass, retaining the build artifact for 7 days. It does not publish to Cloudflare. [DEPLOYMENT.md](DEPLOYMENT.md) covers a separate temporary Direct Upload demo, build/asset/header checks, physical-device installation and future Git-integrated production setup.
+
+No authenticated Cloudflare connection is available to this workspace. A hosted URL and real-device results are still required to complete the deployment acceptance checks.
+
 ## Remaining manual checks / limits
 - Physical iPhone Safari Add to Home Screen, standalone launch, offline reopening and storage eviction behavior.
 - Physical Windows Edge/Chrome installation and accessibility with a screen reader.
