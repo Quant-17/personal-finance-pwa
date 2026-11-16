@@ -38,13 +38,6 @@ No known blocking defects remain in the tested Phase 1 flows. CI repeats lint, t
 
 ## Review handoff
 
-The implementation is committed on local branch `feat/phase-1-prototype`. Both Git push and the connected GitHub API returned HTTP 403 (repository write access unavailable to the integration), so no remote branch or pull request was created. The working tree is preserved. A portable Git bundle is provided separately with this handoff.
+The implementation is published on GitHub branch `feat/phase-1-prototype` for draft pull request review against `main`. Repository write access was verified by a successful push after the connector installation was corrected. The initial HTTP 403 publication blocker is resolved.
 
-From a checkout with repository write access:
-
-```sh
-git push -u origin feat/phase-1-prototype
-gh pr create --draft --base main --head feat/phase-1-prototype \
-  --title "Build Folio Phase 1 finance PWA and purchase simulator" \
-  --body "Synthetic finance dashboard, four-way purchase simulator, offline PWA shell and documentation. Lint, typecheck, 26 finance tests, 4 Chromium checks and production build pass. Supabase remains unconnected; Phase 2 is out of scope. See VALIDATION.md for details."
-```
+Only this handoff documentation changed during the publication retry. The implementation and recorded validation results are unchanged; no deployment or Phase 2 work was performed.
