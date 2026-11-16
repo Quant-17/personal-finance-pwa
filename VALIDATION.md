@@ -35,3 +35,16 @@ Build splits chart code into a separate chunk (approximately 407 kB before compr
 - Supabase authentication, RLS, private CRUD and real-data calculations are intentionally unimplemented Phase 2 work. This preview itself has no access gate and contains no private data.
 
 No known blocking defects remain in the tested Phase 1 flows. CI repeats lint, typecheck, unit tests, build and Chromium browser checks on pushes/PRs; its remote status is separate from these local results.
+
+## Review handoff
+
+The implementation is committed on local branch `feat/phase-1-prototype`. Both Git push and the connected GitHub API returned HTTP 403 (repository write access unavailable to the integration), so no remote branch or pull request was created. The working tree is preserved. A portable Git bundle is provided separately with this handoff.
+
+From a checkout with repository write access:
+
+```sh
+git push -u origin feat/phase-1-prototype
+gh pr create --draft --base main --head feat/phase-1-prototype \
+  --title "Build Folio Phase 1 finance PWA and purchase simulator" \
+  --body "Synthetic finance dashboard, four-way purchase simulator, offline PWA shell and documentation. Lint, typecheck, 26 finance tests, 4 Chromium checks and production build pass. Supabase remains unconnected; Phase 2 is out of scope. See VALIDATION.md for details."
+```
