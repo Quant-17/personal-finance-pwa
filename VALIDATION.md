@@ -15,6 +15,9 @@ Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and
 Known ₹1 lakh / 12% / 12-month EMI; zero-interest settlement and residual paise; zero/tiny principal; single-month loan; independent monthly amortisation settlement; integer outputs at the supported maximum; non-finite, negative and out-of-range inputs; tiny positive APR cancellation; rate/tenure effects; exact rupee parsing and rounded-up delayed savings. The finance module uses its own 40-digit decimal arithmetic context and the zero-rate limit for negligible rates.
 
 ## Browser coverage and visual review
+
+CI initially exposed a browser-test race: the dashboard's compact simulator could receive an edit before the full simulator route mounted. Browser tests now wait for the destination heading before editing or capturing screenshots. The assertions and offline coverage are retained.
+
 - Four-way simulator, editable price/APR/tenure/delay, emergency reserve shortfall, no-purchase surplus, invalid-input handling.
 - Accounts and budgets previews, sample transaction CSV download, no uncaught JavaScript errors in the primary journey.
 - 390 × 844 mobile viewport: drawer navigation, dark appearance, persisted appearance after reload, hash-route reload, no page-level horizontal overflow.

@@ -12,6 +12,10 @@ test("scenario comparison, validation, navigation and export", async ({
     }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Buy simulator" }).click();
+  // Wait for the full route: the dashboard also contains a simulator.
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
   await page.getByLabel("Purchase price").fill("100000");
   await page.getByLabel("Annual interest (%)").fill("12");
   await page.getByLabel("EMI tenure (months)").fill("12");
@@ -67,6 +71,10 @@ test("mobile navigation and appearance persist without overflow", async ({
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Dark appearance" }).click();
   await page.getByRole("link", { name: "Buy simulator" }).click();
+  // Wait for the full route: the dashboard also contains a simulator.
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Open navigation" }),
   ).toHaveAttribute("aria-expanded", "false");
@@ -119,6 +127,10 @@ test("manifest and precached shell work offline", async ({ page, context }) => {
   ).toBeVisible();
   await expect(page.getByRole("status")).toContainText("You’re offline");
   await page.getByRole("link", { name: "Buy simulator" }).click();
+  // Wait for the full route: the dashboard also contains a simulator.
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
   await page.getByLabel("Purchase price").fill("15000");
   await expect(
     page.getByRole("button", { name: /Pay in full ₹15,000/ }),
@@ -127,6 +139,8 @@ test("manifest and precached shell work offline", async ({ page, context }) => {
 });
 
 test("capture review previews", async ({ page }) => {
+  // Three full-page PNGs can exceed the default 30s on a constrained cloud worker.
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("folio-theme", "light"));
@@ -145,6 +159,10 @@ test("capture review previews", async ({ page }) => {
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Dark appearance" }).click();
   await page.getByRole("link", { name: "Buy simulator" }).click();
+  // Wait for the full route: the dashboard also contains a simulator.
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
   await page.screenshot({
     path: "test-results/simulator-mobile-dark.png",
     fullPage: true,
