@@ -27,7 +27,7 @@ Production preview is on port 4173. Service workers are enabled only in producti
 
 ## What is included
 
-Dashboard, read-only accounts/budgets/goals, sample ledger with CSV export, dark/light appearance, mobile navigation, four-way purchase simulator (cash / monthly EMI / delayed savings / skip), PWA installation assets and offline shell. Select a scenario to see the impact on cash, monthly surplus and emergency reserves. Adjust price, APR, tenure and delay duration. EMI calculations show exact paise and adjust the final instalment; fees and GST are excluded. All amounts and names are fictional. The demo ledger is a sample, not a reconciled set of transactions.
+Dashboard, read-only accounts/budgets/goals, sample ledger with CSV export, dark/light appearance, mobile navigation, four-way purchase simulator (cash / monthly EMI / delayed savings / skip), PWA installation assets and offline shell. Select a scenario to see the impact on cash, monthly surplus and emergency reserves. Adjust price, APR, tenure and delay duration. Your draft follows you between the dashboard and simulator, including browser back/forward, and resets on refresh. EMI calculations show exact paise and adjust the final instalment; fees and GST are excluded. All amounts and names are fictional. The demo ledger is a sample, not a reconciled set of transactions.
 
 ## Install / test offline
 

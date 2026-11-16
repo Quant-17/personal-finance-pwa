@@ -3,8 +3,8 @@
 ## Phase 1
 React 19 + TypeScript on Vite. Tailwind CSS provides utilities and tokens; local shadcn/ui-style Button uses Radix Slot, class-variance-authority and class merging. Recharts renders the cash-flow and spending charts. All data lives in `src/lib/data.ts` as fictional immutable examples. No backend is called.
 
-- `src/App.tsx`: app shell, hash navigation, theme, status, dashboard and read-only finance previews.
-- `src/components/Simulator.tsx`: transient input state, validation and scenario comparison.
+- `src/App.tsx`: app shell, hash navigation with route scroll reset, theme, status, dashboard and read-only finance previews. Owns the transient purchase draft shared between dashboard and full simulator.
+- `src/components/Simulator.tsx`: controlled inputs, validation and scenario comparison. Inputs stay in application memory across routes and reset on refresh; they are never written to browser storage.
 - `src/lib/finance.ts`: pure money boundaries and loan engine; decimal.js internally, integer paise externally.
 - `src/components/ui/button.tsx`: reusable shadcn/ui pattern; `components.json` tracks component configuration. Styles import utilities through relative paths; additional generated components should follow that convention or add an explicit Vite/TS alias.
 - `src/index.css`: visual system, dark tokens, responsive layout, reduced-motion support.

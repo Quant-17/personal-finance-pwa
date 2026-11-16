@@ -8,7 +8,7 @@ Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and
 | `npm run typecheck` | Passed, strict application/config/test TypeScript |
 | `npm test` | 26 tests passed |
 | `npm run build` | Passed; manifest and service worker generated |
-| `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npx playwright test` | 4 browser tests passed against the production build |
+| `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npx playwright test` | 6 browser tests passed against the production build |
 | `git diff --check` | Passed |
 
 ## Calculation coverage
@@ -29,6 +29,15 @@ CI initially exposed a browser-test race: the dashboard's compact simulator coul
 [Desktop screenshot](docs/screenshots/dashboard-desktop.png) · [Mobile dark simulator](docs/screenshots/simulator-mobile-dark.png)
 
 Build splits chart code into a separate chunk (approximately 407 kB before compression); the main chunk is approximately 311 kB. Static precache is about 766 KiB. The large-chunk warning was resolved without raising the warning threshold.
+
+## Phase 1 review follow-up
+
+Reviewed the money engine and validation boundaries, synthetic fixtures, simulator navigation, mobile drawer flow, manifest and static-only caching configuration. Two reproduced usability defects were fixed:
+
+- A dashboard purchase draft reset to ₹85,000 when opening the full simulator. The App now owns controlled simulator inputs in memory. Price, APR, tenure, selected method and delayed savings duration survive navigation and browser back/forward, and reset on refresh. No purchase inputs are stored locally or sent to a backend.
+- Mobile navigation from the bottom of the dashboard landed 344px down the budgets page. Route transitions now start at the top without animated scrolling; modified link clicks retain native browser behavior.
+
+Both regression tests failed before the fixes and passed afterward, alongside the existing browser suite (6 total browser checks). Finance tests remain at 26 and the financial calculation engine is unchanged. No additional blocking defects were identified in the reviewed Phase 1 paths; this does not replace the physical-device checks below.
 
 ## Remaining manual checks / limits
 - Physical iPhone Safari Add to Home Screen, standalone launch, offline reopening and storage eviction behavior.

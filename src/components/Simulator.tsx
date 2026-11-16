@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   ArrowRight,
   Banknote,
@@ -20,18 +19,28 @@ import {
 } from "../lib/finance";
 import { demo, freeCash } from "../lib/data";
 
+export interface SimulatorInputs {
+  price: string;
+  apr: string;
+  months: string;
+  delay: string;
+  method: string;
+}
+
 export function Simulator({
+  inputs,
+  onChange,
   compact = false,
   onExpand,
 }: {
+  inputs: SimulatorInputs;
+  onChange: (inputs: SimulatorInputs) => void;
   compact?: boolean;
   onExpand?: () => void;
 }) {
-  const [price, setPrice] = useState("85000");
-  const [apr, setApr] = useState("14");
-  const [months, setMonths] = useState("12");
-  const [delay, setDelay] = useState("6");
-  const [method, setMethod] = useState("emi");
+  const { price, apr, months, delay, method } = inputs;
+  const update = (key: keyof SimulatorInputs, value: string) =>
+    onChange({ ...inputs, [key]: value });
   const pricePaise = parseRupees(price);
   const valid =
     pricePaise !== null &&
@@ -123,7 +132,7 @@ export function Simulator({
             <input
               inputMode="decimal"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => update("price", e.target.value)}
               aria-invalid={pricePaise === null || pricePaise === 0}
               aria-describedby={!valid ? "simulator-error" : undefined}
             />
@@ -131,7 +140,10 @@ export function Simulator({
         </label>
         <label>
           Payment method
-          <select value={method} onChange={(e) => setMethod(e.target.value)}>
+          <select
+            value={method}
+            onChange={(e) => update("method", e.target.value)}
+          >
             <option value="emi">Monthly EMI</option>
             <option value="cash">Pay in full</option>
             <option value="delay">Save & buy later</option>
@@ -146,7 +158,7 @@ export function Simulator({
             max="60"
             step="0.1"
             value={apr}
-            onChange={(e) => setApr(e.target.value)}
+            onChange={(e) => update("apr", e.target.value)}
           />
         </label>
         <label>
@@ -157,7 +169,7 @@ export function Simulator({
             max="120"
             step="1"
             value={months}
-            onChange={(e) => setMonths(e.target.value)}
+            onChange={(e) => update("months", e.target.value)}
           />
         </label>
       </div>
@@ -172,7 +184,7 @@ export function Simulator({
           <button
             className={`scenario ${method === choice.key ? "selected" : ""}`}
             key={choice.key}
-            onClick={() => setMethod(choice.key)}
+            onClick={() => update("method", choice.key)}
             aria-pressed={method === choice.key}
           >
             <span className="scenario-top">
@@ -245,7 +257,10 @@ export function Simulator({
           </div>
           <label>
             Save before buying
-            <select value={delay} onChange={(e) => setDelay(e.target.value)}>
+            <select
+              value={delay}
+              onChange={(e) => update("delay", e.target.value)}
+            >
               <option value="3">3 months</option>
               <option value="6">6 months</option>
               <option value="12">12 months</option>

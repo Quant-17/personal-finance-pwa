@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "./components/ui/button";
-import { Simulator } from "./components/Simulator";
+import { Simulator, type SimulatorInputs } from "./components/Simulator";
 import {
   accounts,
   categories,
@@ -83,6 +83,14 @@ function readTheme() {
 export default function App() {
   const [page, setPage] = useState<Page>(getPage);
   const [theme, setTheme] = useState(readTheme);
+  // Shared across preview/full routes, with no browser-storage persistence.
+  const [purchase, setPurchase] = useState<SimulatorInputs>({
+    price: "85000",
+    apr: "14",
+    months: "12",
+    delay: "6",
+    method: "emi",
+  });
   const [menu, setMenu] = useState(false);
   const [notice, setNotice] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
@@ -142,11 +150,14 @@ export default function App() {
       previous?.focus();
     };
   }, [menu]);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [page]);
   const go = (next: Page) => {
     window.location.hash = next;
     setPage(next);
     setMenu(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
   return (
     <div className="app-layout">
@@ -173,7 +184,21 @@ export default function App() {
         role={menu ? "dialog" : undefined}
         aria-modal={menu ? true : undefined}
       >
-        <a href="#overview" className="brand" onClick={() => setMenu(false)}>
+        <a
+          href="#overview"
+          className="brand"
+          onClick={(event) => {
+            if (
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return;
+            event.preventDefault();
+            go("overview");
+          }}
+        >
           <span className="brand-icon">
             <ChartNoAxesCombined size={24} />
           </span>
@@ -194,7 +219,17 @@ export default function App() {
             <a
               key={item.id}
               href={`#${item.id}`}
-              onClick={() => setMenu(false)}
+              onClick={(event) => {
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return;
+                event.preventDefault();
+                go(item.id);
+              }}
               className={`nav-item ${page === item.id ? "active" : ""}`}
               aria-current={page === item.id ? "page" : undefined}
             >
@@ -545,7 +580,12 @@ export default function App() {
                   </div>
                 </section>
                 <div className="dashboard-simulator">
-                  <Simulator compact onExpand={() => go("simulator")} />
+                  <Simulator
+                    inputs={purchase}
+                    onChange={setPurchase}
+                    compact
+                    onExpand={() => go("simulator")}
+                  />
                 </div>
                 <section className="card upcoming">
                   <div className="section-heading">
@@ -611,7 +651,7 @@ export default function App() {
                 </div>
                 <span className="subtle-pill">LIVE PREVIEW</span>
               </div>
-              <Simulator />
+              <Simulator inputs={purchase} onChange={setPurchase} />
               <div className="sim-bottom">
                 <ShieldCheck size={16} />
                 <span>

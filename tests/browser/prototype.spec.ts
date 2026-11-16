@@ -169,3 +169,54 @@ test("capture review previews", async ({ page }) => {
     animations: "disabled",
   });
 });
+
+test("purchase inputs survive route changes but reset on refresh", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Purchase price").fill("99000.50");
+  await page.getByLabel("Annual interest (%)").fill("7.5");
+  await page.getByLabel("EMI tenure (months)").fill("24");
+  await page.getByLabel("Payment method").selectOption("delay");
+  await page.getByRole("button", { name: "Open full simulator" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Purchase price")).toHaveValue("99000.50");
+  await expect(page.getByLabel("Annual interest (%)")).toHaveValue("7.5");
+  await expect(page.getByLabel("EMI tenure (months)")).toHaveValue("24");
+  await expect(page.getByLabel("Payment method")).toHaveValue("delay");
+  await page.getByLabel("Save before buying").selectOption("3");
+  await page.getByRole("link", { name: "Accounts", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Everything has its place." }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(
+    page.getByRole("heading", { name: "Big purchase. Clear perspective." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Purchase price")).toHaveValue("99000.50");
+  await expect(page.getByLabel("Save before buying")).toHaveValue("3");
+  await page.reload();
+  await expect(page.getByLabel("Purchase price")).toHaveValue("85000");
+});
+
+test("mobile navigation opens the destination at the top", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      name: "A little clarity. A lot of possibility.",
+    }),
+  ).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(500);
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("link", { name: "Budgets & goals" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Make room for your goals." }),
+  ).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});

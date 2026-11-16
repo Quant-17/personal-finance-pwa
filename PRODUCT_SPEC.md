@@ -8,6 +8,7 @@ A private personal finance PWA for an individual in India, usable in iPhone Safa
 - System-based initial dark/light appearance with a persistent local preference.
 - November 2026 synthetic dashboard: savings, income, living expenses, surplus, six-month cash flow, expense breakdown, upcoming loan/subscription payments and sample transactions.
 - Read-only account, budget and emergency reserve previews; fictional transaction CSV export.
+- Dashboard and full simulator share the same in-memory purchase draft across navigation, including browser back/forward. Route navigation opens the destination at the top.
 - Purchase simulator with price, selected payment method, annual APR, EMI tenure and delayed savings duration. All four options remain visible for comparison.
 - Cash: purchase cost deducted from existing liquid cash, with a reserve shortfall warning.
 - EMI: fixed reducing-balance instalments; total interest, total paid, final adjusted instalment and monthly surplus remaining.
