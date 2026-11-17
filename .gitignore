@@ -6,3 +6,6 @@ dist
 *.local
 playwright-report
 test-results
+!.env.demo
+!.env.private-test
+dist-private

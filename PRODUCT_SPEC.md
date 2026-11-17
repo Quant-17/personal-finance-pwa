@@ -1,32 +1,31 @@
 # Folio · Product specification
 
-## Purpose and audience
-A private personal finance PWA for an individual in India, usable in iPhone Safari (including Add to Home Screen) and Windows browsers. Folio brings everyday finances and purchase trade-offs into one calm, readable workspace. Phase 1 is a **publicly viewable synthetic prototype**; it does not yet provide private accounts or authentication.
+A private personal finance PWA for an individual in India, for iPhone Safari (including installation) and Windows browsers. Premium, calm UI; INR/en-IN formatting, Asia/Kolkata accounting dates; no paid APIs.
 
-## Phase 1 experience
-- Responsive sidebar/drawer navigation; URL hash navigation supports refresh and browser back/forward.
-- System-based initial dark/light appearance with a persistent local preference.
-- November 2026 synthetic dashboard: savings, income, living expenses, surplus, six-month cash flow, expense breakdown, upcoming loan/subscription payments and sample transactions.
-- Read-only account, budget and emergency reserve previews; fictional transaction CSV export.
-- Dashboard and full simulator share the same in-memory purchase draft across navigation, including browser back/forward. Route navigation opens the destination at the top.
-- Purchase simulator with price, selected payment method, annual APR, EMI tenure and delayed savings duration. All four options remain visible for comparison.
-- Cash: purchase cost deducted from existing liquid cash, with a reserve shortfall warning.
-- EMI: fixed reducing-balance instalments; total interest, total paid, final adjusted instalment and monthly surplus remaining.
-- Delay: price divided over 3/6/12/24 months, funded from new monthly surplus; existing cash remains intact until purchase. Last savings contribution can be lower by the rounding residual.
-- No purchase: no new payment, original surplus and cash retained.
-- Offline static app shell, original icons, standalone PWA manifest, user-initiated update prompt.
-- Synthetic data labels, offline status and no network transmission of purchase inputs.
+## Phase 1 demo
+
+Synthetic November 2026 dashboard and read-only account, budget, goal and transaction examples; CSV example export, appearance, navigation, purchase comparisons, static PWA shell. The public demo remains separate from private mode. Its sample ledger is intentionally incomplete and is never used in private reports.
+
+## Phase 2 workspace
+
+A new signed-in user starts with zero values, an empty financial ledger and default category names. Require a server-verified, confirmed, non-anonymous Supabase Auth session. Provide signup, confirmation callback, password reset/update and device sign-out.
+
+Show actual net worth, available liquid cash, current India-month income/outflow and six-month cash flow. Support named bank/savings/cash/investment/credit-card accounts with signed opening balances/dates, edit and archive. Provide personal categories, positive rupee income/expense entry, immutable account selection when editing an entry, date validation, 50-row ledger pagination and deletion. Transfers post both legs atomically; card repayments are transfers, avoiding duplicate expense recognition.
+
+Track existing loans with principal, APR, remaining term, estimated schedule and status. Actual manual repayments split principal/interest; cash and remaining debt update once. Subscription forecasts can be edited/paused and never automatically post expenses. Current-month category budgets derive actual expense spend. Savings goals earmark existing cash and can be released; they do not create assets. Profile plans separate expected income/living/reserve from actual transactions. Living costs include subscriptions; active loan EMI is separate.
+
+The Buy Decision Simulator compares cash, EMI, delayed purchase and no purchase using the user's plan and available cash after earmarks. Drafts stay in memory. Changing assumptions never posts a financial record. Four scenarios remain visible; reserve and monthly shortfall warnings explain trade-offs.
 
 ## Financial conventions
-Currency INR, grouping `en-IN`; all persisted/model money uses integer paise. EMI math uses decimal.js and half-up monthly interest rounding, with the final instalment clearing the outstanding amount. Default loan terms are illustrative. Price must be ₹0.01–₹1 crore; APR 0–60%; tenure 1–120 whole months. Display summaries may round to rupees; loan payment/cost details show paise. Timestamps in future live data must display using `Asia/Kolkata`. Phase 1 uses explicit November 2026 demo dates, not the device clock.
 
-Snapshot: monthly income ₹1,25,000; living expenses ₹48,750 (including subscriptions); existing EMI ₹12,250; surplus ₹64,000. Liquid cash ₹2,42,500; reserve target ₹1,50,000. Total savings/investments ₹8,42,500 includes liquid cash. Sample ledger is incomplete and clearly labelled; trend percentages are fictional June–November series comparisons (income vs October, savings assumed prior-period), not live derived analytics.
+All money boundaries use integer paise or decimal-safe parsing/calculation. Purchase principal ₹0.01–₹1 crore, APR 0–60%, 1–120 whole months. Monthly reducing-balance EMI rounds interest half-up to paise and clears residual in the last payment; totals sum actual modeled payments. Loan schedules exclude lender-specific day counts, fees/GST, insurance, price inflation and returns. Estimates are illustrations, not advice or lender quotes.
 
-## Privacy and boundaries
-No real financial data, credential entry, Supabase client, authentication, banking integrations or private API caching. Only appearance is stored locally. Simulator values reset on refresh. No analytics, paid APIs, externally loaded fonts or paid services.
+## Privacy and offline experience
 
-## Acceptance criteria
-Lint, strict TypeScript, EMI tests and production build pass. Layout works at 390px and desktop widths without page overflow. Invalid inputs produce an inline error instead of calculations. Mobile navigation, appearance switch, CSV download and purchase scenario selection work. After one successful production load, the demo shell reloads offline. Icons and manifest are served. No Phase 2 data mutations.
+No bank credentials, full card numbers, real financial fixtures, analytics or external fonts. Use only a public publishable Supabase client key; RLS is authoritative. Financial API responses never enter HTTP/runtime/service-worker caches. React memory holds financial views; offline/backgrounding unmounts them and verifies the session on return. Supabase stores the auth session on-device until local sign-out; appearance alone is other persisted UI state. The shell can load offline but private mode stays locked. Update controls reload and discard unsaved edits. No offline financial editing.
 
-## Excluded
-Authenticated data access, CRUD, ledger reconciliation, transfers, multi-currency, statement imports, notifications, real forecasts, investment returns, GST/fees, real credit eligibility or financial advice. Demo notifications are a static upcoming-payments panel, not push notifications.
+## Acceptance and limits
+
+Lint, strict typecheck, money/schedule tests, real-Postgres ownership/accounting tests, demo/private browser flows and production builds must pass. Test responsive 390px layout, offline privacy, confirmed-user guard, sign-out and private simulator assumptions. Before private publication, configure exact Auth redirects, complete real owner confirmation/recovery, inspect hosted CSP and verify actual iPhone/Windows installation. These manual release gates remain pending.
+
+Imports, bank feeds, saved scenarios, multi-currency, push reminders, dedicated refund matching, audit history, personal-data export/deletion UI and automatic loan posting are outside this release.

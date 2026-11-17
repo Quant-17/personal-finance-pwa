@@ -1,65 +1,59 @@
-# Folio · Personal Finance
+# Folio · Personal Finance PWA
 
-A polished, synthetic personal-finance PWA for India. React + TypeScript + Vite, Tailwind, a local shadcn/ui-style component, Recharts and vite-plugin-pwa. **Phase 1 only: no login, no backend connection, no real financial data.** The eventual private app targets Supabase Auth/PostgreSQL and Cloudflare Pages.
+An INR finance manager for iPhone Safari PWA and Windows browsers, built with React, TypeScript, Vite, Tailwind, shadcn/ui patterns, Recharts and Supabase. Phase 1 is the synthetic demo. Phase 2 adds an authenticated workspace with manual financial entry. No bank integration or paid API is used.
 
-[Desktop preview](docs/screenshots/dashboard-desktop.png) · [Mobile simulator preview](docs/screenshots/simulator-mobile-dark.png)
+The current public deployment, https://folio.sid-17061999.workers.dev/, remains the Phase 1 demo. Phase 2 is on the separate `feat/phase-2-private-finance` review branch; this work does not publish private mode to that URL.
 
-Live synthetic preview: [Open Folio](https://folio.sid-17061999.workers.dev/). The deployed app passed 7 hosted checks, including offline use. See [deployment status and device setup](DEPLOYMENT.md).
+## Preview
 
-## Run locally / in Codex Cloud
-
-Node 22.12+ (Node 24 used for this implementation):
+Requires Node 24 and npm.
 
 ```sh
 npm ci
-npm run dev
+# Synthetic demo; no credentials needed
+npm run dev -- --mode demo
+# Or build and preview the demo
+npm run build:demo
+npm run preview
 ```
 
-Open the Vite URL (port 5173). In a cloud workspace, use its port preview/forwarder for port 5173. No environment variables are required for the prototype. If the environment has a read-only home directory, use `npm ci --cache /tmp/folio-npm-cache`.
+For the private workspace, copy `.env.example` to `.env.local`, set `VITE_APP_MODE=private`, your Supabase HTTPS project URL and modern **publishable** client key, then `npm run dev`. For a production preview: `npm run build` followed by `npm run preview`. Environment values are read at build time, so rebuild after changing them. Never put a secret or service-role key into any `VITE_*` variable.
+
+The existing connected free Supabase project was initially empty. The three migrations in `supabase/migrations` have been applied there. No financial seed data or persistent test users were added. This workspace has an ignored `.env.local` using that project's publishable key; fresh checkouts must configure their own local file.
+
+## Phase 2 features
+
+- Email/password sign-in, signup confirmation and password-recovery screens using Supabase PKCE. A server-verified, confirmed, non-anonymous user is required before records load.
+- Empty personal dashboard, actual six-month cash flow, monthly actual income/outflow, net worth and available liquid cash.
+- Account creation/editing/archiving, user categories, paise-safe income/expense entry and editing, paginated ledger, atomic transfers and deletion of paired transfers.
+- Loan tracking, estimated repayment schedules, actual principal/interest repayments and remaining debt; recurring subscription forecasts with edit/pause controls.
+- Monthly category budgets, savings goals and cash earmarks, plus a separate monthly income/living-cost/reserve plan.
+- Buy Decision Simulator uses the signed-in user's plan, cash and active loan EMI. It does not post purchases or loans.
+- RLS, ownership-preserving composite foreign keys, private privileged functions and retry identifiers on money-changing RPCs.
+- Offline/background lock: private views unmount, financial requests abort and session verification is required on return. Financial records never enter localStorage or Cache Storage. Supabase persists only the authentication session on this device; sign-out clears it. Appearance is also saved locally.
+
+## Supabase setup and release gate
+
+See [PHASE2_SETUP.md](PHASE2_SETUP.md) for migrations, exact Auth redirects, email limitations, security checks and Cloudflare build settings. **Auth redirect settings and a real owner confirmation/recovery round trip must be verified before publishing private mode or entering real financial information.** The connected database tools cannot edit Auth URL configuration; no successful live email delivery is claimed. Physical iPhone installation and Windows acceptance remain manual.
+
+## Validation
 
 ```sh
 npm run lint
 npm run typecheck
 npm test
+npm run build:demo
+npx playwright install chromium
+npx playwright test
+npm run build:private-test
+npm run test:private
 npm run build
-npm run preview
 ```
 
-Production preview is on port 4173. Service workers are enabled only in production builds. Optional browser verification after building: `npx playwright install chromium` then `npx playwright test`. If Chromium is already installed in a managed environment, use `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npx playwright test` instead. See [VALIDATION.md](VALIDATION.md) for actual results and remaining manual checks.
-
-## What is included
-
-Dashboard, read-only accounts/budgets/goals, sample ledger with CSV export, dark/light appearance, mobile navigation, four-way purchase simulator (cash / monthly EMI / delayed savings / skip), PWA installation assets and offline shell. Select a scenario to see the impact on cash, monthly surplus and emergency reserves. Adjust price, APR, tenure and delay duration. Your draft follows you between the dashboard and simulator, including browser back/forward, and resets on refresh. EMI calculations show exact paise and adjust the final instalment; fees and GST are excluded. All amounts and names are fictional. The demo ledger is a sample, not a reconciled set of transactions.
-
-## Install / test offline
-
-Serve the production build over HTTPS (or localhost). Open once while online and allow its service worker to activate. On iPhone, use Safari → Share → Add to Home Screen → Open as Web App (where offered). On Windows Chrome/Edge use the browser's install action. Reopen from the installed icon. After the first online load, the static demo is available offline; an offline indicator appears. iOS may evict offline storage. A new build shows an update button; activating it reloads the app and resets unsaved simulator inputs.
-
-## Cloudflare Pages (free tier)
-
-For a temporary phone/desktop preview before merging, use the [tested upload bundle and device checklist](DEPLOYMENT.md). Successful Quality runs publish the `folio-phase-1-preview` build artifact for 7 days; they do not deploy it.
-
-1. Push the reviewed branch to GitHub; merge only after review.
-2. In Cloudflare Pages, connect this repository. Framework: Vite; build command: `npm run build`; output directory: `dist`; root: repository root. Use Node 22.12+ or 24 (for example `NODE_VERSION=24`).
-3. Choose a branch preview or production branch intentionally. No secrets or environment variables are needed for Phase 1.
-4. Confirm HTTPS, `manifest.webmanifest`, `/sw.js` and icons load. `public/_headers` is copied into `dist` and applies security/cache headers on Pages. Hash navigation works without rewrite configuration.
-5. Verify desktop/mobile, standalone installation, a second visit offline, and an update from a previous build.
-
-No deployment is performed automatically. This unauthenticated demo must not be mistaken for a private authenticated product.
-
-## Future Supabase setup (documented only)
-
-Do not configure real data for Phase 1. When Phase 2 is approved:
-
-1. Create a free Supabase project. Choose an appropriate region and protect the database password.
-2. Copy `.env.example` to `.env.local`; set the project URL and **publishable/anon key only**. These are browser-visible values. No client is initialized in this phase.
-3. Configure Auth Site URL to the final HTTPS app origin, with exact localhost/approved preview callback URLs in the redirect allowlist. Enable the chosen email sign-in flow and review email quotas/delivery limits before relying on it.
-4. Implement and apply reviewed migrations from [DATA_MODEL.md](DATA_MODEL.md), enable RLS and test owner/other-user/anonymous isolation before connecting UI queries. Do not create permissive public policies.
-5. Add only the project-specific HTTPS (and WSS if needed) endpoint to the current `connect-src` CSP. Never use wildcard origins as a shortcut.
-6. Put any service-role key exclusively in trusted backend secrets. **Never** use a service-role key in VITE_* variables, Cloudflare public build settings, logs or source. The current static app needs no such key.
+`build:private-test` uses a committed fake project/key with intercepted browser responses; it never creates real Supabase users or sends email. SQL integration tests use disposable Postgres fixtures and roll back. GitHub Quality replays all migrations on Postgres 17, checks isolation/accounting, and runs demo and private browser suites. See [VALIDATION.md](VALIDATION.md) for observed results and limits.
 
 ## Documentation
 
-[Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Validation](VALIDATION.md) · [Device preview and deployment](DEPLOYMENT.md)
+[Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Phase 2 setup](PHASE2_SETUP.md) · [Phase 1 deployment](DEPLOYMENT.md)
 
-Original app icons can be regenerated with `python scripts/generate-icons.py` (requires Pillow). UI uses system fonts with no external font requests. Only appearance is persisted; no analytics or private API caching is included.
+No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).

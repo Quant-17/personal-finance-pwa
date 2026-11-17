@@ -1,26 +1,31 @@
 # Architecture
 
-## Phase 1
-React 19 + TypeScript on Vite. Tailwind CSS provides utilities and tokens; local shadcn/ui-style Button uses Radix Slot, class-variance-authority and class merging. Recharts renders the cash-flow and spending charts. All data lives in `src/lib/data.ts` as fictional immutable examples. No backend is called.
+## Modes and boundaries
 
-- `src/App.tsx`: app shell, hash navigation with route scroll reset, theme, status, dashboard and read-only finance previews. Owns the transient purchase draft shared between dashboard and full simulator.
-- `src/components/Simulator.tsx`: controlled inputs, validation and scenario comparison. Inputs stay in application memory across routes and reset on refresh; they are never written to browser storage.
-- `src/lib/finance.ts`: pure money boundaries and loan engine; decimal.js internally, integer paise externally.
-- `src/components/ui/button.tsx`: reusable shadcn/ui pattern; `components.json` tracks component configuration. Styles import utilities through relative paths; additional generated components should follow that convention or add an explicit Vite/TS alias.
-- `src/index.css`: visual system, dark tokens, responsive layout, reduced-motion support.
-- `vite.config.ts`: static precaching through vite-plugin-pwa/Workbox.
-- `public/_headers`: Cloudflare Pages security headers; restrictive same-origin CSP for the current frontend.
+React 19 + TypeScript/Vite, Tailwind tokens, local shadcn/ui Button, Recharts, vite-plugin-pwa. `src/App.tsx` selects a lazy-loaded synthetic `DemoApp` or authenticated `private/PrivateApp` using build-time `VITE_APP_MODE`. Explicit demo builds use `.env.demo`. Invalid modes or missing private production configuration fail the build. Client validation rejects secret, service-role and legacy keys; modern publishable keys are browser-visible by design.
+
+`private/AuthGate.tsx` subscribes to Supabase Auth events synchronously and verifies the current user separately with `getUser()`. PKCE handles email callbacks. The gate rejects anonymous and unconfirmed users. Background/offline events clear the verified user and unmount the workspace; returning online/visible verifies again. Sign-out clears the device session and reloads to sign-in even if remote revocation fails. It is local device sign-out, not revocation on other devices.
+
+`private/workspace.ts` initializes an empty workspace (profile and category names only), fetches one aggregate snapshot and a 50-row ledger page. Abort signals and unmount guards discard late responses. All financial state and purchase drafts live in React memory. No query persistence, cross-user response cache or realtime subscription exists. Refresh explicitly to see other-device changes.
+
+`private/Editor.tsx` translates rupee input to integer paise and uses typed Supabase operations. Money-changing RPCs carry a stable UUID across an unchanged retry; changing fields creates a new intent. Private `mutation_receipts` store only the operation, payload hash and result ID. Database locks serialize matching retries and cross-row accounting operations. Direct record creation uses UUIDs, so repeating an ambiguous request cannot silently create duplicate IDs; if it reports a duplicate after a network interruption, close and refresh before creating again.
+
+## Database trust boundary
+
+Every public table has RLS, explicit grants and owner policies. Protected transactions, loan payments and allocations are SELECT-only through the Data API. Public invoker wrappers call narrow SECURITY DEFINER functions in the unexposed `folio_private` schema. These use an empty search_path, verify `auth.uid()`/anonymous status, pin ownership and lock affected rows. Composite foreign keys prevent child records from linking another owner's parent.
+
+Snapshot and ordinary table access use caller privileges/RLS. UID and JWT calls are cached in scalar subqueries in policies. No public SECURITY DEFINER function is exposed. No service-role key is used by the app. The private receipt table intentionally has RLS with no client policies or table grants; only privileged mutation functions access it.
 
 ## Financial engine
-APR / 1200 gives the monthly decimal rate. EMI = P × r × (1+r)^n / ((1+r)^n − 1); zero APR uses P/n. Round the nominal instalment and each month's interest to integer paise with ROUND_HALF_UP. Cap payments at the amount due and settle the entire residual in the last period. Total cost sums actual payments, not nominal EMI × tenure. Reject malformed, non-integer, negative, non-finite or unsupported values at the boundaries. This is a monthly model, not a lender quote.
 
-## PWA and caching boundary
-Only build-time assets are precached. No runtime response cache exists. API and auth paths are excluded from navigation fallback. The service worker must never cache authenticated API responses. A visible update control activates a waiting worker; the user can lose unsaved simulator edits when updating. Offline capability requires at least one online load. iOS installation uses Safari Share → Add to Home Screen; native browser installation UX is not implemented. iOS may evict offline storage. Production HTTPS is required (localhost is accepted for development).
+`src/lib/finance.ts` uses decimal.js precision 40 and ROUND_HALF_UP, with integer paise at boundaries. EMI uses monthly reducing balance; interest rounds monthly and the final payment clears the residual. `private/schedule.ts` exposes the same estimated month-by-month principal/interest/balance calculation. SQL generates nominal EMI with numeric arithmetic; actual repayment records are authoritative. Forecasts do not post ledger rows.
 
-## Future private deployment (not implemented)
-Supabase Auth with one user identity per owner, PostgreSQL RLS on every financial table, authenticated queries from a browser client using a publishable key. Service-role keys only in trusted server-side secrets, never in Vite variables. Session callbacks must use allowlisted URLs; consider PKCE and secure recovery flows. Authenticated navigation offline must show an intentionally designed locked state rather than restoring private data from generic caches.
+`private/domain.ts` validates snapshots with Zod, parses aggregate bigint strings without silent rounding, rejects unsafe/out-of-range totals and converts India dates explicitly. Account balance derives from opening balance plus all entries, not the displayed ledger page. The simulator receives private plan/cash/EMI explicitly; its synthetic defaults are used only by the demo.
 
-Cloudflare Pages serves `dist`, with GitHub integration and free-tier quotas. No deployment is created in Phase 1. The current CSP will need an explicit project-specific Supabase `connect-src` allowlist when the integration is implemented. Do not loosen it to a wildcard.
+## Hosting and caching
 
-## Constraints
-Hash navigation keeps static hosting simple. No central state library is needed yet. Tables and controls are semantic HTML; charts have accessible summaries and data is also represented in dashboard values. All typography is system-local. Theme storage failure is safe. Automated browser coverage complements unit tests; device installation remains a manual verification step.
+Cloudflare Pages or Workers Static Assets serves `dist` over HTTPS. Vite adds the exact configured Supabase HTTPS origin to generated `_headers` in private builds; no wildcard/WSS is needed. Validate headers on the actual host: Vite preview does not emulate `_headers`.
+
+Workbox precaches static assets only; runtimeCaching is empty. API/auth navigation paths are excluded from fallback. Supabase fetches use `cache: no-store`. No financial responses or auth responses enter Cache Storage. Supabase persists its session token via its browser SDK storage; this is separate from offline caching. Signing out removes this app's auth storage keys. Shared devices should sign out; an installed PWA is not a separate account boundary.
+
+After one online load, private mode can load its shell offline but stays locked; the synthetic demo remains fully offline capable. Updates require a visible user action and reload, discarding unsaved forms. iOS may evict storage. Hash routes simplify static hosting; responsive semantic controls use system fonts and reduced-motion tokens. Physical iPhone/Windows acceptance remains necessary.

@@ -1,3 +1,7 @@
+# Historical Phase 1 deployment
+
+For the current private workspace review and deployment gates, see [PHASE2_SETUP.md](PHASE2_SETUP.md). The public URL below still serves the Phase 1 synthetic demo.
+
 # Phase 1 device preview
 
 This deploys the synthetic demo only. There is no authentication gate or real financial data. Supabase configuration is not required. The repository does not publish automatically: CI produces an upload bundle only after lint, TypeScript, unit tests, build and browser tests pass.

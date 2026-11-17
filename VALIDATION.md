@@ -1,3 +1,34 @@
+# Phase 2 validation · 17 November 2026 IST
+
+Observed locally on the Phase 2 review branch:
+
+| Check | Result |
+| --- | --- |
+| ESLint | Passed |
+| TypeScript build/typecheck | Passed |
+| Unit tests | 51 passed: 26 finance tests plus private parsing/config/date/schedule boundaries |
+| Demo production build | Passed |
+| Demo Chromium browser suite | 6 passed; deployed-header-only test skipped locally |
+| Private fake-project production build | Passed |
+| Private Chromium browser suite | 8 passed |
+| Connected-project private production build | Passed; exact Supabase-origin CSP emitted |
+| Fresh Postgres 17 migration replay | All three migrations passed in order |
+| SQL isolation/accounting | 101 assertions passed; all fixtures rolled back |
+| Hosted Supabase acceptance | Passed owner accounting, retry protection, ten-table cross-user read denial, foreign-owner mutation denial and anonymous RPC denial; transaction rolled back |
+| Public Data API without session | Account read returned HTTP 401 |
+| Public Auth settings | Email enabled, confirmation required, signup enabled |
+| Hosted security/performance advisors | No WARN/ERROR after RLS optimization; informational receipt deny-policy/unused-index notices documented in PHASE2_SETUP.md |
+
+Private browser coverage: signed-out routes, empty workspace, decimal-safe account/entry submission, offline and background unmount/lock, server verification on return, session removal after sign-out, unconfirmed-user API denial, mobile overflow and private-plan simulator, PKCE recovery callback before financial queries, and unchanged request IDs across interrupted-save retries. Browser responses are intercepted fake fixtures, not production user accounts. Cache Storage inspection found no Supabase API responses. No live email was sent by automation.
+
+The recovery test initially exposed a fast PKCE-callback race; recovery intent is now captured before SDK initialization consumes the verifier and the auth subscription begins before React mounts. The callback and the complete eight-test private suite then passed. Sign-out also clears scoped legacy and multi-flow PKCE storage.
+
+Limits: private mode has not been deployed, actual owner confirmation/reset email round trips and redirect allowlist are unverified, and physical iPhone PWA/Windows acceptance remains manual. Browser tests use Chromium rather than actual Safari. No immutable audit log, bank synchronization, private offline editing or export/deletion UI is implemented. The live URL still serves the Phase 1 demo. GitHub CI status is reported separately from local results; local passes do not imply a completed remote run.
+
+---
+
+## Historical Phase 1 validation
+
 # Phase 1 validation
 
 Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and npm 11.9.0. Fixtures are synthetic. No Supabase connection or real financial records were used. Cloudflare credentials are managed through the connected service; no credentials are committed to the repository.
