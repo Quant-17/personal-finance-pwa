@@ -226,7 +226,7 @@ test("offline and background locks remove private views; reconnect verifies agai
 test("signout clears session storage and prevents returning to records", async ({
   page,
 }) => {
-  await mock(page, true);
+  const calls = await mock(page, true);
   await login(page);
   await page.getByRole("link", { name: "Accounts", exact: true }).click();
   await expect(page.getByText("Fixture checking")).toBeVisible();
@@ -239,6 +239,9 @@ test("signout clears session storage and prevents returning to records", async (
       Object.keys(localStorage).filter((key) => key.startsWith("folio-auth-")),
     ),
   ).toEqual([]);
+  await expect
+    .poll(() => calls.some((call) => call.path === "/auth/v1/logout"))
+    .toBe(true);
   await page.goto("/#accounts");
   await expect(page.getByText("Fixture checking")).toHaveCount(0);
 });

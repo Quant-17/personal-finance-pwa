@@ -119,7 +119,6 @@ export function AuthGate({
   }, [session, online, visible, revision]);
   const signOut = useCallback(async () => {
     signingOut.current = true;
-    clearDeviceSession();
     client?.auth.stopAutoRefresh();
     epoch.current++;
     setUser(null);
@@ -127,6 +126,8 @@ export function AuthGate({
     setRecovery(false);
     setChecking(false);
     try {
+      // The SDK clears the local session before its best-effort revocation request.
+      // Let it read the token first so server revocation remains possible.
       await client?.auth.signOut({ scope: "local" });
     } catch {
       /* Device session is cleared even if revocation is unreachable. */
