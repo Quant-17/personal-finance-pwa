@@ -45,6 +45,12 @@ The Quality workflow uploads `dist/` as `folio-phase-1-preview` only after all c
 
 No authenticated Cloudflare connection is available to this workspace. A hosted URL and real-device results are still required to complete the deployment acceptance checks.
 
+## Hosted deployment check · 17 November 2026
+
+The provided Workers preview responds with the expected HTML and security headers. HTTP checks found the referenced `/assets/index-Cf22D_I6.js`, `/assets/index-aVEG9Y1x.css` and `/icons/icon-192.png` missing (404), while root `/sw.js` and the manifest exist. The manifest was served as `application/octet-stream`; `_headers` now sets its correct manifest JSON content type. The live app and offline behavior cannot be accepted until the complete build is re-uploaded and verified.
+
+The browser harness now accepts `PLAYWRIGHT_BASE_URL` for hosted testing, plus an optional proxy server. A seventh, hosted-only check verifies the actual entry assets, response headers, manifest and icon dimensions; local Vite runs skip it because Vite does not emulate Cloudflare header rules. Initial full browser attempts from the managed environment also encountered its proxy certificate trust restriction; this is separate from the confirmed HTTP deployment defects.
+
 ## Remaining manual checks / limits
 - Physical iPhone Safari Add to Home Screen, standalone launch, offline reopening and storage eviction behavior.
 - Physical Windows Edge/Chrome installation and accessibility with a screen reader.

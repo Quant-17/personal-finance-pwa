@@ -22,6 +22,22 @@ Use a separate temporary project, suggested name **folio-phase-1-preview**. Dire
 
 No Cloudflare token is needed in chat or GitHub for this upload flow. Publishing is performed by the signed-in account owner. This workspace has not created a Pages project or deployed the app.
 
+## Existing Workers preview: incomplete upload
+
+The supplied `workers.dev` URL was checked on 17 November 2026. Its HTML and root service worker load, but the exact JavaScript, stylesheet and icon URLs referenced by the app return HTTP 404. The manifest is JSON but was served as `application/octet-stream`. This is an incomplete deployment, not a successful app acceptance result.
+
+Workers Static Assets can host this prototype and supports `_headers`; moving to Pages is not required to repair it. The repository now explicitly sets the manifest response type to `application/manifest+json`.
+
+To repair the existing Worker, extract the new build ZIP and upload the **complete extracted build folder**, including the `assets/` and `icons/` subfolders. Do not upload only the root files. In Cloudflare's upload listing, verify that the files referenced in `index.html` appear under their exact `/assets/...` paths and that `/icons/icon-192.png` is present before publishing the replacement. Use a folder upload if the selected ZIP workflow does not preserve nested paths. A fresh ZIP with directory entries is provided in the handoff.
+
+After uploading, verify the exact current entry paths in the served HTML, `/icons/icon-192.png`, `/manifest.webmanifest` and `/sw.js`. A root page returning 200 alone does not prove the application is working. The hosted browser suite can be run with:
+
+```sh
+PLAYWRIGHT_BASE_URL=https://your-deployment.example npx playwright test
+```
+
+This skips the local Vite server and tests the deployed origin. It adds a hosted-only check for security headers, actual JS/CSS entry responses, manifest type, icon PNG dimensions and service-worker cache headers. Optional `PLAYWRIGHT_PROXY_SERVER` supports a test-network proxy; it does not disable certificate validation. Local Vite runs skip this one hosted-only check.
+
 ## Verify the hosted build
 
 Open the exact deployment URL on desktop first:
@@ -53,4 +69,5 @@ Keep the temporary demo separate from any future private deployment. Authenticat
 ## References
 
 - [Cloudflare Pages Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/): supported upload methods and project-type limitations.
+- [Workers static asset headers](https://developers.cloudflare.com/workers/static-assets/headers/): `_headers` is also supported by Workers Static Assets.
 - [Cloudflare Pages headers](https://developers.cloudflare.com/pages/configuration/headers/): `_headers` rules for static responses.

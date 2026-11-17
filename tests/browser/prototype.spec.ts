@@ -220,3 +220,52 @@ test("mobile navigation opens the destination at the top", async ({ page }) => {
   ).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
+
+test("deployed responses retain security headers and installable assets", async ({
+  request,
+}) => {
+  test.skip(
+    !process.env.PLAYWRIGHT_BASE_URL,
+    "Vite preview does not apply Cloudflare's _headers rules; use a published URL.",
+  );
+  const document = await request.get("/");
+  expect(document.ok()).toBe(true);
+  const html = await document.text();
+  const assetPaths = [
+    ...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g),
+  ].map((match) => match[1]);
+  expect(assetPaths.length).toBeGreaterThan(0);
+  for (const path of assetPaths) {
+    const asset = await request.get(path);
+    expect(asset.ok(), `Missing deployed entry asset: ${path}`).toBe(true);
+    expect(asset.headers()["content-type"]).toContain(
+      path.endsWith(".css") ? "text/css" : "javascript",
+    );
+  }
+  const headers = document.headers();
+  expect(headers["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
+  expect(headers["content-security-policy"]).toContain("connect-src 'self'");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["x-frame-options"]).toBe("DENY");
+  const manifestResponse = await request.get("/manifest.webmanifest");
+  expect(manifestResponse.ok()).toBe(true);
+  expect(manifestResponse.headers()["content-type"]).toContain("json");
+  const manifest = await manifestResponse.json();
+  expect(manifest.start_url).toBe("/");
+  expect(manifest.display).toBe("standalone");
+  for (const icon of manifest.icons) {
+    const response = await request.get(icon.src);
+    expect(response.ok()).toBe(true);
+    const bytes = await response.body();
+    expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    expect(`${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`).toBe(
+      icon.sizes,
+    );
+  }
+  const serviceWorker = await request.get("/sw.js");
+  expect(serviceWorker.ok()).toBe(true);
+  expect(serviceWorker.headers()["content-type"]).toContain("javascript");
+  expect(serviceWorker.headers()["cache-control"]).toContain("no-cache");
+});
