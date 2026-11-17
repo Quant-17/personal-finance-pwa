@@ -56,3 +56,26 @@ Use a disposable PostgreSQL 17 instance (CI provisions one). Run `supabase/tests
 Hosted acceptance is DDL-free: it creates two transient Auth users and verifies accounting/retry/isolation inside BEGIN/ROLLBACK. Do not insert fixtures through Auth email APIs. Full tests assert all ten public tables, write permissions, foreign-owner parents, anonymous denial, date/amount constraints, transfers, debt, budgets, earmarks and unchanged retries.
 
 Advisors: no security WARN/ERROR and no RLS-performance WARN after optimization. The private receipt table intentionally has no RLS policy/client table privileges ([advisor explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); this is deny-by-default, accessible only inside narrow privileged mutation functions. New-project unused-index INFO notices are expected ([reference](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)); retain ownership/FK/reporting indexes until representative usage exists.
+
+## Build and deployment identity
+
+Every new build publishes `folio-build.json` containing its mode, Git source revision and (for private mode) Supabase origin. It contains no API key, user identity or financial data, and has `Cache-Control: no-store`. The checker rejects dirty/unidentified builds, the wrong mode/project, missing PWA files and an incorrect CSP.
+
+Run after committing changes (Node 24.5+):
+
+```sh
+npm run build
+npm run verify:release -- dist private https://bjswwsciiuryfflxnflw.supabase.co
+```
+
+After an approved private deployment, check the actual chosen origin:
+
+```sh
+npm run verify:release -- https://YOUR_PRIVATE_ORIGIN/ private https://bjswwsciiuryfflxnflw.supabase.co
+```
+
+The hosted check also verifies document/manifest/service-worker headers. Vite preview cannot emulate Cloudflare headers, so use artifact verification for local builds. Existing Phase 1 deployments predating this change have no build identity and will correctly fail this Phase 2 release check. The checker needs no account credentials and never calls financial APIs.
+
+A private review ZIP is prepared locally under ignored `artifacts/` after the clean-source build check. It contains only `dist` output, with the browser-visible publishable key required for Auth. Do not publish it until the Auth/device release checks above are complete. To review locally, extract it and serve its root over localhost; callbacks must be allowlisted for the exact localhost port. It does not contain `.env.local`, source files, database credentials or financial records.
+
+During continuation, both dashboard browser connection attempts timed out before a page could be inspected. Therefore no Auth URL configuration was read or changed through the dashboard, and no new publication or PR merge was performed. All four existing Phase 2 PR checks were confirmed green before this release-verification follow-up.

@@ -11,3 +11,6 @@
   Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
+
+/folio-build.json
+  Cache-Control: no-store

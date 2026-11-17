@@ -11,3 +11,4 @@ test-results
 dist-private
 supabase/.temp/
 supabase/.branches/
+artifacts/

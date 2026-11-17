@@ -12,7 +12,8 @@
     "test": "vitest run",
     "build:demo": "tsc -b && vite build --mode demo",
     "build:private-test": "tsc -b && vite build --mode private-test --outDir dist-private",
-    "test:private": "playwright test --config playwright.private.config.ts"
+    "test:private": "playwright test --config playwright.private.config.ts",
+    "verify:release": "node --use-env-proxy scripts/verify-release.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.0",

@@ -48,6 +48,7 @@ npx playwright test
 npm run build:private-test
 npm run test:private
 npm run build
+npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 ```
 
 `build:private-test` uses a committed fake project/key with intercepted browser responses; it never creates real Supabase users or sends email. SQL integration tests use disposable Postgres fixtures and roll back. GitHub Quality replays all migrations on Postgres 17, checks isolation/accounting, and runs demo and private browser suites. See [VALIDATION.md](VALIDATION.md) for observed results and limits.

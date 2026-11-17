@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { validateClientConfiguration } from "./src/private/config";
 import react from "@vitejs/plugin-react";
+import { releaseInfo } from "./scripts/release-info";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode, command }) => {
@@ -27,6 +28,10 @@ export default defineConfig(({ mode, command }) => {
       {
         name: "private-workspace-headers",
         writeBundle(options) {
+          writeFileSync(
+            resolve(options.dir ?? "dist", "folio-build.json"),
+            JSON.stringify(releaseInfo(appMode, env.VITE_SUPABASE_URL), null, 2) + "\n",
+          );
           if (appMode !== "private" || configError) return;
           const path = resolve(options.dir ?? "dist", "_headers");
           const origin = new URL(env.VITE_SUPABASE_URL).origin;
