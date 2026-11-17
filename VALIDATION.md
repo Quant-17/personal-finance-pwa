@@ -1,6 +1,6 @@
 # Phase 1 validation
 
-Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and npm 11.9.0. Fixtures are synthetic. No Supabase project, real credentials or financial records were used.
+Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and npm 11.9.0. Fixtures are synthetic. No Supabase connection or real financial records were used. Cloudflare credentials are managed through the connected service; no credentials are committed to the repository.
 
 | Check | Result |
 | --- | --- |
@@ -9,6 +9,8 @@ Verified in the Codex Cloud workspace on 16 November 2026 using Node 24.22.1 and
 | `npm test` | 26 tests passed |
 | `npm run build` | Passed; manifest and service worker generated |
 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npx playwright test` | 6 browser tests passed against the production build |
+| Hosted browser suite against the Cloudflare preview | 7 checks passed, including offline behavior and deployed headers |
+| Live asset integrity | All 13 paths return 200 and match the prepared build byte-for-byte |
 | `git diff --check` | Passed |
 
 ## Calculation coverage
@@ -43,18 +45,23 @@ Both regression tests failed before the fixes and passed afterward, alongside th
 
 The Quality workflow uploads `dist/` as `folio-phase-1-preview` only after all checks pass, retaining the build artifact for 7 days. It does not publish to Cloudflare. [DEPLOYMENT.md](DEPLOYMENT.md) covers a separate temporary Direct Upload demo, build/asset/header checks, physical-device installation and future Git-integrated production setup.
 
-No authenticated Cloudflare connection is available to this workspace. A hosted URL and real-device results are still required to complete the deployment acceptance checks.
+The Cloudflare connection is now active and was used to repair the existing Workers preview. The hosted checks passed; physical-device results remain outstanding.
 
-## Hosted deployment check · 17 November 2026
+## Hosted deployment repair and verification · 17 November 2026
 
-The provided Workers preview responds with the expected HTML and security headers. HTTP checks found the referenced `/assets/index-Cf22D_I6.js`, `/assets/index-aVEG9Y1x.css` and `/icons/icon-192.png` missing (404), while root `/sw.js` and the manifest exist. The manifest was served as `application/octet-stream`; `_headers` now sets its correct manifest JSON content type. The live app and offline behavior cannot be accepted until the complete build is re-uploaded and verified.
+Live URL: [Folio Phase 1 preview](https://folio.sid-17061999.workers.dev/).
 
-The browser harness now accepts `PLAYWRIGHT_BASE_URL` for hosted testing, plus an optional proxy server. A seventh, hosted-only check verifies the actual entry assets, response headers, manifest and icon dimensions; local Vite runs skip it because Vite does not emulate Cloudflare header rules. Initial full browser attempts from the managed environment also encountered its proxy certificate trust restriction; this is separate from the confirmed HTTP deployment defects.
+The initial deployment omitted the referenced JavaScript, CSS and icons and served the manifest as `application/octet-stream`. The complete asset manifest was uploaded through the connected Cloudflare API with correct MIME types, then attached to the same assets-only Worker. All 13 paths now return 200 and match the prepared build byte-for-byte; the manifest is served as `application/manifest+json`.
+
+All 7 hosted browser checks passed in 20.1 seconds: simulator comparison/validation/export, mobile navigation and appearance, offline reload and offline simulator use, review screenshots, draft retention/reset, route scroll reset, and security/manifest/icon/service-worker headers. The live desktop screenshot was also inspected visually. The managed browser was configured temporarily to trust only the environment's known TLS proxy CA public key; this did not change the app or weaken repository/browser defaults for normal runs.
+
+Deployed source commit: `52b7d17`. Known-good Worker version: `5e0cb7ff-e84b-4095-9d17-cff53db0d267`. Deployment: `92d02c4b-850d-46ae-81ea-3b51d7ed58a6`. The Worker URL and existing compatibility settings were retained, and no backend bindings or paid resources were added. This known-good version is available for rollback.
+
+The browser harness accepts `PLAYWRIGHT_BASE_URL` for hosted testing. Its seventh check is intentionally skipped against local Vite because Vite does not apply Cloudflare `_headers` rules.
 
 ## Remaining manual checks / limits
 - Physical iPhone Safari Add to Home Screen, standalone launch, offline reopening and storage eviction behavior.
 - Physical Windows Edge/Chrome installation and accessibility with a screen reader.
-- Cloudflare Pages security headers and update delivery on a deployed HTTPS origin. Deployment has not been performed.
 - A new service-worker version's update prompt was implemented but cross-version activation was not exercised in browser automation.
 - Supabase authentication, RLS, private CRUD and real-data calculations are intentionally unimplemented Phase 2 work. This preview itself has no access gate and contains no private data.
 
@@ -64,4 +71,4 @@ No known blocking defects remain in the tested Phase 1 flows. CI repeats lint, t
 
 The implementation is published on GitHub branch `feat/phase-1-prototype` for draft pull request review against `main`. Repository write access was verified by a successful push after the connector installation was corrected. The initial HTTP 403 publication blocker is resolved.
 
-Only this handoff documentation changed during the publication retry. The implementation and recorded validation results are unchanged; no deployment or Phase 2 work was performed.
+The Phase 1 preview has been repaired and verified on the existing Workers URL. The PR remains available for code review; Phase 2 authentication and real-data integration have not been started.

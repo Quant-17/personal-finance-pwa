@@ -2,6 +2,12 @@
 
 This deploys the synthetic demo only. There is no authentication gate or real financial data. Supabase configuration is not required. The repository does not publish automatically: CI produces an upload bundle only after lint, TypeScript, unit tests, build and browser tests pass.
 
+## Current verified preview
+
+[Open Folio](https://folio.sid-17061999.workers.dev/). The existing `folio` Worker serves the complete Phase 1 static build. On 17 November 2026, all 13 asset paths matched the prepared build byte-for-byte and all 7 hosted browser checks passed, including offline reload, simulator interactions, mobile navigation, security headers, manifest type and icon dimensions. Physical iPhone/Windows installation and cross-version update checks remain manual.
+
+Deployed app source: `52b7d17`. Known-good Worker version: `5e0cb7ff-e84b-4095-9d17-cff53db0d267`; deployment: `92d02c4b-850d-46ae-81ea-3b51d7ed58a6`. Keep this version available for future rollback. The earlier incomplete upload has been superseded. No backend bindings, authentication or real financial data were added.
+
 ## Get the tested build
 
 1. Open this repository's GitHub **Actions → Quality** page and select a successful run for the reviewed commit on `feat/phase-1-prototype`.
@@ -10,7 +16,7 @@ This deploys the synthetic demo only. There is no authentication gate or real fi
 
 For a local build, run `npm ci` and `npm run build`, then upload the **contents of `dist/`**. Never upload the repository directory or source-code ZIP from GitHub's Code menu.
 
-## Temporary Cloudflare Pages demo
+## Alternative temporary Cloudflare Pages demo
 
 Use a separate temporary project, suggested name **folio-phase-1-preview**. Direct Upload projects cannot be converted to Git integration later; the eventual production project should use Git integration separately.
 
@@ -20,23 +26,23 @@ Use a separate temporary project, suggested name **folio-phase-1-preview**. Dire
 4. Review the synthetic-only contents and choose **Deploy site** when you want to publish the demo. This makes the demo accessible through its generated HTTPS `pages.dev` URL. Keep real financial data out of it.
 5. Record the actual URL from Cloudflare. A URL is not reserved or active just because a suggested project name appears in this document.
 
-No Cloudflare token is needed in chat or GitHub for this upload flow. Publishing is performed by the signed-in account owner. This workspace has not created a Pages project or deployed the app.
+No Cloudflare token is needed in chat or GitHub for this manual upload flow. The current preview already runs on Workers Static Assets; creating a separate Pages demo is optional.
 
-## Existing Workers preview: incomplete upload
+## Workers preview repair and repeatable verification
 
-The supplied `workers.dev` URL was checked on 17 November 2026. Its HTML and root service worker load, but the exact JavaScript, stylesheet and icon URLs referenced by the app return HTTP 404. The manifest is JSON but was served as `application/octet-stream`. This is an incomplete deployment, not a successful app acceptance result.
+The initial upload was incomplete: its root HTML, manifest and service worker existed, but the referenced JavaScript, stylesheet and icons returned 404. The manifest also had the generic `application/octet-stream` response type.
 
-Workers Static Assets can host this prototype and supports `_headers`; moving to Pages is not required to repair it. The repository now explicitly sets the manifest response type to `application/manifest+json`.
+The connected Cloudflare API was used to upload the full asset manifest with correct MIME types and attach it to the existing Worker. `_headers` explicitly sets `application/manifest+json`. The Worker remains assets-only with its existing URL and compatibility settings. Future uploads must retain every required path, including unchanged assets. The complete `assets/` and `icons/` folders are required; a root page returning 200 alone does not prove the application is working.
 
-To repair the existing Worker, extract the new build ZIP and upload the **complete extracted build folder**, including the `assets/` and `icons/` subfolders. Do not upload only the root files. In Cloudflare's upload listing, verify that the files referenced in `index.html` appear under their exact `/assets/...` paths and that `/icons/icon-192.png` is present before publishing the replacement. Use a folder upload if the selected ZIP workflow does not preserve nested paths. A fresh ZIP with directory entries is provided in the handoff.
+For manual updates, extract the tested ZIP and upload the complete build folder. Verify paths in the upload listing before deploying. A ZIP workflow that omits nested paths should be replaced by a full-folder upload.
 
-After uploading, verify the exact current entry paths in the served HTML, `/icons/icon-192.png`, `/manifest.webmanifest` and `/sw.js`. A root page returning 200 alone does not prove the application is working. The hosted browser suite can be run with:
+Run hosted checks from a normal development network with:
 
 ```sh
-PLAYWRIGHT_BASE_URL=https://your-deployment.example npx playwright test
+PLAYWRIGHT_BASE_URL=https://folio.sid-17061999.workers.dev npx playwright test
 ```
 
-This skips the local Vite server and tests the deployed origin. It adds a hosted-only check for security headers, actual JS/CSS entry responses, manifest type, icon PNG dimensions and service-worker cache headers. Optional `PLAYWRIGHT_PROXY_SERVER` supports a test-network proxy; it does not disable certificate validation. Local Vite runs skip this one hosted-only check.
+This skips the local Vite server and runs all 7 checks against the deployed origin. Optional `PLAYWRIGHT_PROXY_SERVER` supports a test-network proxy. In the managed cloud workspace, browser certificate trust required a temporary test-process exception scoped to the environment-provided proxy CA public key; no application TLS setting or repository browser-security default was weakened. Local Vite runs skip the hosted header check because Vite does not emulate Cloudflare header rules.
 
 ## Verify the hosted build
 

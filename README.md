@@ -4,6 +4,8 @@ A polished, synthetic personal-finance PWA for India. React + TypeScript + Vite,
 
 [Desktop preview](docs/screenshots/dashboard-desktop.png) · [Mobile simulator preview](docs/screenshots/simulator-mobile-dark.png)
 
+Live synthetic preview: [Open Folio](https://folio.sid-17061999.workers.dev/). The deployed app passed 7 hosted checks, including offline use. See [deployment status and device setup](DEPLOYMENT.md).
+
 ## Run locally / in Codex Cloud
 
 Node 22.12+ (Node 24 used for this implementation):
