@@ -365,4 +365,3 @@ do $$ declare fn record; begin
 end $$;
 
 notify pgrst, 'reload schema';
-
