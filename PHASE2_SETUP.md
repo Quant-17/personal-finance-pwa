@@ -119,3 +119,9 @@ For a disposable live accounting check, create `Test Wallet` as cash with an ope
 The owner reported working account confirmation/sign-in/recovery, live cash-account entry with refresh persistence, and the requested installed-PWA/Windows offline lock and reconnect behavior. These reports supersede earlier pending notes for those particular review-origin checks. Browser/device versions and final disposable-data cleanup were not independently inspected.
 
 Phase 2 core functionality is ready for code review. Before any production promotion, review final Auth URL configuration, confirm the disposable transactions are removed and Test Wallet is zero/archived, and perform a controlled service-worker update/activation check on installed devices. PR review readiness is not permission to merge PRs or replace the existing demo. No additional deployment occurred during this documentation update.
+
+## Controlled PWA update · v0.2.0-rc.1
+
+The review app now displays its compiled package version in the sign-in/workspace footer, and public build identity includes `appVersion`. This provides an explicit old/new build signal for acceptance. The new version is intended for the existing `folio-review` origin only; it does not change Auth settings, database schema, auth storage keys or the production demo.
+
+On a device with the previous review app installed, save any open form, reconnect and reopen/reload the app. When **Update app** appears, activate it. The app should reload, show **v0.2.0-rc.1** in the footer and verify the existing session before opening Overview. If no banner appears but that version is already visible, the new build is already active. Recheck offline lock and reconnect. Browser activation evidence and owner/device acceptance are recorded separately; do not mark an installed-device update passed until the owner confirms it.

@@ -923,6 +923,9 @@ function Workspace({
         <footer className="private-footer">
           <ShieldCheck size={14} />
           Private records · INR · India calendar dates
+          <span className="app-version" aria-label="App version">
+            v{__FOLIO_VERSION__}
+          </span>
         </footer>
       </main>
     </div>

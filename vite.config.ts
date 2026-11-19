@@ -8,6 +8,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
+  const appVersion: string = JSON.parse(
+    readFileSync(resolve("package.json"), "utf8"),
+  ).version;
   const appMode = env.VITE_APP_MODE ?? "demo";
   if (!["demo", "private"].includes(appMode))
     throw new Error("VITE_APP_MODE must be demo or private.");
@@ -20,6 +23,7 @@ export default defineConfig(({ mode, command }) => {
   });
   if (command === "build" && configError) throw new Error(configError);
   return {
+    define: { __FOLIO_VERSION__: JSON.stringify(appVersion) },
     build: {
       rollupOptions: { output: { manualChunks: { charts: ["recharts"] } } },
     },
@@ -30,7 +34,11 @@ export default defineConfig(({ mode, command }) => {
         writeBundle(options) {
           writeFileSync(
             resolve(options.dir ?? "dist", "folio-build.json"),
-            JSON.stringify(releaseInfo(appMode, env.VITE_SUPABASE_URL), null, 2) + "\n",
+            JSON.stringify(
+              releaseInfo(appMode, env.VITE_SUPABASE_URL, appVersion),
+              null,
+              2,
+            ) + "\n",
           );
           if (appMode !== "private" || configError) return;
           const path = resolve(options.dir ?? "dist", "_headers");

@@ -29,3 +29,7 @@ Cloudflare Pages or Workers Static Assets serves `dist` over HTTPS. Vite adds th
 Workbox precaches static assets only; runtimeCaching is empty. API/auth navigation paths are excluded from fallback. Supabase fetches use `cache: no-store`. No financial responses or auth responses enter Cache Storage. Supabase persists its session token via its browser SDK storage; this is separate from offline caching. Signing out removes this app's auth storage keys. Shared devices should sign out; an installed PWA is not a separate account boundary.
 
 After one online load, private mode can load its shell offline but stays locked; the synthetic demo remains fully offline capable. Updates require a visible user action and reload, discarding unsaved forms. iOS may evict storage. Hash routes simplify static hosting; responsive semantic controls use system fonts and reduced-motion tokens. Physical iPhone/Windows acceptance remains necessary.
+
+## Version identification
+
+Vite compiles the public package version into private-mode footers as `__FOLIO_VERSION__`. `folio-build.json` exposes the same `appVersion` alongside the Git revision and mode. This lets acceptance testers confirm service-worker activation without inspecting browser storage or exposing user data. A release-version change updates the app chunks/precache manifest and exercises the existing waiting-worker update prompt.

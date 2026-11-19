@@ -237,6 +237,9 @@ function AuthLayout({
       <footer>
         <ShieldCheck size={14} />
         Your workspace. Your records. Your control.
+        <span className="app-version" aria-label="App version">
+          v{__FOLIO_VERSION__}
+        </span>
       </footer>
     </div>
   );

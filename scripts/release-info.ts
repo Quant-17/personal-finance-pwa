@@ -1,7 +1,11 @@
 import { execFileSync } from "node:child_process";
 
 /** Public build identity only: never include environment keys or session data. */
-export function releaseInfo(mode: string, supabaseUrl?: string) {
+export function releaseInfo(
+  mode: string,
+  supabaseUrl?: string,
+  appVersion?: string,
+) {
   let sourceRevision =
     process.env.CF_PAGES_COMMIT_SHA ??
     process.env.WORKERS_CI_COMMIT_SHA ??
@@ -22,6 +26,7 @@ export function releaseInfo(mode: string, supabaseUrl?: string) {
   return {
     schemaVersion: 1,
     app: "folio",
+    appVersion,
     mode,
     sourceRevision,
     dirty,

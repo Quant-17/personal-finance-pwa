@@ -587,3 +587,15 @@ progress {
   text-align: right;
   border-bottom: 1px solid var(--border);
 }
+
+.app-version {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 11px;
+}
+.auth-page footer,
+.private-footer {
+  flex-wrap: wrap;
+  justify-content: center;
+}
