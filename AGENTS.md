@@ -1,7 +1,7 @@
 # Working on Folio
 
 ## Scope
-Phase 2 was explicitly authorized by the user. Keep the synthetic demo and authenticated workspace in separate build modes and use the existing free Supabase project. Do not enter real financial fixtures or publish private mode before its documented Auth/device release checks. Use a review branch. Keep the product calm, responsive and accessible on iPhone Safari PWA and Windows browsers.
+Phase 2 was explicitly authorized by the user. Keep the synthetic demo and authenticated workspace in separate build modes and use the existing free Supabase project. The user explicitly approved an isolated `folio-review` Cloudflare deployment on 19 November 2026 to perform Auth/device acceptance. Preserve the existing `folio` demo deployment. Do not enter real financial fixtures or promote private mode to production before the documented Auth/device checks. Use a review branch. Keep the product calm, responsive and accessible on iPhone Safari PWA and Windows browsers.
 
 ## Commands
 `npm ci`, `npm run dev`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run build:demo`, `npm run build:private-test`, `npm run test:private`, `npm run preview`.

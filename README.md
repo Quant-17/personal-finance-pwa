@@ -2,7 +2,7 @@
 
 An INR finance manager for iPhone Safari PWA and Windows browsers, built with React, TypeScript, Vite, Tailwind, shadcn/ui patterns, Recharts and Supabase. Phase 1 is the synthetic demo. Phase 2 adds an authenticated workspace with manual financial entry. No bank integration or paid API is used.
 
-The current public deployment, https://folio.sid-17061999.workers.dev/, remains the Phase 1 demo. Phase 2 is on the separate `feat/phase-2-private-finance` review branch; this work does not publish private mode to that URL.
+The current public deployment, https://folio.sid-17061999.workers.dev/, remains the Phase 1 demo. Phase 2 is on the separate `feat/phase-2-private-finance` review branch; private mode is available separately for acceptance at https://folio-review.sid-17061999.workers.dev. The user authorized this review deployment; no PR has been merged.
 
 ## Preview
 

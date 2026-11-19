@@ -2,7 +2,7 @@
 
 ## Current state
 
-The review branch is `feat/phase-2-private-finance`, stacked on the Phase 1 branch because PR #1 is not merged. The public https://folio.sid-17061999.workers.dev/ still serves the synthetic demo. Phase 2 has not replaced that deployment.
+The review branch is `feat/phase-2-private-finance`, stacked on the Phase 1 branch because PR #1 is not merged. The public https://folio.sid-17061999.workers.dev/ still serves the synthetic demo. Phase 2 has not replaced that deployment. The user-approved acceptance preview is now deployed separately at https://folio-review.sid-17061999.workers.dev (19 November 2026).
 
 The connected existing **free** Supabase project is `bjswwsciiuryfflxnflw` (Singapore). Its public schema was empty before this work. These migrations are applied and match the committed filenames:
 
@@ -41,7 +41,7 @@ Callbacks use PKCE and return to the same origin `/`. Complete confirmation/rese
 
 Before real financial entry, the owner must confirm a fresh account, sign in, request/reset its password, sign out and sign back in. Automated tests mock these UI endpoints and verify actual RLS separately; they do not prove live email delivery or dashboard redirect settings.
 
-## Cloudflare private deployment · after review
+## Cloudflare production deployment · after acceptance
 
 Use free Cloudflare Pages or Workers Static Assets with Node 24, repository root, build command `npm run build`, output `dist`. Add only `VITE_APP_MODE=private`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the build environment. Rebuild after changing values. No runtime Worker, service-role key or paid resource is needed. Do not merge automatically; select the branch/environment intentionally.
 
@@ -79,3 +79,25 @@ The hosted check also verifies document/manifest/service-worker headers. Vite pr
 A private review ZIP is prepared locally under ignored `artifacts/` after the clean-source build check. It contains only `dist` output, with the browser-visible publishable key required for Auth. Do not publish it until the Auth/device release checks above are complete. To review locally, extract it and serve its root over localhost; callbacks must be allowlisted for the exact localhost port. It does not contain `.env.local`, source files, database credentials or financial records.
 
 During continuation, both dashboard browser connection attempts timed out before a page could be inspected. Therefore no Auth URL configuration was read or changed through the dashboard, and no new publication or PR merge was performed. All four existing Phase 2 PR checks were confirmed green before this release-verification follow-up.
+
+## Deployed acceptance preview · 19 November 2026
+
+The user explicitly authorized this isolated preview before completing Auth/device checks. It is not a production promotion or PR merge.
+
+- URL: https://folio-review.sid-17061999.workers.dev
+- Worker: `folio-review`, static assets only; no Worker code or additional backend bindings.
+- Deployed source: `e422ec71ea6d04b250b89c2b3fbd0cd3de88479a` (the previously reviewed build).
+- Worker version: `e7d63097-e264-49aa-a840-7cb470856c61`.
+- Deployment: `e274ab73-d50b-40e7-b19b-c12a6fde1723`, 100% review traffic.
+- Hosted `verify:release` passed mode/source/project identity, manifest, app shell, service worker headers and exact-project CSP. An initial edge/propagation failure cleared before this successful check; browser-rendered acceptance is still an owner check.
+- The original `folio` Worker remains on `5e0cb7ff-e84b-4095-9d17-cff53db0d267` at 100%; verified through the Cloudflare API.
+
+**Before clicking Create account or Forgot password in the preview**, add this exact callback under Supabase Auth → URL Configuration → Redirect URLs and save:
+
+```text
+https://folio-review.sid-17061999.workers.dev/
+```
+
+Keep the localhost callbacks already added by the owner. The client explicitly supplies its current origin as redirectTo; no Site URL change is required for this acceptance preview. Preserve any existing redirect entries. Then create/confirm a Folio account using an email permitted by the project's sender, sign in to the empty Overview, test reset in the same browser, sign out and sign back in. The assistant has not sent any confirmation/reset messages or entered real financial records.
+
+The app shell is public; data requires a confirmed, non-anonymous Supabase user and owner RLS. The preview uses the existing Supabase project. Owner email acceptance, hosted visual interaction and physical iPhone/Windows installation/offline/update checks remain pending. Removing this preview later means deleting only `folio-review`, retaining the original Worker and all Supabase data.

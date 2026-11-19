@@ -1,3 +1,7 @@
+## Acceptance deployment update · 19 November 2026 IST
+
+The user-approved `folio-review` static preview is deployed at https://folio-review.sid-17061999.workers.dev using tested source `e422ec7`. Hosted release verification passed source/mode/project identity, manifest, shell, service-worker content/cache headers, JSON content types and exact-project CSP. The original `folio` deployment version was verified unchanged. No real user signup/reset email or financial entry was performed by the assistant. Owner visual/email/device acceptance remains pending; add the preview root URL to Supabase Redirect URLs first. See PHASE2_SETUP.md for IDs and steps.
+
 # Phase 2 validation · 17 November 2026 IST
 
 Observed locally on the Phase 2 review branch:

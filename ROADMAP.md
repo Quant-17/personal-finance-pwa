@@ -16,10 +16,11 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 - [x] Offline/background lock, sign-out clearing, exact-origin CSP and build-time configuration validation.
 - [ ] Verify final Supabase Auth Site URL/redirect allowlist in the dashboard (email confirmations are already enabled).
 - [ ] Owner completes actual confirmation and password-reset email round trips; default email sender restrictions may apply.
-- [ ] Publish a reviewed private build to a deliberately selected Cloudflare origin; verify its CSP and auth redirects.
+- [x] User-approved isolated `folio-review` acceptance preview deployed; hosted mode/source/CSP/PWA checks passed.
+- [ ] Add its exact HTTPS callback to Supabase; verify actual confirmation/reset redirects.
 - [ ] Physical iPhone installed PWA and Windows browser acceptance, including update and offline lock.
 
-The Phase 2 implementation is reviewable; production/private-data acceptance is not complete until those remaining release gates pass. The existing public URL continues serving the Phase 1 demo.
+The Phase 2 implementation is reviewable; production/private-data acceptance is not complete until those remaining release gates pass. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
 
 ## Later
 
