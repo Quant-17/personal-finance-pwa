@@ -1,3 +1,9 @@
+## Owner release acceptance · 19 November 2026 IST
+
+The owner confirmed the requested installed-app update to v0.2.0-rc.1 and return to Overview, then explicitly confirmed removal of the disposable ₹1,000 income and ₹100 expense, a zero Test Wallet balance and archiving. These are owner-reported results; the assistant did not inspect account records, and device/browser versions were not captured. These confirmations supersede the pending update/cleanup notes below.
+
+GitHub inspection at documentation preparation found both PRs mergeable and all reported checks successful. PR #1 remains draft; PR #2 is ready for review, with no submitted reviews or inline review threads. Neither is merged. The connected Supabase tools do not expose Auth URL configuration; the final Site URL/allowlist still needs dashboard verification. See RELEASE_CHECKLIST.md for the concrete promotion sequence and rollback boundaries.
+
 ## Controlled review update · 19 November 2026 IST
 
 Review release `v0.2.0-rc.1`, source `00a1bc5995da6156fe378b3de33803106d609ad7`, is live on the existing `folio-review` origin. Lint, typecheck, 53 unit/release tests, eight private browser tests, private production build, local/hosted release verification and GitHub CI run 44573829155 passed. Hosted checks include source/mode/project identity, manifest, root shell, service worker and exact-origin CSP.

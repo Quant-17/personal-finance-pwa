@@ -21,9 +21,10 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 - [x] Owner reported disposable cash-account income/expense entry and refresh persistence working; cleanup instructions supplied.
 - [x] Owner reported the requested installed-PWA and Windows offline lock/reconnect checks working (device/browser versions not captured).
 - [x] Controlled review update to v0.2.0-rc.1; cloud browser waiting-worker banner and activation verified.
-- [ ] Confirm v0.2.0-rc.1 activation and session preservation on installed iPhone/Windows devices.
+- [x] Owner confirmed the requested installed-app v0.2.0-rc.1 update and return to Overview; device/browser versions were not captured.
+- [x] Owner confirmed disposable income/expense removal, zero Test Wallet balance and archiving.
 
-Phase 2 core functional acceptance is complete based on automated checks and owner reports; the PR is ready for code review. Production promotion still requires final Auth URL review, removal of disposable test entries and the controlled app-update check. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
+Phase 2 core functional acceptance is complete based on automated checks and owner reports; the PR is ready for code review. Production promotion still requires final Auth URL review and an explicit merge/deployment decision. Owner update and disposable-data cleanup acceptance are complete. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
 
 ## Later
 

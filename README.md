@@ -34,7 +34,7 @@ The existing connected free Supabase project was initially empty. The three migr
 
 ## Supabase setup and release gate
 
-See [PHASE2_SETUP.md](PHASE2_SETUP.md) for migrations, exact Auth redirects, email limitations, security checks and Cloudflare build settings. **Auth redirect settings and a real owner confirmation/recovery round trip must be verified before publishing private mode or entering real financial information.** The connected database tools cannot edit Auth URL configuration; no successful live email delivery is claimed. Physical iPhone installation and Windows acceptance remain manual.
+See [PHASE2_SETUP.md](PHASE2_SETUP.md) for migrations, exact Auth redirects, email limitations, security checks and Cloudflare build settings. **Auth redirect settings and a real owner confirmation/recovery round trip must be verified before publishing private mode or entering real financial information.** The owner has reported successful confirmation/recovery, financial-entry persistence, installed-app/offline behavior, the v0.2.0-rc.1 update and disposable-data cleanup. These reports are separate from automated checks. Final Auth URL configuration remains a dashboard check; the connected database tools cannot read or edit it. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the remaining promotion steps.
 
 ## Validation
 
