@@ -14,10 +14,11 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 - [x] Budgets, savings earmarks, existing-loan tracking/repayments/estimated schedules and subscription forecasts.
 - [x] Actual dashboard plus a private-plan purchase simulator; no synthetic data in private views.
 - [x] Offline/background lock, sign-out clearing, exact-origin CSP and build-time configuration validation.
-- [ ] Verify final Supabase Auth Site URL/redirect allowlist in the dashboard (email confirmations are already enabled).
-- [ ] Owner completes actual confirmation and password-reset email round trips; default email sender restrictions may apply.
+- [ ] Review final production Supabase Auth Site URL/redirect allowlist before promotion; effective review callbacks passed owner acceptance.
+- [x] Owner reported successful account creation/confirmation, verified sign-in to Overview, and password reset followed by sign-in (19 November 2026).
 - [x] User-approved isolated `folio-review` acceptance preview deployed; hosted mode/source/CSP/PWA checks passed.
-- [ ] Add its exact HTTPS callback to Supabase; verify actual confirmation/reset redirects.
+- [x] Owner confirmed working confirmation/reset flows on the HTTPS review preview; raw dashboard configuration was not independently inspected.
+- [ ] Owner checks a disposable cash-account income/expense workflow and persistence, then cleans up its test entries.
 - [ ] Physical iPhone installed PWA and Windows browser acceptance, including update and offline lock.
 
 The Phase 2 implementation is reviewable; production/private-data acceptance is not complete until those remaining release gates pass. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.

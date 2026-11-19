@@ -1,3 +1,9 @@
+## Owner Auth acceptance · 19 November 2026 IST
+
+The owner reported creating/confirming a Folio account, seeing session verification followed by Overview, and successfully completing the requested password-reset/new-password sign-in check. These are user-reported live acceptance results, separate from automated/mocked browser tests. No password, code or confirmation link was shared with the assistant. Effective review-origin callbacks are validated by those flows; the raw dashboard allowlist and final production Site URL were not independently inspected.
+
+Next: owner checks a disposable zero-opening cash wallet with a ₹1,000 income and ₹100 expense, verifies a ₹900 balance persists across refresh, then deletes both test entries and archives the zero-balance wallet. Physical iPhone/Windows install, offline lock/reconnect and update acceptance remain outstanding. Production promotion and PR merges are not authorized by this acceptance confirmation.
+
 ## Root-routing correction · 19 November 2026 IST
 
 The previous hosted preflight checked `/index.html` and falsely passed a deployment whose root returned 404. `folio-review` now uses automatic HTML handling: `/` returns 200 and `/index.html` redirects to `/`. The corrected root-based release check passes, all deployed JS entry/chunk bytes match the reviewed artifact, and the real HTTPS sign-in form was visibly verified in a browser. Two new local-server regression tests cover root failure and canonical redirects; both passed. The app source remains e422ec7; only Cloudflare asset-routing configuration changed. Current Worker version ed95fa49-817c-4e12-ae3b-8b1e71278254, deployment 60d1e570-4a01-4647-bdfa-2eab9b382ed8. Auth/email/physical-device acceptance remains pending.
