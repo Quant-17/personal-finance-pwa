@@ -18,10 +18,11 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 - [x] Owner reported successful account creation/confirmation, verified sign-in to Overview, and password reset followed by sign-in (19 November 2026).
 - [x] User-approved isolated `folio-review` acceptance preview deployed; hosted mode/source/CSP/PWA checks passed.
 - [x] Owner confirmed working confirmation/reset flows on the HTTPS review preview; raw dashboard configuration was not independently inspected.
-- [ ] Owner checks a disposable cash-account income/expense workflow and persistence, then cleans up its test entries.
-- [ ] Physical iPhone installed PWA and Windows browser acceptance, including update and offline lock.
+- [x] Owner reported disposable cash-account income/expense entry and refresh persistence working; cleanup instructions supplied.
+- [x] Owner reported the requested installed-PWA and Windows offline lock/reconnect checks working (device/browser versions not captured).
+- [ ] Confirm delivery/activation of a new service-worker version on installed devices.
 
-The Phase 2 implementation is reviewable; production/private-data acceptance is not complete until those remaining release gates pass. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
+Phase 2 core functional acceptance is complete based on automated checks and owner reports; the PR is ready for code review. Production promotion still requires final Auth URL review, removal of disposable test entries and the controlled app-update check. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
 
 ## Later
 

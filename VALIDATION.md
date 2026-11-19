@@ -1,3 +1,9 @@
+## Owner functional/device acceptance · 19 November 2026 IST
+
+After the Auth acceptance, the owner reported the disposable cash-account income/expense and refresh-persistence check working. The owner subsequently reported the requested installed iPhone PWA and Windows offline lock/reconnect checks working. These are owner-reported results, not independent inspection; device/browser versions were not captured. The assistant did not read personal account records. Cleanup instructions were supplied for the disposable entries and zero-balance wallet; final cleanup was not independently inspected.
+
+Core Phase 2 functionality is ready for code review. Remaining production release steps: review the final Auth Site URL/redirect allowlist, confirm disposable test entries are removed, and verify a controlled service-worker update on installed devices. The previous four Quality checks were green before this documentation-only acceptance update. PR readiness does not authorize merging or replacing the Phase 1 production site. Current deployed app assets remain source e422ec7 with the repaired root routing.
+
 ## Owner Auth acceptance · 19 November 2026 IST
 
 The owner reported creating/confirming a Folio account, seeing session verification followed by Overview, and successfully completing the requested password-reset/new-password sign-in check. These are user-reported live acceptance results, separate from automated/mocked browser tests. No password, code or confirmation link was shared with the assistant. Effective review-origin callbacks are validated by those flows; the raw dashboard allowlist and final production Site URL were not independently inspected.

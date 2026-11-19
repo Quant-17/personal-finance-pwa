@@ -113,3 +113,9 @@ Hosted release checks now request `/` directly. `tests/release-verification.test
 The owner confirmed successful account creation/confirmation, sign-in through session verification into Overview, and password recovery followed by new-password sign-in. This supersedes earlier email-flow-pending notes for the review origin. The assistant did not inspect credentials or independently read the raw dashboard configuration. Final production URL configuration remains a pre-promotion check.
 
 For a disposable live accounting check, create `Test Wallet` as cash with an opening balance of ₹0. Add an acceptance-test income of ₹1,000 and expense of ₹100 using matching categories. Verify ₹900 on Accounts, refresh and verify it persists. Delete those two entries and verify ₹0 before archiving the wallet, so no synthetic balance remains in net worth. Use only these fictional amounts. Record pass/fail without personal financial values. Follow with the physical-device checks already listed above.
+
+## Current acceptance status · 19 November 2026
+
+The owner reported working account confirmation/sign-in/recovery, live cash-account entry with refresh persistence, and the requested installed-PWA/Windows offline lock and reconnect behavior. These reports supersede earlier pending notes for those particular review-origin checks. Browser/device versions and final disposable-data cleanup were not independently inspected.
+
+Phase 2 core functionality is ready for code review. Before any production promotion, review final Auth URL configuration, confirm the disposable transactions are removed and Test Wallet is zero/archived, and perform a controlled service-worker update/activation check on installed devices. PR review readiness is not permission to merge PRs or replace the existing demo. No additional deployment occurred during this documentation update.
