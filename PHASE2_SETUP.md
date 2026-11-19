@@ -86,10 +86,10 @@ The user explicitly authorized this isolated preview before completing Auth/devi
 
 - URL: https://folio-review.sid-17061999.workers.dev
 - Worker: `folio-review`, static assets only; no Worker code or additional backend bindings.
-- Deployed source: `e422ec71ea6d04b250b89c2b3fbd0cd3de88479a` (the previously reviewed build).
-- Worker version: `ed95fa49-817c-4e12-ae3b-8b1e71278254`.
-- Deployment: `60d1e570-4a01-4647-bdfa-2eab9b382ed8`, 100% review traffic.
-- Hosted `verify:release` passed mode/source/project identity, manifest, app shell, service worker headers and exact-project CSP. The initial checker incorrectly tested `/index.html` rather than the root and missed a root 404. This was corrected on 19 November; `/` now returns 200 and the sign-in form was visibly verified in a browser. Authenticated owner/device acceptance is still pending.
+- Deployed source: `00a1bc5995da6156fe378b3de33803106d609ad7` (`v0.2.0-rc.1`).
+- Worker version: `3b994d27-44c1-476a-a0dc-382731b1844f`.
+- Deployment: `f399b002-f3b7-4d9f-a2af-5b7c284f0846`, 100% review traffic.
+- Hosted `verify:release` passed mode/source/project identity, manifest, app shell, service worker headers and exact-project CSP. The initial checker incorrectly tested `/index.html` rather than the root and missed a root 404. This was corrected on 19 November; `/` now returns 200 and the sign-in form was visibly verified in a browser. Owner functional/offline acceptance is recorded below; installed-device update acceptance remains pending.
 - The original `folio` Worker remains on `5e0cb7ff-e84b-4095-9d17-cff53db0d267` at 100%; verified through the Cloudflare API.
 
 **Before clicking Create account or Forgot password in the preview**, add this exact callback under Supabase Auth → URL Configuration → Redirect URLs and save:
@@ -100,7 +100,7 @@ https://folio-review.sid-17061999.workers.dev/
 
 Keep the localhost callbacks already added by the owner. The client explicitly supplies its current origin as redirectTo; no Site URL change is required for this acceptance preview. Preserve any existing redirect entries. Then create/confirm a Folio account using an email permitted by the project's sender, sign in to the empty Overview, test reset in the same browser, sign out and sign back in. The assistant has not sent any confirmation/reset messages or entered real financial records.
 
-The app shell is public; data requires a confirmed, non-anonymous Supabase user and owner RLS. The preview uses the existing Supabase project. Owner email acceptance, hosted visual interaction and physical iPhone/Windows installation/offline/update checks remain pending. Removing this preview later means deleting only `folio-review`, retaining the original Worker and all Supabase data.
+The app shell is public; data requires a confirmed, non-anonymous Supabase user and owner RLS. The preview uses the existing Supabase project. Owner email and offline acceptance are recorded below. Controlled installed-device update acceptance remains pending. Removing this preview later means deleting only `folio-review`, retaining the original Worker and all Supabase data.
 
 ### Root-routing repair
 
@@ -118,10 +118,12 @@ For a disposable live accounting check, create `Test Wallet` as cash with an ope
 
 The owner reported working account confirmation/sign-in/recovery, live cash-account entry with refresh persistence, and the requested installed-PWA/Windows offline lock and reconnect behavior. These reports supersede earlier pending notes for those particular review-origin checks. Browser/device versions and final disposable-data cleanup were not independently inspected.
 
-Phase 2 core functionality is ready for code review. Before any production promotion, review final Auth URL configuration, confirm the disposable transactions are removed and Test Wallet is zero/archived, and perform a controlled service-worker update/activation check on installed devices. PR review readiness is not permission to merge PRs or replace the existing demo. No additional deployment occurred during this documentation update.
+Phase 2 core functionality is ready for code review. Before any production promotion, review final Auth URL configuration, confirm the disposable transactions are removed and Test Wallet is zero/archived, and perform a controlled service-worker update/activation check on installed devices. PR review readiness is not permission to merge PRs or replace the existing demo. The controlled review update is recorded below.
 
 ## Controlled PWA update · v0.2.0-rc.1
 
 The review app now displays its compiled package version in the sign-in/workspace footer, and public build identity includes `appVersion`. This provides an explicit old/new build signal for acceptance. The new version is intended for the existing `folio-review` origin only; it does not change Auth settings, database schema, auth storage keys or the production demo.
 
 On a device with the previous review app installed, save any open form, reconnect and reopen/reload the app. When **Update app** appears, activate it. The app should reload, show **v0.2.0-rc.1** in the footer and verify the existing session before opening Overview. If no banner appears but that version is already visible, the new build is already active. Recheck offline lock and reconnect. Browser activation evidence and owner/device acceptance are recorded separately; do not mark an installed-device update passed until the owner confirms it.
+
+On 19 November 2026, source `00a1bc5` passed lint, typecheck, 53 unit/release tests, all eight private browser tests, private production build and local release verification. GitHub CI run [44573829155](https://github.com/Quant-17/personal-finance-pwa/actions/runs/44573829155) passed. The exact build was deployed to the existing review Worker with automatic HTML handling and security headers preserved; hosted release verification passed. In a browser running the previous app, reload showed **Update app**. Activating it reloaded the app, removed the banner and visibly displayed **v0.2.0-rc.1**. This signed-out cloud-browser check does not establish installed iPhone/Windows activation or authenticated session preservation; those remain owner acceptance items. The original production Worker version was verified unchanged through the API.

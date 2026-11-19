@@ -1,8 +1,16 @@
+## Controlled review update · 19 November 2026 IST
+
+Review release `v0.2.0-rc.1`, source `00a1bc5995da6156fe378b3de33803106d609ad7`, is live on the existing `folio-review` origin. Lint, typecheck, 53 unit/release tests, eight private browser tests, private production build, local/hosted release verification and GitHub CI run 44573829155 passed. Hosted checks include source/mode/project identity, manifest, root shell, service worker and exact-origin CSP.
+
+A browser using the previous build showed the waiting-worker **Update app** banner after reload. Clicking it reloaded into the sign-in view with **v0.2.0-rc.1** visible and the update banner gone. No credentials or financial records were entered. Physical installed-device activation and authenticated session preservation still require owner confirmation.
+
+Review Worker version `3b994d27-44c1-476a-a0dc-382731b1844f`, deployment `f399b002-f3b7-4d9f-a2af-5b7c284f0846`, at 100%. The API confirms automatic HTML handling and asset headers. Production `folio` remains on version `5e0cb7ff-e84b-4095-9d17-cff53db0d267`; no merge or production promotion occurred. Earlier dated entries below are historical and superseded where specified.
+
 ## Owner functional/device acceptance · 19 November 2026 IST
 
 After the Auth acceptance, the owner reported the disposable cash-account income/expense and refresh-persistence check working. The owner subsequently reported the requested installed iPhone PWA and Windows offline lock/reconnect checks working. These are owner-reported results, not independent inspection; device/browser versions were not captured. The assistant did not read personal account records. Cleanup instructions were supplied for the disposable entries and zero-balance wallet; final cleanup was not independently inspected.
 
-Core Phase 2 functionality is ready for code review. Remaining production release steps: review the final Auth Site URL/redirect allowlist, confirm disposable test entries are removed, and verify a controlled service-worker update on installed devices. The previous four Quality checks were green before this documentation-only acceptance update. PR readiness does not authorize merging or replacing the Phase 1 production site. Current deployed app assets remain source e422ec7 with the repaired root routing.
+Core Phase 2 functionality is ready for code review. Remaining production release steps: review the final Auth Site URL/redirect allowlist, confirm disposable test entries are removed, and verify a controlled service-worker update on installed devices. The previous four Quality checks were green before this documentation-only acceptance update. PR readiness does not authorize merging or replacing the Phase 1 production site. Current deployed assets are source `00a1bc5`, version `v0.2.0-rc.1`, as recorded above.
 
 ## Owner Auth acceptance · 19 November 2026 IST
 
