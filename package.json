@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc -b",
-    "test": "vitest run",
+    "test": "vitest run && node --test tests/release-verification.test.mjs",
     "build:demo": "tsc -b && vite build --mode demo",
     "build:private-test": "tsc -b && vite build --mode private-test --outDir dist-private",
     "test:private": "playwright test --config playwright.private.config.ts",

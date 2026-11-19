@@ -72,7 +72,9 @@ if (expectedMode === "private") {
     info.supabaseOrigin === null,
     "Demo build must not declare a private project.",
   );
-const index = await read("index.html");
+// Validate the address users actually open. A host can serve /index.html
+// while returning 404 at / when HTML handling is disabled.
+const index = await read(hosted ? "/" : "index.html");
 assert(
   index.text.includes('id="root"') &&
     /src="\/assets\/[^"]+\.js"/.test(index.text),

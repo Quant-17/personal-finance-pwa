@@ -87,9 +87,9 @@ The user explicitly authorized this isolated preview before completing Auth/devi
 - URL: https://folio-review.sid-17061999.workers.dev
 - Worker: `folio-review`, static assets only; no Worker code or additional backend bindings.
 - Deployed source: `e422ec71ea6d04b250b89c2b3fbd0cd3de88479a` (the previously reviewed build).
-- Worker version: `e7d63097-e264-49aa-a840-7cb470856c61`.
-- Deployment: `e274ab73-d50b-40e7-b19b-c12a6fde1723`, 100% review traffic.
-- Hosted `verify:release` passed mode/source/project identity, manifest, app shell, service worker headers and exact-project CSP. An initial edge/propagation failure cleared before this successful check; browser-rendered acceptance is still an owner check.
+- Worker version: `ed95fa49-817c-4e12-ae3b-8b1e71278254`.
+- Deployment: `60d1e570-4a01-4647-bdfa-2eab9b382ed8`, 100% review traffic.
+- Hosted `verify:release` passed mode/source/project identity, manifest, app shell, service worker headers and exact-project CSP. The initial checker incorrectly tested `/index.html` rather than the root and missed a root 404. This was corrected on 19 November; `/` now returns 200 and the sign-in form was visibly verified in a browser. Authenticated owner/device acceptance is still pending.
 - The original `folio` Worker remains on `5e0cb7ff-e84b-4095-9d17-cff53db0d267` at 100%; verified through the Cloudflare API.
 
 **Before clicking Create account or Forgot password in the preview**, add this exact callback under Supabase Auth → URL Configuration → Redirect URLs and save:
@@ -101,3 +101,9 @@ https://folio-review.sid-17061999.workers.dev/
 Keep the localhost callbacks already added by the owner. The client explicitly supplies its current origin as redirectTo; no Site URL change is required for this acceptance preview. Preserve any existing redirect entries. Then create/confirm a Folio account using an email permitted by the project's sender, sign in to the empty Overview, test reset in the same browser, sign out and sign back in. The assistant has not sent any confirmation/reset messages or entered real financial records.
 
 The app shell is public; data requires a confirmed, non-anonymous Supabase user and owner RLS. The preview uses the existing Supabase project. Owner email acceptance, hosted visual interaction and physical iPhone/Windows installation/offline/update checks remain pending. Removing this preview later means deleting only `folio-review`, retaining the original Worker and all Supabase data.
+
+### Root-routing repair
+
+The first preview used `html_handling: none`, which served `/index.html` but returned 404 for `/`. The corrected asset configuration uses `auto-trailing-slash`; `/` serves the app and `/index.html` redirects to `/`. Preserve `not_found_handling: none` for the hash-routed app and keep all `_headers` rules. When changing asset configuration, register the complete existing manifest again and attach its completion token with the new config. `keep_assets: true` reused the old config in the attempted update and did not apply the routing fix.
+
+Hosted release checks now request `/` directly. `tests/release-verification.test.mjs` uses local HTTP fixtures to reject the previous root-404/index-200 failure and accept a working canonical root with an index redirect. Both tests run under `npm test`. On 19 November, browser inspection of the repaired HTTPS root showed the Folio heading, email/password inputs and Sign in/Create account controls. No credentials were entered.

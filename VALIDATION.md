@@ -1,3 +1,7 @@
+## Root-routing correction · 19 November 2026 IST
+
+The previous hosted preflight checked `/index.html` and falsely passed a deployment whose root returned 404. `folio-review` now uses automatic HTML handling: `/` returns 200 and `/index.html` redirects to `/`. The corrected root-based release check passes, all deployed JS entry/chunk bytes match the reviewed artifact, and the real HTTPS sign-in form was visibly verified in a browser. Two new local-server regression tests cover root failure and canonical redirects; both passed. The app source remains e422ec7; only Cloudflare asset-routing configuration changed. Current Worker version ed95fa49-817c-4e12-ae3b-8b1e71278254, deployment 60d1e570-4a01-4647-bdfa-2eab9b382ed8. Auth/email/physical-device acceptance remains pending.
+
 ## Acceptance deployment update · 19 November 2026 IST
 
 The user-approved `folio-review` static preview is deployed at https://folio-review.sid-17061999.workers.dev using tested source `e422ec7`. Hosted release verification passed source/mode/project identity, manifest, shell, service-worker content/cache headers, JSON content types and exact-project CSP. The original `folio` deployment version was verified unchanged. No real user signup/reset email or financial entry was performed by the assistant. Owner visual/email/device acceptance remains pending; add the preview root URL to Supabase Redirect URLs first. See PHASE2_SETUP.md for IDs and steps.
