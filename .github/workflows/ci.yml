@@ -15,9 +15,13 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - run: npm run build:demo
+      - run: npm run verify:release -- dist demo
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - run: npm run build:private-test
+      - run: npm run verify:release -- dist-private private https://fixture.supabase.co
+      - run: npm run test:private
       - name: Upload tested Cloudflare Pages build
         uses: actions/upload-artifact@v4
         with:
@@ -25,3 +29,32 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 7
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replay schema and test accounting / isolation
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PGDATABASE: postgres
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/security_and_accounting.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/hosted_acceptance.sql

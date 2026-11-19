@@ -1,7 +1,7 @@
 {
   "name": "folio-finance",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,10 +9,15 @@
     "preview": "vite preview --host 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run && node --test tests/release-verification.test.mjs",
+    "build:demo": "tsc -b && vite build --mode demo",
+    "build:private-test": "tsc -b && vite build --mode private-test --outDir dist-private",
+    "test:private": "playwright test --config playwright.private.config.ts",
+    "verify:release": "node --use-env-proxy scripts/verify-release.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.0",
+    "@supabase/supabase-js": "2.119.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
@@ -20,7 +25,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.4.0",
-    "tailwind-merge": "^3.0.0"
+    "tailwind-merge": "^3.0.0",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

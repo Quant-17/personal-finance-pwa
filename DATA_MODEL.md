@@ -1,28 +1,37 @@
-# Data model · proposed Phase 2 contract
+# Data model · Phase 2
 
-No migrations or backend tables are created in Phase 1. This document defines the intended model for review. Every amount is integer paise (`bigint` in PostgreSQL). Serialize bigint safely; validate safe integer boundaries in TypeScript and never blindly coerce arbitrary database bigint values. Rates use fixed precision decimal columns, not floating point.
+The executable contract is `supabase/migrations/*.sql`; generated client types are in `src/private/database.types.ts`. Three migrations are applied to the connected, initially empty free Supabase project. No real records are seeded. Fresh workspace initialization inserts only a zero-valued profile and category taxonomy.
 
-| Table | Principal fields | Rules |
+Money is integer paise (`bigint`), bounded to ±1,000,000,000,000 paise at input boundaries. SQL aggregates are serialized as integer strings; client parsing rejects values beyond supported safe limits rather than rounding. Loan principal is limited to 1,000,000,000 paise (₹1 crore), APR numeric(7,4) 0–60, tenure 1–120 months. Accounting dates use India `date`; timestamps use UTC timestamptz displayed in Asia/Kolkata.
+
+| Table | Core fields | Accounting rule |
 | --- | --- | --- |
-| profiles | id uuid → auth.users, display_name, currency, timezone | One row per user; INR, Asia/Kolkata defaults |
-| accounts | id, user_id, name, type (bank/savings/credit_card/cash/investment), opening_balance_paise, opening_date, archived_at | No full card numbers, PINs or bank credentials; liabilities negative |
-| categories | id, user_id, name, kind (income/expense) | User-owned taxonomy |
-| transactions | id, user_id, account_id, category_id, amount_paise, kind, occurred_on date, description, transfer_id?, created_at timestamptz | Signed amounts; transfers paired atomically and excluded from income/expenses |
-| loans | id, user_id, account_id?, name, principal_paise, apr numeric(7,4), tenure_months, start_date, status | Track remaining balance from repayment records; don't decrement twice |
-| loan_payments | id, user_id, loan_id, transaction_id?, due_on, principal_paise, interest_paise, paid_at? | Paise precision; unique loan/due date; link actual repayments |
-| subscriptions | id, user_id, account_id?, name, amount_paise, cadence, next_due_on, active | Forecast only until matched to a transaction; no expense double counting |
-| budgets | id, user_id, category_id, month date, limit_paise | Unique owner/category/month; month normalized to first day |
-| savings_goals | id, user_id, name, target_paise, target_on?, status | Contributions tracked separately from expenses |
-| goal_allocations | id, user_id, goal_id, account_id, amount_paise | Earmarking, not a new asset; prevent over-allocation |
-| purchase_scenarios | id, user_id, name, price_paise, apr, tenure_months, delay_months, selected_method | Optional future saved inputs; recalculate results with versioned assumptions |
+| profiles | id → auth.users, display_name, monthly_income_paise, monthly_living_budget_paise, emergency_reserve_paise, currency, timezone | Plan values; INR and Asia/Kolkata fixed |
+| accounts | id, user_id, name, type, opening_balance_paise, opening_date, archived_at | Signed balance = opening + all posted entries; credit-card debt negative; archive retains history |
+| categories | id, user_id, name, kind | Owner/kind/name unique; entries must match kind |
+| transactions | id, user_id, account_id, category_id?, kind, amount_paise, occurred_on, description, transfer_id? | Signed nonzero amounts; only protected RPCs can write |
+| loans | id, user_id, name, principal_paise, apr, tenure_months, start_date, status, generated emi_paise | Starting tracking principal less repayments = outstanding debt; closing stops planned EMI but retains debt |
+| loan_payments | id, user_id, loan_id, transaction_id, principal_paise, interest_paise, paid_on | One linked cash outflow for principal + interest; only principal reduces debt; deletion reverses both |
+| subscriptions | id, user_id, account_id?, name, amount_paise, cadence, next_due_on, active | Forecast only; monthly/yearly/weekly; settled charge entered separately |
+| budgets | id, user_id, category_id, month, limit_paise | Owner/category/month unique; expense category; first-day month; spent derives from actual expense rows |
+| savings_goals | id, user_id, name, target_paise, target_on? | Goal target; not an asset |
+| goal_allocations | id, user_id, goal_id, account_id, amount_paise | Unique goal/account earmark; counts against available cash and target, not net worth |
+| folio_private.mutation_receipts | user_id, request_id, operation, payload_hash, result_id, created_at | Retry deduplication; no raw payload; not exposed to clients |
 
-## Ownership and integrity
-Every financial row has `user_id uuid not null references auth.users(id)` and a unique `(id, user_id)` key for composite references. Child references include both the referenced ID and `user_id` so a row cannot point at another owner's account/category/loan. Index ownership, due dates and transaction occurrence dates. Enforce positive price/budget/tenure and supported enum constraints. IDs are UUIDs; creation/audit timestamps use UTC `timestamptz`. Display timestamps in Asia/Kolkata. Accounting dates and month boundaries use local `date`, avoiding UTC day shifts.
+## Ownership and permissions
 
-## Access control
-Enable RLS before exposing any table. SELECT/DELETE policies use `auth.uid() = user_id`; INSERT uses the same `WITH CHECK`; UPDATE needs both `USING` and `WITH CHECK`. Apply equivalent ownership policies to profiles (`auth.uid() = id`). Test owner A, owner B and anonymous sessions against every operation. No public financial read policy. Any SECURITY DEFINER function must pin its search_path, validate the caller and have narrowly granted execution rights.
+Public financial rows carry an auth.users owner FK and unique (id,user_id) keys. Composite child FKs preserve ownership, including category kind. SELECT/INSERT/UPDATE/DELETE policies use `(select auth.uid())` plus a cached JWT anonymous-user denial; UPDATE enforces USING and WITH CHECK. Anon has no financial table/RPC privileges. Transactions, loan_payments and goal_allocations have no direct client writes. Accounts/loans are archived/closed, not deleted through the app. Categories referenced by history cannot be deleted. Goal deletion releases earmarks.
 
-Use transactional SQL functions for transfer pairs, repayment posting and allocations requiring cross-row invariants. Never rely solely on client validation. Reconcile credit card payments as transfers to liabilities, not a second expense. Record fees, interest and refunds explicitly. Decide balance reconciliation rules before CRUD implementation. Retention, export and deletion remain Phase 2 design work.
+Private SECURITY DEFINER functions validate the caller, fixed search_path, parent ownership, dates and amounts. `record_transfer` posts balanced debit/credit legs atomically, including credit-card payments. `record_loan_payment` locks the loan and account, rejects overpayment and posts cash/principal once. `set_goal_allocation` locks goal/account, prevents initial over-allocation, and permits zero release even from an archived account. Later spending can underfund earmarks; allocations are planning reservations, not bank-enforced holds. `delete_entry` removes both transfer legs or the associated repayment row. UUID retry IDs deduplicate each operation and reject altered payload reuse.
 
-## Prototype distinctions
-Static fixtures aren't a ledger. The sample transaction list is intentionally incomplete. Account examples represent liquid cash and a credit liability; total savings also includes investments not itemized in the account preview. No real account identifiers or personal financial records are included.
+## Reporting and reconciliation
+
+`workspace_snapshot()` is a caller/RLS-scoped aggregate. Current-month income and expense exclude transfers. Debt cash outflow includes both loan principal and interest once. Net worth sums all account balances (including archived and negative liabilities) minus remaining tracked loan principal. Available cash sums active bank/savings/cash balances minus their earmarks; investments and credit cards are excluded. Six-month cash flow uses actual settled activity. The ledger page is never used to calculate balances.
+
+Use an opening date before the first included transaction. When onboarding an existing loan, enter its then-outstanding principal and remaining term, without also posting loan proceeds. Do not duplicate credit-card debt as a tracked loan. To reconcile a bank difference, inspect missing/duplicate entries and opening balance; editing an opening balance is explicit and retains a single opening baseline. This version has no immutable audit trail or separate reconciliation journal.
+
+Planned surplus uses profile income − living budget − active loan EMI. Include subscriptions in the entered living budget; subscription forecasts do not reduce this twice. Purchase comparisons never create transactions, debt or saved scenarios. Actual repayments can differ from estimated schedules. Fees/GST/refunds require explicit manual entries; dedicated refund matching is not included.
+
+## Validation and future scope
+
+`supabase/tests/security_and_accounting.sql` contains 101 isolation/accounting assertions on rolled-back fixtures. `bootstrap.sql` is for disposable non-Supabase Postgres only; never run it hosted. `hosted_acceptance.sql` is DDL-free and rolls back generated Auth/financial fixtures. User exports/deletion UI, immutable audit history, CSV imports, reminders and encrypted offline editing are later work. Database owner deletion cascades owned records, but no client account-deletion flow is provided.

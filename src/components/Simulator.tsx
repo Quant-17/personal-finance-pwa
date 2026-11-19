@@ -17,7 +17,7 @@ import {
   monthlySavings,
   parseRupees,
 } from "../lib/finance";
-import { demo, freeCash } from "../lib/data";
+import { demo } from "../lib/data";
 
 export interface SimulatorInputs {
   price: string;
@@ -31,13 +31,17 @@ export function Simulator({
   inputs,
   onChange,
   compact = false,
+  financialContext,
   onExpand,
 }: {
+  financialContext?: typeof demo;
   inputs: SimulatorInputs;
   onChange: (inputs: SimulatorInputs) => void;
   compact?: boolean;
   onExpand?: () => void;
 }) {
+  const context = financialContext ?? demo;
+  const freeCash = context.income - context.expenses - context.existingEmi;
   const { price, apr, months, delay, method } = inputs;
   const update = (key: keyof SimulatorInputs, value: string) =>
     onChange({ ...inputs, [key]: value });
@@ -64,7 +68,7 @@ export function Simulator({
       suffix: "one-time payment",
       cost: pricePaise ?? 0,
       monthly: 0,
-      cash: demo.liquidCash - (pricePaise ?? 0),
+      cash: context.liquidCash - (pricePaise ?? 0),
     },
     {
       key: "emi",
@@ -74,7 +78,7 @@ export function Simulator({
       suffix: `per month for ${months || "—"} months`,
       cost: loan?.totalPaise ?? 0,
       monthly: loan?.emiPaise ?? 0,
-      cash: demo.liquidCash,
+      cash: context.liquidCash,
     },
     {
       key: "delay",
@@ -84,7 +88,7 @@ export function Simulator({
       suffix: `save monthly for ${delay} months`,
       cost: pricePaise ?? 0,
       monthly: savedMonthly,
-      cash: demo.liquidCash,
+      cash: context.liquidCash,
     },
     {
       key: "skip",
@@ -94,12 +98,12 @@ export function Simulator({
       suffix: "keep your plans on track",
       cost: 0,
       monthly: 0,
-      cash: demo.liquidCash,
+      cash: context.liquidCash,
     },
   ];
   const selected = choices.find((c) => c.key === method)!;
   const remaining = freeCash - selected.monthly;
-  const reserveShortfall = method === "cash" && selected.cash < demo.reserve;
+  const reserveShortfall = method === "cash" && selected.cash < context.reserve;
   return (
     <section
       className={`card simulator ${compact ? "compact-simulator" : ""}`}
@@ -212,7 +216,7 @@ export function Simulator({
           {!loan ? (
             "Complete the inputs to see your purchase comparison."
           ) : reserveShortfall ? (
-            `This would leave ${formatMoney(selected.cash)} in cash, below your ${formatMoney(demo.reserve)} emergency reserve.`
+            `This would leave ${formatMoney(selected.cash)} in cash, below your ${formatMoney(context.reserve)} emergency reserve.`
           ) : remaining < 0 ? (
             `This plan exceeds your monthly surplus by ${formatMoney(-remaining)}.`
           ) : (
@@ -238,13 +242,14 @@ export function Simulator({
               <CircleHelp size={16} /> Behind the numbers
             </h3>
             <p>
-              Fictional monthly income {formatMoney(demo.income)} − living
-              expenses {formatMoney(demo.expenses)} − existing EMI{" "}
-              {formatMoney(demo.existingEmi)} ={" "}
+              {financialContext ? "Planned" : "Fictional"} monthly income{" "}
+              {formatMoney(context.income)} − living expenses{" "}
+              {formatMoney(context.expenses)} − existing EMI{" "}
+              {formatMoney(context.existingEmi)} ={" "}
               <strong>{formatMoney(freeCash)} available.</strong> Subscriptions
               are included in living expenses. Liquid cash:{" "}
-              {formatMoney(demo.liquidCash)}. Emergency reserve target:{" "}
-              {formatMoney(demo.reserve)}.
+              {formatMoney(context.liquidCash)}. Emergency reserve target:{" "}
+              {formatMoney(context.reserve)}.
             </p>
             <p>
               Fixed monthly reducing balance, interest rounded to paise. Final
