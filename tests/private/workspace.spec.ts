@@ -642,3 +642,102 @@ test("CSV invalid files stay local, preview clears offline, and mobile layout re
   });
   expect(cached.some((url) => /csv_import|csv_entries/.test(url))).toBe(false);
 });
+
+test("saved assumptions survive a CSV import that changes current available cash", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const comparisons: Record<string, unknown>[] = [];
+  let imported = false;
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (imported) {
+        data.summary.liquid_cash_paise = "1900000";
+        data.summary.expense_paise = "100000";
+        data.accounts[0].balance_paise = "1900000";
+      }
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/saved_simulations**",
+    async (route) => {
+      if (route.request().method() === "POST") {
+        comparisons.push({
+          ...route.request().postDataJSON(),
+          created_at: "2026-11-20T12:00:00+00:00",
+        });
+        await route.fulfill({ status: 201, body: "" });
+      } else
+        await route.fulfill({
+          json: comparisons,
+          headers: { "content-range": comparisons.length ? "0-0/1" : "*/0" },
+        });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    (route) => route.fulfill({ json: { duplicates: [false] } }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    async (route) => {
+      imported = true;
+      await route.fulfill({ json: { inserted: 1, skipped: 0 } });
+    },
+  );
+  await login(page);
+  await page.goto("/#simulator");
+  await page.getByLabel("Purchase price").fill("5000");
+  await page.getByLabel("Payment method").selectOption("cash");
+  await page.getByLabel("Comparison name").fill("Before CSV");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Open Before CSV", exact: true }),
+  ).toBeVisible();
+  await page.goto("/#activity");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "combined-fixture.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Combined fixture expense\n",
+      ),
+    });
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Import complete: 1 added, 0 matched the ledger at posting, 0 excluded from the selection.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Loading your records" }),
+  ).toHaveCount(0);
+  await page.goto("/#simulator");
+  await page
+    .getByRole("button", { name: "Open Before CSV", exact: true })
+    .click();
+  await expect(
+    page.getByText("cash remains after purchase.", { exact: false }),
+  ).toContainText("₹15,000");
+  await page
+    .getByRole("button", { name: "Use current plan", exact: true })
+    .click();
+  await expect(
+    page.getByText("cash remains after purchase.", { exact: false }),
+  ).toContainText("₹14,000");
+});

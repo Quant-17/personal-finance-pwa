@@ -34,7 +34,7 @@ Planned surplus uses profile income − living budget − active loan EMI. Inclu
 
 ## Validation and future scope
 
-`supabase/tests/security_and_accounting.sql` contains 101 isolation/accounting assertions on rolled-back fixtures. `bootstrap.sql` is for disposable non-Supabase Postgres only; never run it hosted. `hosted_acceptance.sql` is DDL-free and rolls back generated Auth/financial fixtures. User exports/deletion UI, immutable audit history, CSV imports, reminders and encrypted offline editing are later work. Database owner deletion cascades owned records, but no client account-deletion flow is provided.
+`supabase/tests/security_and_accounting.sql` contains 101 isolation/accounting assertions on rolled-back fixtures. `bootstrap.sql` is for disposable non-Supabase Postgres only; never run it hosted. `hosted_acceptance.sql` is DDL-free and rolls back generated Auth/financial fixtures. User exports/deletion UI, immutable audit history, reminders and encrypted offline editing are later work. Database owner deletion cascades owned records, but no client account-deletion flow is provided.
 
 ## Phase 3 · saved_simulations (review migration)
 
