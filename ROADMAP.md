@@ -30,9 +30,9 @@ Phase 2 is merged into main and published at the existing private `folio-review`
 
 Saved comparisons and canonical CSV import are integrated from PRs #4 and #5, with the completed Phase 2 release documentation from PR #3. This branch preserves immutable assumption snapshots, explicit current-plan switching, local CSV validation, duplicate preview and atomic retry-safe posting. Combined tests include both SQL suites and the concurrent-import harness. The approved migrations are applied and the combined app is published as v0.3.0-rc.3. Hosted rolled-back acceptance, exact asset checks and browser update activation passed; physical-device feature acceptance remains owner work. See PHASE3_RELEASE.md.
 
-## Before Stage 4 · loan-document review branch
+## Before Stage 4 · loan-document review published
 
-The owner requested this slice before Stage 4. Implemented local digital-PDF extraction for CRED/Credit Saison, Kotak card EMI and L&T, editable terms and repayment rows with page references, explicitly confirmed paid-through suggestions, quoted EMI versus estimates, dated current-balance updates, owner-only structured persistence, retry/revision/duplicate guards and linked-card liability treatment. No original documents or owner financial figures are fixtures. See LOAN_DOCUMENT_IMPORT.md for limits and review/release gates. Hosted migration, publication and owner device acceptance remain pending. Stage 4 is not started.
+The owner requested this slice before Stage 4. Implemented local digital-PDF extraction for CRED/Credit Saison, Kotak card EMI and L&T, editable terms and repayment rows with page references, explicitly confirmed paid-through suggestions, quoted EMI versus estimates, dated current-balance updates, owner-only structured persistence, retry/revision/duplicate guards and linked-card liability treatment. No original documents or owner financial figures are fixtures. See LOAN_DOCUMENT_IMPORT.md for limits and review/release gates. The owner explicitly approved PR #8 merge, hosted migration and private publication on 21 November 2026 IST. The release is live; owner device acceptance remains pending. Stage 4 is not started. See LOAN_DOCUMENT_RELEASE.md.
 
 ## Later
 
