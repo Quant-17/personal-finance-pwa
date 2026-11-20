@@ -9,7 +9,7 @@ The owner explicitly answered yes to merging PR #8, applying its migration and d
 - Deployed source: `22f5cd344cee313bb224b8ba7d31e46187431bcf`, the reviewed clean build included in the merged PR.
 - Worker version: `0b770b99-ce3c-4698-9207-608003901603`.
 - Deployment: `23536432-95df-48e0-a526-e0e14ac53e88`, 100% traffic on the private origin.
-- Root, manifest, app shell, service worker and exact-origin CSP verification passed. All 20 served asset paths matched the clean private build byte-for-byte; the PDF worker is served as `application/javascript`.
+- Root, manifest, app shell, service worker and exact-origin CSP verification passed. All 20 served asset paths matched the clean private build byte-for-byte; the PDF worker is served as `application/javascript`. A fresh signed-out Chromium check at 390px rendered v0.3.1-rc.1, activated the service worker, cached only same-origin static files and showed no horizontal overflow. [Release screenshot](docs/screenshots/loan-document-signin.jpg). This is not physical-device or owner-login acceptance.
 
 Open **Loans & subscriptions → Import loan PDF**. Read supported digital CRED/Credit Saison, Kotak card EMI and L&T PDFs locally; review terms/page references, quoted EMI, current principal, liability treatment and repayment rows before saving. Later **Edit loan** loads the reviewed fields without requiring the PDF. Files are not archived or uploaded. See LOAN_DOCUMENT_IMPORT.md for the complete workflow and limitations.
 
