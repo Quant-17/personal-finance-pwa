@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
-import { Simulator } from "../components/Simulator";
+import { SavedSimulations } from "./SavedSimulations";
 import type { SimulatorInputs } from "../components/Simulator";
 import { formatExactMoney as money } from "../lib/finance";
 import { AuthGate } from "./AuthGate";
@@ -35,6 +35,7 @@ import type { EditIntent, EditorKind } from "./Editor";
 import { useWorkspace, db, check } from "./workspace";
 import { displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
+import { CsvImport } from "./CsvImport";
 import "./private.css";
 const pages = [
   ["overview", "Overview", LayoutDashboard],
@@ -108,6 +109,7 @@ function Workspace({
   const [page, setPage] = useState<Page>(currentPage);
   const [editor, setEditor] = useState<EditIntent | null>(null);
   const [actionError, setActionError] = useState("");
+  const [importNotice, setImportNotice] = useState("");
   const [pending, setPending] = useState(false);
   const busy = useRef(false);
   const [inputs, setInputs] = useState<SimulatorInputs>({
@@ -454,6 +456,16 @@ function Workspace({
               )}
               {page === "activity" && (
                 <>
+                  {importNotice && <p role="status">{importNotice}</p>}
+                  <CsvImport
+                    snapshot={s}
+                    onImported={({ inserted, skipped, excluded }) => {
+                      setImportNotice(
+                        `Import complete: ${inserted} added, ${skipped} matched the ledger at posting, ${excluded} excluded from the selection.`,
+                      );
+                      refresh();
+                    }}
+                  />
                   <div className="page-actions">
                     {add("entry", "Add transaction")}
                     {add("transfer", "Transfer")}
@@ -833,7 +845,7 @@ function Workspace({
                     earmarks. A comparison only; it never posts a purchase or
                     creates a loan.
                   </p>
-                  <Simulator
+                  <SavedSimulations
                     inputs={inputs}
                     onChange={setInputs}
                     financialContext={plan}

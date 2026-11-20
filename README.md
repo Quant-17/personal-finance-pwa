@@ -34,7 +34,7 @@ The existing connected free Supabase project was initially empty. The three migr
 
 ## Supabase setup and release gate
 
-See [PHASE2_SETUP.md](PHASE2_SETUP.md) for migrations, exact Auth redirects, email limitations, security checks and Cloudflare build settings. **Auth redirect settings and a real owner confirmation/recovery round trip must be verified before publishing private mode or entering real financial information.** The owner has reported successful confirmation/recovery, financial-entry persistence, installed-app/offline behavior, the v0.2.0-rc.1 update and disposable-data cleanup. These reports are separate from automated checks. Final Auth URL configuration remains a dashboard check; the connected database tools cannot read or edit it. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the remaining promotion steps.
+See [PHASE2_SETUP.md](PHASE2_SETUP.md) for migrations, exact Auth redirects, email limitations, security checks and Cloudflare build settings. **Auth redirect settings and a real owner confirmation/recovery round trip must be verified before publishing private mode or entering real financial information.** The owner has reported successful confirmation/recovery, financial-entry persistence, installed-app/offline behavior, the v0.2.0-rc.1 update and disposable-data cleanup. These reports are separate from automated checks. The owner supplied the redirect allowlist and confirmed saving the private Site URL on 20 November; the assistant did not independently inspect the dashboard. Merged main is published at the existing private origin, while the synthetic demo is preserved. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the remaining promotion steps.
 
 ## Validation
 
@@ -58,3 +58,7 @@ npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 [Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Phase 2 setup](PHASE2_SETUP.md) · [Phase 1 deployment](DEPLOYMENT.md)
 
 No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).
+
+## Phase 3 combined review
+
+Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). Both hosted migrations and publication are pending the release decision; the live Phase 2 app remains unchanged.

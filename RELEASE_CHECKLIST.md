@@ -1,6 +1,10 @@
 # Phase 2 release checklist
 
-Prepared 19 November 2026. This is a review plan; it does not authorize a merge or production deployment.
+For the current combined Phase 3 candidate, see [PHASE3_RELEASE.md](PHASE3_RELEASE.md).
+
+Prepared 19 November 2026; completed status recorded 20 November. The plan below is retained as a historical procedure, not authorization for future operations.
+
+Completed: owner-authorized PR #1 and #2 merges, successful main CI, owner-confirmed private Site URL/exact redirect allowlist, prior owner Auth/device/update/persistence/cleanup acceptance, and publication of merged main to the existing private origin. Hosted checks and all 18 artifact-byte comparisons passed. The synthetic demo remains unchanged. See PHASE2_SETUP.md for current source/deployment IDs. The private origin remains `folio-review`; replacing `folio` was not part of this release.
 
 ## Accepted release candidate
 

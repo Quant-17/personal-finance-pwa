@@ -344,3 +344,451 @@ test("an unchanged failed transaction retries with the same request identifier",
   expect(identifiers).toHaveLength(2);
   expect(identifiers[0]).toBe(identifiers[1]);
 });
+
+test("saved comparisons retry safely, survive refresh, restore assumptions and delete without posting money", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const rows: Record<string, unknown>[] = [];
+  const savedIds: unknown[] = [];
+  let interrupted = true;
+  let currentPlanChanged = false;
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (currentPlanChanged) data.profile.monthly_income_paise = 1000000;
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/saved_simulations**",
+    async (route) => {
+      const req = route.request();
+      if (req.method() === "POST") {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        savedIds.push(body.id);
+        if (!rows.some((row) => row.id === body.id))
+          rows.unshift({ ...body, created_at: "2026-11-20T10:00:00+00:00" });
+        if (interrupted) {
+          interrupted = false;
+          await route.fulfill({
+            status: 500,
+            json: {
+              message: "Response interrupted; retry the same comparison.",
+            },
+          });
+          return;
+        }
+        await route.fulfill({ status: 201, body: "" });
+      } else if (req.method() === "DELETE") {
+        rows.splice(0);
+        await route.fulfill({ status: 204 });
+      } else
+        await route.fulfill({
+          json: rows,
+          headers: {
+            "content-range": rows.length
+              ? `0-${rows.length - 1}/${rows.length}`
+              : "*/0",
+            "cache-control": "no-store",
+          },
+        });
+    },
+  );
+  await login(page);
+  await page.goto("/#simulator");
+  await page.getByLabel("Purchase price").fill("50000.29");
+  await page.getByLabel("Payment method").selectOption("emi");
+  await page.getByLabel("Comparison name").fill("Fixture laptop");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Response interrupted");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Comparison saved");
+  expect(rows).toHaveLength(1);
+  expect(savedIds[0]).toBe(savedIds[1]);
+  expect(rows[0].price_paise).toBe(5000029);
+  expect(rows[0].income_paise).toBe(5000000);
+  currentPlanChanged = true;
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Open Fixture laptop", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Open Fixture laptop", exact: true })
+    .click();
+  await expect(page.getByLabel("Purchase price")).toHaveValue("50000.29");
+  await expect(page.getByLabel("Payment method")).toHaveValue("emi");
+  await expect(
+    page.getByText("Planned monthly income", { exact: false }),
+  ).toContainText("₹50,000");
+  await page
+    .getByRole("button", { name: "Use current plan", exact: true })
+    .click();
+  await expect(
+    page.getByText("Planned monthly income", { exact: false }),
+  ).toContainText("₹10,000");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: "Delete Fixture laptop", exact: true })
+    .click();
+  await expect(page.getByText("No saved comparisons yet.")).toBeVisible();
+  expect(
+    calls.filter((c) =>
+      /record_entry|record_transfer|record_loan_payment|set_goal_allocation/.test(
+        c.path,
+      ),
+    ),
+  ).toHaveLength(0);
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fixture laptop", { exact: true })).toHaveCount(
+    0,
+  );
+  const cacheContents = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys()) {
+      for (const request of await (await caches.open(name)).keys())
+        urls.push(request.url);
+    }
+    return urls;
+  });
+  expect(cacheContents.some((url) => url.includes("saved_simulations"))).toBe(
+    false,
+  );
+});
+
+test("CSV preview excludes invalid/repeated/existing rows and requires confirmation; interrupted commit retries safely", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const previews: Record<string, unknown>[] = [];
+  const commits: Record<string, unknown>[] = [];
+  let posted = false;
+  let interrupt = true;
+  const entryId = "cf118070-369c-438f-8348-304bd2d88ba2";
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    async (route) => {
+      previews.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { duplicates: [true, false] } });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    async (route) => {
+      commits.push(route.request().postDataJSON() as Record<string, unknown>);
+      posted = true;
+      if (interrupt) {
+        interrupt = false;
+        await route.fulfill({
+          status: 500,
+          json: { message: "Response interrupted" },
+        });
+      } else await route.fulfill({ json: { inserted: 1, skipped: 0 } });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (posted) {
+        data.summary.expense_paise = "20000";
+        data.accounts[0].balance_paise = "1980000";
+      }
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/transactions**",
+    async (route) => {
+      await route.fulfill({
+        json: posted
+          ? [
+              {
+                id: entryId,
+                account_id: accountId,
+                category_id: categoryId,
+                kind: "expense",
+                amount_paise: -20000,
+                occurred_on: "2026-11-19",
+                description: "CSV new",
+                transfer_id: null,
+                created_at: "2026-11-20T12:00:00Z",
+              },
+            ]
+          : [],
+        headers: { "content-range": posted ? "0-0/1" : "*/0" },
+      });
+    },
+  );
+  await login(page);
+  await page.goto("/#activity");
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "synthetic.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "date,type,amount,category,description\n2026-11-19,expense,100.29,Food & groceries,Existing lunch\n2026-11-19,expense,100.29,Food & groceries,Existing lunch\n2026-11-19,expense,200.00,Food & groceries,CSV new\n2026-02-30,expense,1.00,Food & groceries,Invalid date\n",
+    ),
+  });
+  await expect(
+    page.getByText("Repeated in this file", { exact: true }),
+  ).toBeVisible();
+  expect(previews).toHaveLength(0);
+  expect(commits).toHaveLength(0);
+  await expect(
+    page.getByRole("button", { name: /Import \d+ transactions/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await expect(
+    page.getByText("Already in ledger", { exact: true }),
+  ).toBeVisible();
+  expect(previews).toHaveLength(1);
+  expect(previews[0].p_account).toBe(accountId);
+  expect(previews[0].p_rows).toHaveLength(2);
+  await expect(
+    page.getByRole("button", { name: "Import 1 transactions", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("could not be confirmed");
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Import complete: 1 added, 0 matched the ledger at posting, 3 excluded from the selection.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(commits).toHaveLength(2);
+  expect(commits[0].p_request_id).toBe(commits[1].p_request_id);
+  expect(commits[0].p_rows).toEqual([
+    {
+      occurred_on: "2026-11-19",
+      kind: "expense",
+      amount_paise: 20000,
+      category_id: categoryId,
+      description: "CSV new",
+    },
+  ]);
+  await expect(page.getByText("CSV new", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(() => Object.values(localStorage).join(" ")),
+  ).not.toContain("CSV new");
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(page.getByText("CSV new", { exact: true })).toHaveCount(0);
+});
+
+test("CSV invalid files stay local, preview clears offline, and mobile layout remains contained", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.goto("/#activity");
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "bad.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("unexpected,header\n1,2"),
+  });
+  await expect(page.getByRole("alert")).toContainText("Use the columns");
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "private-fixture.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "date,type,amount,category,description\n2026-11-19,expense,10.01,Food & groceries,Private CSV fixture\n",
+    ),
+  });
+  await expect(
+    page.getByText("Private CSV fixture", { exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.filter((c) => /csv_import|csv_entries/.test(c.path)),
+  ).toHaveLength(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Private CSV fixture", { exact: true }),
+  ).toHaveCount(0);
+  const cached = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys())
+      for (const request of await (await caches.open(name)).keys())
+        urls.push(request.url);
+    return urls;
+  });
+  expect(cached.some((url) => /csv_import|csv_entries/.test(url))).toBe(false);
+});
+
+test("saved assumptions survive a CSV import that changes current available cash", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const comparisons: Record<string, unknown>[] = [];
+  let imported = false;
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (imported) {
+        data.summary.liquid_cash_paise = "1900000";
+        data.summary.expense_paise = "100000";
+        data.accounts[0].balance_paise = "1900000";
+      }
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/saved_simulations**",
+    async (route) => {
+      if (route.request().method() === "POST") {
+        comparisons.push({
+          ...route.request().postDataJSON(),
+          created_at: "2026-11-20T12:00:00+00:00",
+        });
+        await route.fulfill({ status: 201, body: "" });
+      } else
+        await route.fulfill({
+          json: comparisons,
+          headers: { "content-range": comparisons.length ? "0-0/1" : "*/0" },
+        });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    (route) => route.fulfill({ json: { duplicates: [false] } }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    async (route) => {
+      imported = true;
+      await route.fulfill({ json: { inserted: 1, skipped: 0 } });
+    },
+  );
+  await login(page);
+  await page.goto("/#simulator");
+  await page.getByLabel("Purchase price").fill("5000");
+  await page.getByLabel("Payment method").selectOption("cash");
+  await page.getByLabel("Comparison name").fill("Before CSV");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Open Before CSV", exact: true }),
+  ).toBeVisible();
+  await page.goto("/#activity");
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "combined-fixture.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Combined fixture expense\n",
+    ),
+  });
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Import complete: 1 added, 0 matched the ledger at posting, 0 excluded from the selection.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Loading your records" }),
+  ).toHaveCount(0);
+  await page.goto("/#simulator");
+  await page
+    .getByRole("button", { name: "Open Before CSV", exact: true })
+    .click();
+  await expect(
+    page.getByText("cash remains after purchase.", { exact: false }),
+  ).toContainText("₹15,000");
+  await page
+    .getByRole("button", { name: "Use current plan", exact: true })
+    .click();
+  await expect(
+    page.getByText("cash remains after purchase.", { exact: false }),
+  ).toContainText("₹14,000");
+});
+
+test("CSV total-range rejection keeps the preview and reports that nothing was posted", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    (route) => route.fulfill({ json: { duplicates: [false] } }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    (route) =>
+      route.fulfill({
+        status: 400,
+        json: {
+          code: "22003",
+          message: "CSV import exceeds supported financial totals.",
+        },
+      }),
+  );
+  await login(page);
+  await page.goto("/#activity");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "range-fixture.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Range fixture\n",
+      ),
+    });
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Nothing was imported.");
+  await expect(page.getByText("Range fixture", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Import complete:", { exact: false }),
+  ).toHaveCount(0);
+  await page.getByLabel("Select CSV row 2", { exact: true }).uncheck();
+  await expect(
+    page.getByLabel("I reviewed the selected rows", { exact: false }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("button", { name: "Import 0 transactions", exact: true }),
+  ).toBeDisabled();
+});
