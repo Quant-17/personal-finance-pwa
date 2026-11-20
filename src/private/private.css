@@ -691,3 +691,61 @@ progress {
   min-height: 44px;
   margin: 12px 0;
 }
+
+.document-import {
+  margin-bottom: 24px;
+}
+.document-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 18px;
+  margin: 16px 0;
+}
+.document-fields label {
+  display: grid;
+  gap: 6px;
+}
+.document-import input:not([type="checkbox"]),
+.document-import select {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface);
+}
+.document-import small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.document-import fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.document-import legend {
+  font-weight: 600;
+  margin: 20px 0 0;
+}
+.document-warnings {
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.document-warnings li {
+  margin: 8px 0;
+}
+.document-import details {
+  margin: 20px 0;
+}
+.document-import summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.document-import td input {
+  min-width: 110px;
+}

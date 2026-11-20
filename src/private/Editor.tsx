@@ -172,7 +172,7 @@ export function Editor({
                     name: "loan",
                     label: "Loan",
                     options: s.loans
-                      .filter((l) => l.status === "active")
+                      .filter((l) => l.status === "active" && !l.card_account_id)
                       .map((l) => [l.id, l.name]),
                   },
                   { name: "account", label: "Paid from", options: accounts },

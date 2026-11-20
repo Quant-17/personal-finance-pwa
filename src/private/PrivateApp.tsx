@@ -35,6 +35,7 @@ import type { EditIntent, EditorKind } from "./Editor";
 import { useWorkspace, db, check } from "./workspace";
 import { displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
+import { LoanDocumentImport } from "./LoanDocumentImport";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
 const pages = [
@@ -108,6 +109,10 @@ function Workspace({
   } = useWorkspace();
   const [page, setPage] = useState<Page>(currentPage);
   const [editor, setEditor] = useState<EditIntent | null>(null);
+  const [documentReview, setDocumentReview] = useState<{
+    id: string | null;
+  } | null>(null);
+  const [loanNotice, setLoanNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [importNotice, setImportNotice] = useState("");
   const [pending, setPending] = useState(false);
@@ -123,6 +128,7 @@ function Workspace({
     const change = () => {
       setPage(currentPage());
       setEditor(null);
+      setDocumentReview(null);
     };
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
@@ -665,9 +671,32 @@ function Workspace({
                 <>
                   <div className="page-actions">
                     {add("loan", "Track loan")}
+                    <Button
+                      variant="outline"
+                      onClick={() => setDocumentReview({ id: null })}
+                    >
+                      Import loan PDF
+                    </Button>
                     {add("payment", "Record repayment")}
                     {add("subscription", "Add subscription")}
                   </div>
+                  {loanNotice && <p role="status">{loanNotice}</p>}
+                  {documentReview && (
+                    <LoanDocumentImport
+                      key={documentReview.id ?? "new"}
+                      snapshot={s}
+                      loanId={documentReview.id}
+                      onTarget={(id) => setDocumentReview({ id })}
+                      onClose={() => setDocumentReview(null)}
+                      onSaved={() => {
+                        setDocumentReview(null);
+                        setLoanNotice(
+                          "Reviewed loan saved. No bank transactions were posted.",
+                        );
+                        refresh();
+                      }}
+                    />
+                  )}
                   <section className="card private-panel">
                     <h2>Loans</h2>
                     <p>
@@ -683,34 +712,44 @@ function Workspace({
                             {l.name} · {l.status}
                           </strong>
                           <span>
-                            {l.apr}% APR · {l.tenure_months} months · estimated
-                            EMI {money(l.emi_paise)}
+                            {l.apr}% annual interest · {l.tenure_months} months
+                            ·{" "}
+                            {l.reported_emi_paise !== null
+                              ? "quoted"
+                              : "estimated"}{" "}
+                            EMI {money(l.reported_emi_paise ?? l.emi_paise)}
+                            {l.card_account_id && " · included in card balance"}
                           </span>
                         </div>
                         <strong>{money(l.outstanding_paise)} remaining</strong>
                         <Button
                           variant="ghost"
                           onClick={() =>
-                            setEditor({
-                              kind: "loan",
-                              record: {
-                                id: l.id,
-                                values: {
-                                  name: l.name,
-                                  amount: moneyToInput(l.principal_paise),
-                                  apr: String(l.apr),
-                                  tenure: String(l.tenure_months),
-                                  date: l.start_date,
-                                },
-                              },
-                            })
+                            l.has_document
+                              ? setDocumentReview({ id: l.id })
+                              : setEditor({
+                                  kind: "loan",
+                                  record: {
+                                    id: l.id,
+                                    values: {
+                                      name: l.name,
+                                      amount: moneyToInput(l.principal_paise),
+                                      apr: String(l.apr),
+                                      tenure: String(l.tenure_months),
+                                      date: l.start_date,
+                                    },
+                                  },
+                                })
                           }
                         >
                           Edit loan
                         </Button>
                         <Button
                           variant="outline"
-                          disabled={pending}
+                          disabled={
+                            pending ||
+                            (l.status === "closed" && l.outstanding_paise === 0)
+                          }
                           onClick={() =>
                             void action(async () => {
                               check(
@@ -731,40 +770,42 @@ function Workspace({
                             ? "Close tracking"
                             : "Reopen tracking"}
                         </Button>
-                        <details className="loan-schedule">
-                          <summary>Estimated repayment schedule</summary>
-                          <p>
-                            Original tracking principal, fixed APR, monthly
-                            payments. Actual repayments may differ. No fees or
-                            GST; final payment clears paise rounding.
-                          </p>
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Month</th>
-                                <th>Payment</th>
-                                <th>Principal</th>
-                                <th>Interest</th>
-                                <th>Balance</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {loanSchedule(
-                                l.principal_paise,
-                                l.apr,
-                                l.tenure_months,
-                              ).map((row) => (
-                                <tr key={row.month}>
-                                  <td>{row.month}</td>
-                                  <td>{money(row.paymentPaise)}</td>
-                                  <td>{money(row.principalPaise)}</td>
-                                  <td>{money(row.interestPaise)}</td>
-                                  <td>{money(row.balancePaise)}</td>
+                        {!l.has_document && (
+                          <details className="loan-schedule">
+                            <summary>Estimated repayment schedule</summary>
+                            <p>
+                              Original tracking principal, fixed APR, monthly
+                              payments. Actual repayments may differ. No fees or
+                              GST; final payment clears paise rounding.
+                            </p>
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Month</th>
+                                  <th>Payment</th>
+                                  <th>Principal</th>
+                                  <th>Interest</th>
+                                  <th>Balance</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </details>
+                              </thead>
+                              <tbody>
+                                {loanSchedule(
+                                  l.principal_paise,
+                                  l.apr,
+                                  l.tenure_months,
+                                ).map((row) => (
+                                  <tr key={row.month}>
+                                    <td>{row.month}</td>
+                                    <td>{money(row.paymentPaise)}</td>
+                                    <td>{money(row.principalPaise)}</td>
+                                    <td>{money(row.interestPaise)}</td>
+                                    <td>{money(row.balancePaise)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </details>
+                        )}
                       </article>
                     ))}
                     {!s.loans.length && empty("No tracked loans.")}

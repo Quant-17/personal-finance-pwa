@@ -14,6 +14,19 @@ export type Database = {
   };
   public: {
     Tables: {
+      loan_document_details: {
+        Row: {
+          loan_id: string;
+          user_id: string;
+          source_sha256: string;
+          details: Json;
+          revision: number;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       saved_simulations: {
         Row: {
           id: string;
@@ -243,6 +256,8 @@ export type Database = {
       };
       loans: {
         Row: {
+          reported_emi_paise: number | null;
+          card_account_id: string | null;
           apr: number;
           created_at: string;
           emi_paise: number | null;
@@ -255,6 +270,8 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          reported_emi_paise?: number | null;
+          card_account_id?: string | null;
           apr: number;
           created_at?: string;
           emi_paise?: number | null;
@@ -267,6 +284,8 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          reported_emi_paise?: number | null;
+          card_account_id?: string | null;
           apr?: number;
           created_at?: string;
           emi_paise?: number | null;
@@ -440,6 +459,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      save_loan_document: {
+        Args: {
+          p_loan: string | null;
+          p_expected_revision: number;
+          p_terms: Json;
+          p_request_id: string;
+        };
+        Returns: string;
+      };
       preview_csv_import: {
         Args: { p_account: string; p_rows: Json };
         Returns: Json;
