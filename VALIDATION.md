@@ -1,3 +1,11 @@
+## Current private release · 20 November 2026 IST
+
+The private app at https://folio-review.sid-17061999.workers.dev/ now serves merged `main` source `766fa9c0d1d2a6f15757810f37fc2fe6d265c21e`, version `0.2.0-rc.1`. PR #1 merged as `139863c`, followed by PR #2 as `766fa9c`; final main Quality run [44577975669](https://github.com/Quant-17/personal-finance-pwa/actions/runs/44577975669) passed. The owner supplied the exact review/local redirect allowlist and confirmed saving Site URL as the private app origin on 20 November. This is owner-reported configuration, not independent dashboard inspection.
+
+Cloudflare Worker `folio-review` version `ba81d6f6-dd97-42aa-8ad2-78592e4c8c4c`, deployment `496c6741-6688-4968-9666-ef7919d8f869`, receives 100% of that origin's traffic. The complete merged-main artifact was verified before upload; after propagation, hosted release checks passed and all 18 served asset paths matched local bytes. Automatic HTML handling and security headers were preserved. An immediate check briefly returned previous metadata during propagation; the final exact-source assertion passed. Only `folio-build.json` differs from the previously accepted app artifact; executable code, styles, icons and service worker are unchanged.
+
+The original synthetic `folio` Worker remains on version `5e0cb7ff-e84b-4095-9d17-cff53db0d267`, verified through the API. No database, credentials, Auth settings or financial records were changed by the deployment. Existing owner Auth, persistence, offline/update and cleanup reports apply to the unchanged app code; no new sign-in/email or physical-device run was performed for this metadata-only publication. Earlier pending merge/Auth URL/release notes below are historical and superseded by this record. Future code changes still require a review branch and appropriate checks; no later feature phase is included.
+
 ## Owner release acceptance · 19 November 2026 IST
 
 The owner confirmed the requested installed-app update to v0.2.0-rc.1 and return to Overview, then explicitly confirmed removal of the disposable ₹1,000 income and ₹100 expense, a zero Test Wallet balance and archiving. These are owner-reported results; the assistant did not inspect account records, and device/browser versions were not captured. These confirmations supersede the pending update/cleanup notes below.
