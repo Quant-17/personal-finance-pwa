@@ -1,6 +1,6 @@
 # Loan document review · before Stage 4
 
-Status: v0.3.1-rc.1 review branch. This feature is not deployed and its migration is not applied to the hosted project. No owner loans have been created. Stage 4 remains unstarted.
+Status: v0.3.1-rc.1 is published at the private origin after explicit owner release approval. PR #8 is merged and the migration is applied. No owner loans have been created. Stage 4 remains unstarted. See [LOAN_DOCUMENT_RELEASE.md](LOAN_DOCUMENT_RELEASE.md) for exact release evidence and remaining device acceptance.
 
 ## Use the feature
 
@@ -25,7 +25,7 @@ Saving is atomic and retry-safe. Source-hash uniqueness rolls back duplicate cre
 
 ## Preview, validate and release
 
-Use Node 24, `npm ci`, existing private `.env.local` setup, then `npm run dev`. A disposable database must replay all migrations including `20261120200827_loan_document_review.sql`. Do not apply `supabase/tests/bootstrap.sql` to managed Supabase. Test data in the repository is synthetic.
+Use Node 24, `npm ci`, existing private `.env.local` setup, then `npm run dev`. A disposable database must replay all migrations including `20261120205247_loan_document_review.sql`. Do not apply `supabase/tests/bootstrap.sql` to managed Supabase. Test data in the repository is synthetic.
 
 ```sh
 npm run lint
@@ -39,7 +39,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npx playwright test
 
 CI replays migrations on disposable Postgres 17 and runs all existing suites plus `supabase/tests/loan_documents.sql`. `supabase/tests/loan_documents_hosted_acceptance.sql` is a DDL-free rollback-only smoke suite prepared for the hosted project after migration approval; it also runs in disposable CI. See the PR for exact results. Production `npm run build` uses your build-time publishable configuration. `npm run verify:release -- dist private <SUPABASE_ORIGIN>` validates the build. No service-role key is required.
 
-Release order after review: merge approved code, apply only the new migration to the existing free project, run rollback-only hosted acceptance/security-advisor checks, build private mode from the reviewed revision, deploy to the private review origin, verify assets/CSP/PWA update, then owner-test an unlocked document on iPhone Safari and Windows. The public synthetic demo stays separate. Hosted migration, deployment and physical-device acceptance are pending; this branch is not permission to publish them.
+Release order after review: merge approved code, apply only the new migration to the existing free project, run rollback-only hosted acceptance/security-advisor checks, build private mode from the reviewed revision, deploy to the private review origin, verify assets/CSP/PWA update, then owner-test an unlocked document on iPhone Safari and Windows. The public synthetic demo stays separate. The approved migration and private deployment are complete; physical-device acceptance remains pending. This release does not authorize Stage 4 or automatic imports.
 
 ## Known limits
 

@@ -44,9 +44,9 @@ Immutable owner-scoped v1 purchase snapshots store a name, integer price paise, 
 
 public.preview_csv_import and public.import_csv_entries are authenticated invoker wrappers around owner-checking private functions. Normalized rows post through the existing record_entry path under the destination account lock; no new public financial table is introduced. folio_private.csv_import_receipts stores owner/request UUID, payload hash, original result counts and creation time, with RLS and all client table access revoked. Batch retry does not retain raw file contents or change duplicate entries. See CSV_IMPORT.md.
 
-## Loan document review extension (pending migration)
+## Loan document review extension (applied migration)
 
-`20261120200827_loan_document_review.sql` adds nullable `loans.reported_emi_paise` and an owned credit-card account link. Existing generated `emi_paise` stays an estimate; monthly commitments prefer the reported EMI. Net worth deducts standalone outstanding loans, while linked plans are already represented by the card balance. Card type is guarded and linked plans reject duplicate loan-payment postings.
+`20261120205247_loan_document_review.sql` adds nullable `loans.reported_emi_paise` and an owned credit-card account link. Existing generated `emi_paise` stays an estimate; monthly commitments prefer the reported EMI. Net worth deducts standalone outstanding loans, while linked plans are already represented by the card balance. Card type is guarded and linked plans reject duplicate loan-payment postings.
 
 `loan_document_details` stores one owner-scoped structured review per loan: unique owner/SHA-256 fingerprint, strict terms JSON, schedule rows/page references, positive revision and update time. Authenticated SELECT uses cached owner/JWT identity; anonymous reads and all direct writes are denied. `save_loan_document` is an invoker wrapper around an unexposed, tightly scoped owner-checking implementation. Unknown keys, raw text payloads, oversized data, invalid dates/rates/paise and unreconciled rows are rejected. Small lender-table rounding differences up to 100 paise are retained; only reconciliation within one paise qualifies for schedule-derived balance calculations.
 
