@@ -344,3 +344,122 @@ test("an unchanged failed transaction retries with the same request identifier",
   expect(identifiers).toHaveLength(2);
   expect(identifiers[0]).toBe(identifiers[1]);
 });
+
+test("saved comparisons retry safely, survive refresh, restore assumptions and delete without posting money", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const rows: Record<string, unknown>[] = [];
+  const savedIds: unknown[] = [];
+  let interrupted = true;
+  let currentPlanChanged = false;
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (currentPlanChanged) data.profile.monthly_income_paise = 1000000;
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/saved_simulations**",
+    async (route) => {
+      const req = route.request();
+      if (req.method() === "POST") {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        savedIds.push(body.id);
+        if (!rows.some((row) => row.id === body.id))
+          rows.unshift({ ...body, created_at: "2026-11-20T10:00:00+00:00" });
+        if (interrupted) {
+          interrupted = false;
+          await route.fulfill({
+            status: 500,
+            json: {
+              message: "Response interrupted; retry the same comparison.",
+            },
+          });
+          return;
+        }
+        await route.fulfill({ status: 201, body: "" });
+      } else if (req.method() === "DELETE") {
+        rows.splice(0);
+        await route.fulfill({ status: 204 });
+      } else
+        await route.fulfill({
+          json: rows,
+          headers: {
+            "content-range": rows.length
+              ? `0-${rows.length - 1}/${rows.length}`
+              : "*/0",
+            "cache-control": "no-store",
+          },
+        });
+    },
+  );
+  await login(page);
+  await page.goto("/#simulator");
+  await page.getByLabel("Purchase price").fill("50000.29");
+  await page.getByLabel("Payment method").selectOption("emi");
+  await page.getByLabel("Comparison name").fill("Fixture laptop");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Response interrupted");
+  await page
+    .getByRole("button", { name: "Save comparison", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Comparison saved");
+  expect(rows).toHaveLength(1);
+  expect(savedIds[0]).toBe(savedIds[1]);
+  expect(rows[0].price_paise).toBe(5000029);
+  expect(rows[0].income_paise).toBe(5000000);
+  currentPlanChanged = true;
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Open Fixture laptop", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Open Fixture laptop", exact: true })
+    .click();
+  await expect(page.getByLabel("Purchase price")).toHaveValue("50000.29");
+  await expect(page.getByLabel("Payment method")).toHaveValue("emi");
+  await expect(
+    page.getByText("Planned monthly income", { exact: false }),
+  ).toContainText("₹50,000");
+  await page
+    .getByRole("button", { name: "Use current plan", exact: true })
+    .click();
+  await expect(
+    page.getByText("Planned monthly income", { exact: false }),
+  ).toContainText("₹10,000");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: "Delete Fixture laptop", exact: true })
+    .click();
+  await expect(page.getByText("No saved comparisons yet.")).toBeVisible();
+  expect(
+    calls.filter((c) =>
+      /record_entry|record_transfer|record_loan_payment|set_goal_allocation/.test(
+        c.path,
+      ),
+    ),
+  ).toHaveLength(0);
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fixture laptop", { exact: true })).toHaveCount(
+    0,
+  );
+  const cacheContents = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys()) {
+      for (const request of await (await caches.open(name)).keys())
+        urls.push(request.url);
+    }
+    return urls;
+  });
+  expect(cacheContents.some((url) => url.includes("saved_simulations"))).toBe(
+    false,
+  );
+});

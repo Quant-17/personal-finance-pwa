@@ -27,6 +27,14 @@ export interface SimulatorInputs {
   method: string;
 }
 
+export interface SimulationContext {
+  income: number;
+  expenses: number;
+  existingEmi: number;
+  liquidCash: number;
+  reserve: number;
+}
+
 export function Simulator({
   inputs,
   onChange,
@@ -34,7 +42,7 @@ export function Simulator({
   financialContext,
   onExpand,
 }: {
-  financialContext?: typeof demo;
+  financialContext?: SimulationContext;
   inputs: SimulatorInputs;
   onChange: (inputs: SimulatorInputs) => void;
   compact?: boolean;

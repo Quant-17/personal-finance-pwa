@@ -14,6 +14,60 @@ export type Database = {
   };
   public: {
     Tables: {
+      saved_simulations: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          price_paise: number;
+          apr: number;
+          tenure_months: number;
+          delay_months: number;
+          payment_method: string;
+          income_paise: number;
+          expenses_paise: number;
+          existing_emi_paise: number;
+          liquid_cash_paise: number;
+          reserve_paise: number;
+          calculation_version: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          name: string;
+          price_paise: number;
+          apr: number;
+          tenure_months: number;
+          delay_months: number;
+          payment_method: string;
+          income_paise: number;
+          expenses_paise: number;
+          existing_emi_paise: number;
+          liquid_cash_paise: number;
+          reserve_paise: number;
+          calculation_version?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          price_paise?: number;
+          apr?: number;
+          tenure_months?: number;
+          delay_months?: number;
+          payment_method?: string;
+          income_paise?: number;
+          expenses_paise?: number;
+          existing_emi_paise?: number;
+          liquid_cash_paise?: number;
+          reserve_paise?: number;
+          calculation_version?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       accounts: {
         Row: {
           archived_at: string | null;

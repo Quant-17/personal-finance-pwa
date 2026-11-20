@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
-import { Simulator } from "../components/Simulator";
+import { SavedSimulations } from "./SavedSimulations";
 import type { SimulatorInputs } from "../components/Simulator";
 import { formatExactMoney as money } from "../lib/finance";
 import { AuthGate } from "./AuthGate";
@@ -833,7 +833,7 @@ function Workspace({
                     earmarks. A comparison only; it never posts a purchase or
                     creates a loan.
                   </p>
-                  <Simulator
+                  <SavedSimulations
                     inputs={inputs}
                     onChange={setInputs}
                     financialContext={plan}

@@ -26,6 +26,10 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 
 Phase 2 is merged into main and published at the existing private `folio-review` origin from source `766fa9c`. Main CI, hosted release checks and exact asset comparisons passed. Owner acceptance and Auth URL configuration are recorded separately from independent checks. The original public `folio` URL continues serving the Phase 1 synthetic demo. See PHASE2_SETUP.md for current release IDs.
 
+## Phase 3 · saved comparisons review branch
+
+The owner authorized saved purchase simulations on 20 November 2026. This slice adds immutable owner-scoped comparison snapshots, save/reopen/delete, original-versus-current financial assumptions, retry protection and validation/isolation tests. See PHASE3_SETUP.md. Hosted migration and app publication follow review; CSV import is not included.
+
 ## Later
 
-Saved simulations, CSV preview/import/deduplication, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.
+CSV preview/import/deduplication, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.
