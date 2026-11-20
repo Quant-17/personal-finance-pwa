@@ -39,7 +39,12 @@ describe("saved comparisons", () => {
       expect(restored.context).toEqual(context);
       expect(
         calculateLoan(saved.price_paise, saved.apr, saved.tenure_months),
-      ).toEqual(calculateLoan(5000029, 12.125, 18));
+      ).toEqual({
+        emiPaise: 305202,
+        finalPaymentPaise: 305211,
+        totalPaise: 5493645,
+        interestPaise: 493616,
+      });
     }
   });
   it("keeps saved assumptions independent of changes to the current plan", () => {
