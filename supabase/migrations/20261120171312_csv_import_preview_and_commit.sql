@@ -94,7 +94,7 @@ begin
   if exists (
     select 1 from (
       select (a->>'balance_paise')::numeric as amount from jsonb_array_elements(snapshot->'accounts') a
-      union all select value::numeric from jsonb_each_text(snapshot->'summary') where key<>'month'
+      union all select case when key<>'month' then value::numeric end from jsonb_each_text(snapshot->'summary')
       union all select (b->>'spent_paise')::numeric from jsonb_array_elements(snapshot->'budgets') b
       union all select (c->>'income_paise')::numeric from jsonb_array_elements(snapshot->'cashflow') c
       union all select (c->>'outflow_paise')::numeric from jsonb_array_elements(snapshot->'cashflow') c
