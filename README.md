@@ -59,6 +59,6 @@ npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 
 No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).
 
-## Phase 3 review · saved purchase comparisons
+## Phase 3 combined review
 
-Private simulator snapshots can be named, saved, reopened with their original assumptions, switched to the current plan and deleted. The additive migration and rollout steps are in [PHASE3_SETUP.md](PHASE3_SETUP.md). This feature is under review; the hosted Phase 2 database/app have not been changed. CSV import is a later slice.
+Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). Both hosted migrations and publication are pending the release decision; the live Phase 2 app remains unchanged.

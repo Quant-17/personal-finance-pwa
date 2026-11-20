@@ -1,6 +1,6 @@
 # Phase 3 · saved purchase simulations
 
-The owner authorized this slice on 20 November 2026. CSV import remains later work. This branch adds private immutable comparisons to the existing Buy Simulator. It does not post transactions, create loans, alter the monthly plan or change the synthetic demo's save behavior.
+The owner authorized this slice on 20 November 2026. CSV import is now integrated in the combined release candidate; see CSV_IMPORT.md. This branch adds private immutable comparisons to the existing Buy Simulator. It does not post transactions, create loans, alter the monthly plan or change the synthetic demo's save behavior.
 
 ## Behavior
 

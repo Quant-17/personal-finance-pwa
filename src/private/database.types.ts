@@ -440,6 +440,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      preview_csv_import: {
+        Args: { p_account: string; p_rows: Json };
+        Returns: Json;
+      };
+      import_csv_entries: {
+        Args: { p_account: string; p_rows: Json; p_request_id: string };
+        Returns: Json;
+      };
       delete_entry: {
         Args: { p_entry: string; p_request_id?: string };
         Returns: undefined;
