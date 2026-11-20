@@ -1,6 +1,6 @@
-# Phase 3 · CSV import review
+# Phase 3 · CSV import
 
-This slice adds CSV preview/import to Transactions. The combined release branch now includes saved-simulations PR #4 and CSV PR #5, with both features and all tests preserved. No live database or app changes are part of integration. See PHASE3_RELEASE.md for the combined rollout.
+This slice adds CSV preview/import to Transactions. The combined release branch now includes saved-simulations PR #4 and CSV PR #5, with both features and all tests preserved. The approved combined release is now published. See PHASE3_RELEASE.md for the actual rollout record.
 
 ## File format
 
@@ -30,8 +30,8 @@ The client reuses a request UUID for an unchanged uncertain commit. A private ow
 
 ## Migration and review rollout
 
-`supabase/migrations/20261120171312_csv_import_preview_and_commit.sql` adds the unexposed, deny-by-default RLS receipt table and narrow authenticated preview/commit RPC wrappers. Privileged functions stay in folio_private with explicit owner checks and empty search_path. No client access to the receipt table or validation/detection helpers is granted. PUBLIC/anon execution is revoked; anonymous Auth users are rejected. Existing tables/functions are retained.
+`supabase/migrations/20261120190854_csv_import_preview_and_commit.sql` adds the unexposed, deny-by-default RLS receipt table and narrow authenticated preview/commit RPC wrappers. Privileged functions stay in folio_private with explicit owner checks and empty search_path. No client access to the receipt table or validation/detection helpers is granted. PUBLIC/anon execution is revoked; anonymous Auth users are rejected. Existing tables/functions are retained.
 
-The migration is prepared, not applied to hosted Supabase. After review, apply it to the existing project before publishing the CSV app candidate, refresh types if needed, run security/performance advisors, and check only disposable owner fixtures. The new receipt table intentionally has no client RLS policies, like existing mutation receipts. Retain it when rolling back assets; do not delete financial records or undo migrations as an app rollback. No paid resources or bank APIs are required.
+The reviewed migration is applied to hosted Supabase as version 20261120190854. Hosted rolled-back acceptance and security/performance advisors have been checked. For future schema changes, refresh types if needed and verify only disposable owner fixtures; do not replay this applied CREATE migration. The new receipt table intentionally has no client RLS policies, like existing mutation receipts. Retain it when rolling back assets; do not delete financial records or undo migrations as an app rollback. No paid resources or bank APIs are required.
 
 CI replays every migration on disposable PostgreSQL 17, runs the existing accounting/isolation suites plus csv_import.sql, then executes csv_concurrency.sh with two independent clients. The race harness creates .invalid fixtures only on that disposable instance and deletes them after verification. Never run bootstrap.sql or the concurrency harness on managed Supabase. Local unit tests and intercepted browser tests send no live email or financial mutation.

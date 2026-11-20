@@ -26,9 +26,9 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 
 Phase 2 is merged into main and published at the existing private `folio-review` origin from source `766fa9c`. Main CI, hosted release checks and exact asset comparisons passed. Owner acceptance and Auth URL configuration are recorded separately from independent checks. The original public `folio` URL continues serving the Phase 1 synthetic demo. See PHASE2_SETUP.md for current release IDs.
 
-## Phase 3 · combined release review
+## Phase 3 · published, owner device acceptance pending
 
-Saved comparisons and canonical CSV import are integrated from PRs #4 and #5, with the completed Phase 2 release documentation from PR #3. This branch preserves immutable assumption snapshots, explicit current-plan switching, local CSV validation, duplicate preview and atomic retry-safe posting. Combined tests include both SQL suites and the concurrent-import harness. Hosted migrations and publication remain pending the release decision. See PHASE3_RELEASE.md.
+Saved comparisons and canonical CSV import are integrated from PRs #4 and #5, with the completed Phase 2 release documentation from PR #3. This branch preserves immutable assumption snapshots, explicit current-plan switching, local CSV validation, duplicate preview and atomic retry-safe posting. Combined tests include both SQL suites and the concurrent-import harness. The approved migrations are applied and the combined app is published as v0.3.0-rc.3. Hosted rolled-back acceptance, exact asset checks and browser update activation passed; physical-device feature acceptance remains owner work. See PHASE3_RELEASE.md.
 
 ## Later
 

@@ -1,3 +1,9 @@
+## Phase 3 private release · 21 November 2026 IST
+
+PR #6 and included PRs #3/#4/#5 merged; main Quality run 44799336630 passed. Version v0.3.0-rc.3 is live at the existing private origin from source 0b33b1a. Hosted release verification and all 18 asset-byte comparisons passed. The real database DDL-free Phase 3 smoke suite passed and rolled back all generated fixtures. A public browser activated the waiting update from v0.2.0-rc.1 into v0.3.0-rc.3. Physical-device feature acceptance remains owner work; no credentials or personal financial rows were inspected.
+
+Supabase applied saved comparisons and CSV DDL under versions 20261120190842 and 20261120190854. A post-DDL RLS initplan performance warning was corrected by version 20261120191041, preserving access predicates. Performance WARN/ERROR findings cleared; the existing Pro-only leaked-password-protection warning remains under the free-plan constraint. See PHASE3_RELEASE.md for source/deployment IDs, ACL checks, acceptance limits and rollback boundaries. Earlier pending-release notes below are historical.
+
 ## Current private release · 20 November 2026 IST
 
 The private app at https://folio-review.sid-17061999.workers.dev/ now serves merged `main` source `766fa9c0d1d2a6f15757810f37fc2fe6d265c21e`, version `0.2.0-rc.1`. PR #1 merged as `139863c`, followed by PR #2 as `766fa9c`; final main Quality run [44577975669](https://github.com/Quant-17/personal-finance-pwa/actions/runs/44577975669) passed. The owner supplied the exact review/local redirect allowlist and confirmed saving Site URL as the private app origin on 20 November. This is owner-reported configuration, not independent dashboard inspection.
