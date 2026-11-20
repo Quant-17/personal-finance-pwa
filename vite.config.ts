@@ -90,7 +90,7 @@ export default defineConfig(({ mode, command }) => {
           ],
         },
         workbox: {
-          globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+          globPatterns: ["**/*.{js,mjs,css,html,svg,png,woff2}"],
           // Only precache the static shell. No runtime/API response caches.
           runtimeCaching: [],
           navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],

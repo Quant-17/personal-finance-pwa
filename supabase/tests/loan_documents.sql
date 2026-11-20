@@ -1,0 +1,81 @@
+-- Synthetic fixtures only, rolled back. Original PDFs/owner figures are never fixtures.
+begin;
+create function pg_temp.doc_assert(ok boolean,label text) returns void language plpgsql as $$ begin
+ if ok is not true then raise exception 'FAIL: %',label; end if;
+ perform set_config('folio.doc_checks',(coalesce(nullif(current_setting('folio.doc_checks',true),''),'0')::int+1)::text,true);
+end $$;
+create function pg_temp.doc_error(statement text,expected text,label text) returns void language plpgsql as $$ begin
+ begin execute statement; exception when others then
+   if sqlstate<>expected then raise exception 'FAIL: % expected %, got %: %',label,expected,sqlstate,sqlerrm; end if;
+   perform pg_temp.doc_assert(true,label);return;
+ end; raise exception 'FAIL: % accepted',label;
+end $$;
+with u as(insert into auth.users(id,email) values(gen_random_uuid(),'doc-a@example.invalid') returning id) select set_config('folio.doc_a',id::text,true) from u;
+with u as(insert into auth.users(id,email) values(gen_random_uuid(),'doc-b@example.invalid') returning id) select set_config('folio.doc_b',id::text,true) from u;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',current_setting('folio.doc_a'),true);
+select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.doc_a'),'is_anonymous',false)::text,true);
+select public.initialize_workspace();
+select set_config('folio.doc_terms',jsonb_build_object('name','Synthetic document loan','provider','credit_saison','source_sha256',repeat('a',64),'source_page_count',1,'original_principal_paise',1200000,'original_months',12,'nominal_rate',0,'disclosure_apr',3.25,'net_disbursed_paise',null,'fees_paise',null,'reported_emi_paise',100000,'current_outstanding_paise',600000,'remaining_months',6,'as_of',folio_private.today(),'paid_through',null,'first_due_on',null,'balance_basis','manual','card_account_id',null,'schedule_origin','none','schedule','[]'::jsonb,'source_pages',jsonb_build_object('principal',1,'rate',1,'apr',1,'emi',1,'tenure',1,'first_due',null))::text,true);
+select set_config('folio.doc_request',gen_random_uuid()::text,true);
+select set_config('folio.doc_id',public.save_loan_document(null,0,current_setting('folio.doc_terms')::jsonb,current_setting('folio.doc_request')::uuid)::text,true);
+select pg_temp.doc_assert((select principal_paise=600000 and reported_emi_paise=100000 and apr=0 from public.loans where id=current_setting('folio.doc_id')::uuid),'current principal and quoted EMI saved separately');
+select pg_temp.doc_assert((select details->>'disclosure_apr'='3.25' and revision=1 from public.loan_document_details),'APR retained as disclosure');
+select pg_temp.doc_assert((public.workspace_snapshot()->'summary'->>'existing_emi_paise')::bigint=100000,'monthly plan uses quoted EMI');
+select pg_temp.doc_assert((select count(*)=0 from public.transactions),'import posts no historical ledger entries');
+select pg_temp.doc_assert(public.save_loan_document(null,0,current_setting('folio.doc_terms')::jsonb,current_setting('folio.doc_request')::uuid)=current_setting('folio.doc_id')::uuid,'same request retry is idempotent');
+select pg_temp.doc_error(format('select public.save_loan_document(null,0,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_terms')),'23505','duplicate document rolled back');
+select pg_temp.doc_assert((select count(*)=1 from public.loans),'duplicate creates no orphan loan');
+select pg_temp.doc_error('update public.loan_document_details set revision=9','42501','direct metadata changes denied');
+do $$ declare changes jsonb; begin
+ foreach changes in array array['{"raw_text":"not allowed"}'::jsonb,'{"provider":null}','{"nominal_rate":-1}','{"remaining_months":0}','{"current_outstanding_paise":1.2}','{"as_of":"2025-02-30"}','{"source_pages":{"principal":2,"rate":1,"apr":1,"emi":1,"tenure":1,"first_due":null}}','{"schedule_origin":"lender","schedule":[]}'] loop
+   begin perform public.save_loan_document(null,0,current_setting('folio.doc_terms')::jsonb||changes,gen_random_uuid());
+   exception when others then perform pg_temp.doc_assert(true,'invalid fields rejected');continue; end;
+   raise exception 'Invalid document fields accepted';
+ end loop;
+end $$;
+select set_config('folio.doc_terms',(current_setting('folio.doc_terms')::jsonb||'{"current_outstanding_paise":500000,"remaining_months":5}')::text,true);
+select public.save_loan_document(current_setting('folio.doc_id')::uuid,1,current_setting('folio.doc_terms')::jsonb,gen_random_uuid());
+select pg_temp.doc_assert((select principal_paise=500000 from public.loans where id=current_setting('folio.doc_id')::uuid),'manual balance update retained');
+select pg_temp.doc_error(format('select public.save_loan_document(%L::uuid,1,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_id'),current_setting('folio.doc_terms')),'40001','stale review rejected');
+with a as(insert into public.accounts(name,type,opening_balance_paise) values('Synthetic card','credit_card',-500000) returning id) select set_config('folio.doc_card',id::text,true) from a;
+select set_config('folio.doc_terms',(current_setting('folio.doc_terms')::jsonb||jsonb_build_object('card_account_id',current_setting('folio.doc_card')))::text,true);
+select public.save_loan_document(current_setting('folio.doc_id')::uuid,(select revision from public.loan_document_details),current_setting('folio.doc_terms')::jsonb,gen_random_uuid());
+select pg_temp.doc_assert((public.workspace_snapshot()->'summary'->>'net_worth_paise')::bigint=-500000,'card plan principal not subtracted twice');
+select pg_temp.doc_assert((public.workspace_snapshot()->'summary'->>'existing_emi_paise')::bigint=100000,'card plan still counts monthly EMI');
+select pg_temp.doc_error(format('update public.accounts set type=''bank'' where id=%L::uuid',current_setting('folio.doc_card')),'P0001','linked card cannot change type');
+select pg_temp.doc_error(format('select public.record_loan_payment(%L::uuid,%L::uuid,1000,0,folio_private.today(),''Fixture'',gen_random_uuid())',current_setting('folio.doc_id'),current_setting('folio.doc_card')),'P0001','linked plan cannot post duplicate repayment');
+select pg_temp.doc_assert((select count(*)=0 from public.transactions),'rejected card repayment leaves no ledger entry');
+-- A later balance correction preserves repayments already posted in Folio.
+select set_config('folio.doc_terms',(current_setting('folio.doc_terms')::jsonb||'{"card_account_id":null}')::text,true);
+select public.save_loan_document(current_setting('folio.doc_id')::uuid,(select revision from public.loan_document_details),current_setting('folio.doc_terms')::jsonb,gen_random_uuid());
+with a as(insert into public.accounts(name,type,opening_balance_paise) values('Synthetic bank','bank',1000000) returning id) select set_config('folio.doc_bank',id::text,true) from a;
+select set_config('folio.doc_rev',(select revision::text from public.loan_document_details),true);
+select public.record_loan_payment(current_setting('folio.doc_id')::uuid,current_setting('folio.doc_bank')::uuid,100000,5000,folio_private.today(),'Fixture repayment',gen_random_uuid());
+select pg_temp.doc_assert((select revision>current_setting('folio.doc_rev')::int from public.loan_document_details),'repayment invalidates an open document review');
+select pg_temp.doc_error(format('select public.save_loan_document(%L::uuid,%s,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_id'),current_setting('folio.doc_rev'),current_setting('folio.doc_terms')),'40001','review from before repayment rejected');
+select set_config('folio.doc_terms',(current_setting('folio.doc_terms')::jsonb||'{"current_outstanding_paise":350000,"remaining_months":4}')::text,true);
+select public.save_loan_document(current_setting('folio.doc_id')::uuid,(select revision from public.loan_document_details),current_setting('folio.doc_terms')::jsonb,gen_random_uuid());
+select pg_temp.doc_assert((select principal_paise=450000 from public.loans where id=current_setting('folio.doc_id')::uuid),'tracking principal includes previously recorded principal');
+select pg_temp.doc_assert((public.workspace_snapshot()->'loans'->0->>'outstanding_paise')::bigint=350000,'current outstanding is not reduced twice');
+select pg_temp.doc_assert((public.workspace_snapshot()->'loans'->0->>'has_document')::boolean,'workspace marks reviewed documents without returning their contents');
+select pg_temp.doc_assert((select count(*)=1 from public.transactions),'correction preserves the existing repayment without posting another');
+select pg_temp.doc_error(format('select public.save_loan_document(%L::uuid,%s,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_id'),(select revision from public.loan_document_details),(current_setting('folio.doc_terms')::jsonb||jsonb_build_object('as_of',folio_private.today()-1))::text),'P0001','balance date cannot precede a recorded repayment');
+select set_config('folio.doc_terms',(current_setting('folio.doc_terms')::jsonb||'{"current_outstanding_paise":0,"remaining_months":0}')::text,true);
+select public.save_loan_document(current_setting('folio.doc_id')::uuid,(select revision from public.loan_document_details),current_setting('folio.doc_terms')::jsonb,gen_random_uuid());
+select pg_temp.doc_assert((select status='closed' from public.loans where id=current_setting('folio.doc_id')::uuid),'paid-off plan closes');
+select pg_temp.doc_assert((public.workspace_snapshot()->'summary'->>'existing_emi_paise')::bigint=0,'paid-off plan removes monthly commitment');
+select set_config('request.jwt.claim.sub',current_setting('folio.doc_b'),true);
+select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.doc_b'),'is_anonymous',false)::text,true);
+select pg_temp.doc_error(format('select public.save_loan_document(null,0,%L::jsonb,gen_random_uuid())',(current_setting('folio.doc_terms')::jsonb||jsonb_build_object('card_account_id',current_setting('folio.doc_card')))::text),'42501','cannot link another owners card');
+select pg_temp.doc_assert((select count(*)=0 from public.loan_document_details),'other owner cannot read document terms');
+select pg_temp.doc_error(format('select public.save_loan_document(%L::uuid,1,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_id'),current_setting('folio.doc_terms')),'42501','other owner cannot edit loan');
+select set_config('request.jwt.claim.sub',current_setting('folio.doc_a'),true);
+select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.doc_a'),'is_anonymous',true)::text,true);
+select pg_temp.doc_assert((select count(*)=0 from public.loan_document_details),'anonymous auth cannot read terms');
+select pg_temp.doc_error(format('select public.save_loan_document(null,0,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_terms')),'42501','anonymous auth cannot import');
+set local role anon;
+select pg_temp.doc_error('select * from public.loan_document_details','42501','signed-out role denied');
+select pg_temp.doc_error(format('select public.save_loan_document(null,0,%L::jsonb,gen_random_uuid())',current_setting('folio.doc_terms')),'42501','signed-out RPC denied');
+select current_setting('folio.doc_checks') as document_assertions_passed;
+rollback;

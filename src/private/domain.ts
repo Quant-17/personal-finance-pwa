@@ -68,6 +68,9 @@ const loanSchema = z.object({
   status: z.enum(["active", "closed"]),
   emi_paise: paise,
   outstanding_paise: paise,
+  reported_emi_paise: paise.nullable().optional().default(null),
+  card_account_id: id.nullable().optional().default(null),
+  has_document: z.boolean().optional().default(false),
 });
 const subscriptionSchema = z.object({
   id,

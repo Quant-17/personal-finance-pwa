@@ -28,4 +28,8 @@ No bank credentials, full card numbers, real financial fixtures, analytics or ex
 
 Lint, strict typecheck, money/schedule tests, real-Postgres ownership/accounting tests, demo/private browser flows and production builds must pass. Test responsive 390px layout, offline privacy, confirmed-user guard, sign-out and private simulator assumptions. Before private publication, configure exact Auth redirects, complete real owner confirmation/recovery, inspect hosted CSP and verify actual iPhone/Windows installation. These manual release gates remain pending.
 
-Imports, bank feeds, saved scenarios, multi-currency, push reminders, dedicated refund matching, audit history, personal-data export/deletion UI and automatic loan posting are outside this release.
+Broader bank feeds, multi-currency, push reminders, dedicated refund matching, audit history, personal-data export/deletion UI and automatic loan posting are outside this release.
+
+## Before Stage 4 · reviewed loan documents
+
+Locally read digital CRED/Credit Saison, Kotak card EMI and L&T documents, review/edit whitelisted terms and schedule rows with source pages, then explicitly confirm before saving to a new or existing loan. Retain quoted EMI separately from calculated estimates and nominal interest separately from disclosed APR. Require a dated current balance or an explicitly confirmed payment-history suggestion. Missing/rounded lender tables stay clearly estimated, and estimated first dates require owner confirmation. Permit later manual corrections without the original PDF. Linked card plans avoid counting the same principal twice. Preserve posted payments and never synthesize bank history. No original PDF archive, OCR, paid API, automatic payment detection or Stage 4 work is included. See LOAN_DOCUMENT_IMPORT.md for current release status.

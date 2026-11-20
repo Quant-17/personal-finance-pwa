@@ -2,7 +2,7 @@
 
 An INR finance manager for iPhone Safari PWA and Windows browsers, built with React, TypeScript, Vite, Tailwind, shadcn/ui patterns, Recharts and Supabase. Phase 1 is the synthetic demo. Phase 2 adds an authenticated workspace with manual financial entry. No bank integration or paid API is used.
 
-The current public deployment, https://folio.sid-17061999.workers.dev/, remains the Phase 1 demo. Phase 2 is on the separate `feat/phase-2-private-finance` review branch; private mode is available separately for acceptance at https://folio-review.sid-17061999.workers.dev. The user authorized this review deployment; no PR has been merged.
+The public https://folio.sid-17061999.workers.dev/ remains the synthetic demo. Phases 2–3 are merged and published at https://folio-review.sid-17061999.workers.dev/. The local loan-document review feature is on `feat/loan-document-import`, ahead of Stage 4, and is not yet deployed. See [LOAN_DOCUMENT_IMPORT.md](LOAN_DOCUMENT_IMPORT.md).
 
 ## Preview
 
@@ -19,7 +19,7 @@ npm run preview
 
 For the private workspace, copy `.env.example` to `.env.local`, set `VITE_APP_MODE=private`, your Supabase HTTPS project URL and modern **publishable** client key, then `npm run dev`. For a production preview: `npm run build` followed by `npm run preview`. Environment values are read at build time, so rebuild after changing them. Never put a secret or service-role key into any `VITE_*` variable.
 
-The existing connected free Supabase project was initially empty. The three migrations in `supabase/migrations` have been applied there. No financial seed data or persistent test users were added. This workspace has an ignored `.env.local` using that project's publishable key; fresh checkouts must configure their own local file.
+The existing connected free Supabase project was initially empty. The six Phase 2–3 migrations have been applied there. The new loan-document migration remains review-only. No financial seed data or persistent test users were added. This workspace has an ignored `.env.local` using that project's publishable key; fresh checkouts must configure their own local file.
 
 ## Phase 2 features
 

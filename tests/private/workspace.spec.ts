@@ -761,15 +761,13 @@ test("CSV total-range rejection keeps the preview and reports that nothing was p
   );
   await login(page);
   await page.goto("/#activity");
-  await page
-    .getByLabel("Choose CSV file")
-    .setInputFiles({
-      name: "range-fixture.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Range fixture\n",
-      ),
-    });
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "range-fixture.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Range fixture\n",
+    ),
+  });
   await page
     .getByRole("button", { name: "Check duplicates", exact: true })
     .click();
@@ -791,4 +789,266 @@ test("CSV total-range rejection keeps the preview and reports that nothing was p
   await expect(
     page.getByRole("button", { name: "Import 0 transactions", exact: true }),
   ).toBeDisabled();
+});
+
+// A generated, entirely synthetic text PDF exercises the real local PDF.js worker.
+function loanPdf() {
+  const lines = [
+    "Credit Saison / CRED App",
+    "1 Sanctioned Loan amount (in Rupees) 12000.00",
+    "Interest rate 0%",
+    "Annual Percentage Rate (APR) 3.25%",
+    "Loan tenure (in months) 2",
+    "Monthly Fixed Repayments 2 6,000 31/01/2025",
+    "Detailed Repayment Charges",
+    "1 6000.00 6000.00 0.00 6000.00",
+    "2 0.00 6000.00 0.00 6000.00",
+  ];
+  const stream = `BT /F1 10 Tf 40 780 Td ${lines.map((l, i) => (i ? "0 -20 Td " : "") + `(${l.replace(/[()\\]/g, "\\$&")}) Tj`).join("\n")} ET`;
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [i, o] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((o) => String(o).padStart(10, "0") + " 00000 n \n")
+    .join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
+test("loan PDF stays local and requires a reviewed current balance before saving", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  let terms: Record<string, unknown> | null = null;
+  await page.route("**/rest/v1/rpc/save_loan_document", async (route) => {
+    terms = route.request().postDataJSON().p_terms;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(crypto.randomUUID()),
+    });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await page.getByRole("button", { name: "Import loan PDF" }).click();
+  await page.getByLabel("Loan PDF", { exact: false }).setInputFiles({
+    name: "synthetic-fixture.pdf",
+    mimeType: "application/pdf",
+    buffer: loanPdf(),
+  });
+  await expect(
+    page.getByLabel("Original sanctioned principal", { exact: false }),
+  ).toHaveValue("12000.00");
+  await expect(
+    page.getByLabel("Annual nominal interest", { exact: false }),
+  ).toHaveValue("0");
+  await expect(page.getByLabel("Disclosed APR", { exact: false })).toHaveValue(
+    "3.25",
+  );
+  await expect(
+    page.getByLabel("Current outstanding principal", { exact: false }),
+  ).toHaveValue("");
+  await expect(
+    page.getByRole("button", { name: "Save reviewed loan" }),
+  ).toBeDisabled();
+  await page
+    .getByText("Use confirmed payment history to suggest a balance", {
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Suggest balance from confirmed payments",
+    }),
+  ).toBeDisabled();
+  await page.getByLabel("Paid through", { exact: true }).fill("2025-02-01");
+  await page
+    .getByLabel("I confirm every scheduled instalment", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Suggest balance from confirmed payments" })
+    .click();
+  await expect(
+    page.getByLabel("Current outstanding principal", { exact: false }),
+  ).toHaveValue("6000.00");
+  await page
+    .getByLabel("I reviewed the original terms", { exact: false })
+    .check();
+  await page.getByRole("button", { name: "Save reviewed loan" }).click();
+  await expect(
+    page.getByText("Reviewed loan saved. No bank transactions were posted."),
+  ).toBeVisible();
+  expect(terms).toMatchObject({
+    original_principal_paise: 1200000,
+    current_outstanding_paise: 600000,
+    reported_emi_paise: 600000,
+    remaining_months: 1,
+    balance_basis: "confirmed_schedule",
+    paid_through: "2025-02-01",
+    schedule_origin: "lender",
+  });
+  expect(JSON.stringify(terms)).not.toContain("synthetic-fixture.pdf");
+  expect(JSON.stringify(terms)).not.toContain("%PDF");
+  expect(
+    calls.some(
+      (c) =>
+        c.path.includes("storage") ||
+        c.path.includes("record_loan_payment") ||
+        c.path.includes("record_entry"),
+    ),
+  ).toBe(false);
+  const financialStorage = await page.evaluate(() =>
+    Object.keys(localStorage).filter(
+      (k) => !k.startsWith("folio-auth-") && k !== "folio-theme",
+    ),
+  );
+  expect(financialStorage).toEqual([]);
+});
+test("invalid PDFs fail safely and document review clears on sign-out", async ({
+  page,
+}) => {
+  await mock(page);
+  await login(page);
+  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await page.getByRole("button", { name: "Import loan PDF" }).click();
+  await page.getByLabel("Loan PDF", { exact: false }).setInputFiles({
+    name: "not-a-pdf.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("invalid"),
+  });
+  await expect(page.getByRole("alert")).toContainText("valid PDF");
+  await expect(
+    page.getByRole("button", { name: "Save reviewed loan" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Review a loan document" }),
+  ).toHaveCount(0);
+});
+
+test("saved document terms can be edited without the PDF and failed saves reuse a request ID", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const loanId = "93f093ba-b008-4415-b0ea-4b3e2bd6b88c";
+  const terms = {
+    name: "Synthetic saved loan",
+    provider: "lt_finance",
+    source_sha256: "b".repeat(64),
+    source_page_count: 1,
+    original_principal_paise: 1200000,
+    original_months: 12,
+    nominal_rate: 0,
+    disclosure_apr: null,
+    net_disbursed_paise: null,
+    fees_paise: null,
+    reported_emi_paise: 100000,
+    current_outstanding_paise: 600000,
+    remaining_months: 6,
+    as_of: "2025-02-01",
+    paid_through: null,
+    first_due_on: null,
+    balance_basis: "manual",
+    card_account_id: null,
+    schedule_origin: "none",
+    schedule: [],
+    source_pages: {
+      principal: 1,
+      rate: 1,
+      apr: null,
+      emi: 1,
+      tenure: 1,
+      first_due: null,
+    },
+  };
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...snapshot(true),
+        loans: [
+          {
+            id: loanId,
+            name: terms.name,
+            principal_paise: 600000,
+            apr: 0,
+            tenure_months: 6,
+            start_date: "2025-02-01",
+            status: "active",
+            emi_paise: 100000,
+            outstanding_paise: 600000,
+            reported_emi_paise: 100000,
+            card_account_id: null,
+            has_document: true,
+          },
+        ],
+      }),
+    }),
+  );
+  await page.route("**/rest/v1/loan_document_details*", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ details: terms, revision: 4 }),
+    }),
+  );
+  const saves: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/rpc/save_loan_document", async (route) => {
+    saves.push(route.request().postDataJSON());
+    await route.fulfill(
+      saves.length === 1
+        ? {
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ message: "temporary failure" }),
+          }
+        : {
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(loanId),
+          },
+    );
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await page.getByRole("button", { name: "Edit loan", exact: true }).click();
+  await expect(
+    page.getByLabel("Quoted monthly EMI", { exact: false }),
+  ).toHaveValue("1000.00");
+  await expect(
+    page.getByLabel("Current outstanding principal", { exact: false }),
+  ).toHaveValue("");
+  await page
+    .getByLabel("Current outstanding principal", { exact: false })
+    .fill("5000.00");
+  await page.getByLabel("Remaining instalments", { exact: true }).fill("5");
+  await page
+    .getByLabel("I reviewed the original terms", { exact: false })
+    .check();
+  await page.getByRole("button", { name: "Save reviewed loan" }).click();
+  await expect(page.getByRole("alert")).toContainText("same request");
+  await page.getByRole("button", { name: "Save reviewed loan" }).click();
+  await expect(
+    page.getByText("Reviewed loan saved. No bank transactions were posted."),
+  ).toBeVisible();
+  expect(saves).toHaveLength(2);
+  expect(saves[0]).toEqual(saves[1]);
+  expect(saves[0]).toMatchObject({
+    p_loan: loanId,
+    p_expected_revision: 4,
+    p_terms: {
+      current_outstanding_paise: 500000,
+      remaining_months: 5,
+      reported_emi_paise: 100000,
+    },
+  });
 });
