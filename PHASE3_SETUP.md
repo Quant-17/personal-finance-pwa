@@ -21,3 +21,5 @@ The live Phase 2 app and database remain unchanged during implementation. To pre
 ## Validation
 
 Unit tests cover all four payment methods, exact amount/APR/EMI restoration, changed-current-plan independence, name/input/amount limits and unsupported calculation versions. The browser flow covers save after an interrupted response, stable retry UUID, refresh/reopen, original versus current assumptions, deletion, offline lock and no cached saved API response. The new SQL suite checks owner access, foreign-owner denial, immutable rows, signed-out/anonymous denial, invalid data and unchanged financial summary after save/delete. All fixtures use .invalid identities and are rolled back.
+
+Observed implementation checks: lint/typecheck passed; 64 Vitest tests and two release regression tests passed; all nine private Chromium flows passed. The push CI database job passed the prior suites plus 22 new saved-comparison assertions on disposable PostgreSQL. Full CI also covers the six demo flows. Package version is `0.3.0-rc.1` for the next reviewed app build; no hosted migration or deployment has occurred.
