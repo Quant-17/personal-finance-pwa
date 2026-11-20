@@ -58,3 +58,7 @@ npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 [Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Phase 2 setup](PHASE2_SETUP.md) · [Phase 1 deployment](DEPLOYMENT.md)
 
 No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).
+
+## CSV import review
+
+Transactions now includes a five-column UTF-8 CSV preview, exact duplicate detection and explicit atomic import of selected income/expense rows. The hosted migration/app rollout is pending review. See [CSV_IMPORT.md](CSV_IMPORT.md) for the file format, privacy, retry semantics and test reproduction. This branch is independent of saved-simulations PR #4.

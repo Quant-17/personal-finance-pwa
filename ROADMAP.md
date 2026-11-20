@@ -26,6 +26,10 @@ Synthetic dashboard, responsive shell/theme, four-way paise-safe purchase simula
 
 Phase 2 core functional acceptance is complete based on automated checks and owner reports; the PR is ready for code review. Production promotion still requires final Auth URL review and an explicit merge/deployment decision. Owner update and disposable-data cleanup acceptance are complete. The existing public URL continues serving the Phase 1 demo. A separate user-approved `folio-review` URL serves the Phase 2 acceptance build.
 
+## Phase 3 · CSV import review
+
+The owner continued with the next CSV slice on 20 November 2026. The independent branch adds a canonical UTF-8 CSV template, local validation/preview, exact duplicate checks, explicit selected-row confirmation and atomic retry-safe import. See CSV_IMPORT.md for boundaries, privacy, tests and the pending hosted migration. Saved simulations remain in separate PR #4.
+
 ## Later
 
-Saved simulations, CSV preview/import/deduplication, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.
+Saved simulations, Broader bank-format column mapping, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.

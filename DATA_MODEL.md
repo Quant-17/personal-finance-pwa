@@ -35,3 +35,7 @@ Planned surplus uses profile income − living budget − active loan EMI. Inclu
 ## Validation and future scope
 
 `supabase/tests/security_and_accounting.sql` contains 101 isolation/accounting assertions on rolled-back fixtures. `bootstrap.sql` is for disposable non-Supabase Postgres only; never run it hosted. `hosted_acceptance.sql` is DDL-free and rolls back generated Auth/financial fixtures. User exports/deletion UI, immutable audit history, CSV imports, reminders and encrypted offline editing are later work. Database owner deletion cascades owned records, but no client account-deletion flow is provided.
+
+## Phase 3 · CSV import (review migration)
+
+public.preview_csv_import and public.import_csv_entries are authenticated invoker wrappers around owner-checking private functions. Normalized rows post through the existing record_entry path under the destination account lock; no new public financial table is introduced. folio_private.csv_import_receipts stores owner/request UUID, payload hash, original result counts and creation time, with RLS and all client table access revoked. Batch retry does not retain raw file contents or change duplicate entries. See CSV_IMPORT.md.

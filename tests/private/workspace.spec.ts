@@ -344,3 +344,188 @@ test("an unchanged failed transaction retries with the same request identifier",
   expect(identifiers).toHaveLength(2);
   expect(identifiers[0]).toBe(identifiers[1]);
 });
+
+test("CSV preview excludes invalid/repeated/existing rows and requires confirmation; interrupted commit retries safely", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const previews: Record<string, unknown>[] = [];
+  const commits: Record<string, unknown>[] = [];
+  let posted = false;
+  let interrupt = true;
+  const entryId = "cf118070-369c-438f-8348-304bd2d88ba2";
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    async (route) => {
+      previews.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { duplicates: [true, false] } });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    async (route) => {
+      commits.push(route.request().postDataJSON() as Record<string, unknown>);
+      posted = true;
+      if (interrupt) {
+        interrupt = false;
+        await route.fulfill({
+          status: 500,
+          json: { message: "Response interrupted" },
+        });
+      } else await route.fulfill({ json: { inserted: 1, skipped: 0 } });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    async (route) => {
+      const data = snapshot(true);
+      if (posted) {
+        data.summary.expense_paise = "20000";
+        data.accounts[0].balance_paise = "1980000";
+      }
+      await route.fulfill({ json: data });
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/transactions**",
+    async (route) => {
+      await route.fulfill({
+        json: posted
+          ? [
+              {
+                id: entryId,
+                account_id: accountId,
+                category_id: categoryId,
+                kind: "expense",
+                amount_paise: -20000,
+                occurred_on: "2026-11-19",
+                description: "CSV new",
+                transfer_id: null,
+                created_at: "2026-11-20T12:00:00Z",
+              },
+            ]
+          : [],
+        headers: { "content-range": posted ? "0-0/1" : "*/0" },
+      });
+    },
+  );
+  await login(page);
+  await page.goto("/#activity");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "synthetic.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "date,type,amount,category,description\n2026-11-19,expense,100.29,Food & groceries,Existing lunch\n2026-11-19,expense,100.29,Food & groceries,Existing lunch\n2026-11-19,expense,200.00,Food & groceries,CSV new\n2026-02-30,expense,1.00,Food & groceries,Invalid date\n",
+      ),
+    });
+  await expect(
+    page.getByText("Repeated in this file", { exact: true }),
+  ).toBeVisible();
+  expect(previews).toHaveLength(0);
+  expect(commits).toHaveLength(0);
+  await expect(
+    page.getByRole("button", { name: /Import \d+ transactions/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await expect(
+    page.getByText("Already in ledger", { exact: true }),
+  ).toBeVisible();
+  expect(previews).toHaveLength(1);
+  expect(previews[0].p_account).toBe(accountId);
+  expect(previews[0].p_rows).toHaveLength(2);
+  await expect(
+    page.getByRole("button", { name: "Import 1 transactions", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("could not be confirmed");
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Import complete: 1 added, 0 matched the ledger at posting, 3 excluded from the selection.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(commits).toHaveLength(2);
+  expect(commits[0].p_request_id).toBe(commits[1].p_request_id);
+  expect(commits[0].p_rows).toEqual([
+    {
+      occurred_on: "2026-11-19",
+      kind: "expense",
+      amount_paise: 20000,
+      category_id: categoryId,
+      description: "CSV new",
+    },
+  ]);
+  await expect(page.getByText("CSV new", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(() => Object.values(localStorage).join(" ")),
+  ).not.toContain("CSV new");
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(page.getByText("CSV new", { exact: true })).toHaveCount(0);
+});
+
+test("CSV invalid files stay local, preview clears offline, and mobile layout remains contained", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.goto("/#activity");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "bad.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("unexpected,header\n1,2"),
+    });
+  await expect(page.getByRole("alert")).toContainText("Use the columns");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "private-fixture.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "date,type,amount,category,description\n2026-11-19,expense,10.01,Food & groceries,Private CSV fixture\n",
+      ),
+    });
+  await expect(
+    page.getByText("Private CSV fixture", { exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.filter((c) => /csv_import|csv_entries/.test(c.path)),
+  ).toHaveLength(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.context().setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Private CSV fixture", { exact: true }),
+  ).toHaveCount(0);
+  const cached = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys())
+      for (const request of await (await caches.open(name)).keys())
+        urls.push(request.url);
+    return urls;
+  });
+  expect(cached.some((url) => /csv_import|csv_entries/.test(url))).toBe(false);
+});
