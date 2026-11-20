@@ -1,38 +1,42 @@
-# Phase 3 combined release candidate · 0.3.0-rc.3
+# Phase 3 · published 21 November 2026 IST
 
-Prepared 20 November 2026. This review branch integrates PR #3's Phase 2 release records, PR #4's saved purchase comparisons, and PR #5's CSV preview/import. It preserves the full changes and tests from all three branches, resolves their overlapping files and adds a combined feature test. No hosted migration, real financial entry or app publication is part of this preparation.
+The owner continued after the concrete merge/migrate/private-deploy approval question. PR #6 merged as `0b33b1afd6d6446991ccd20f49464641d5c9dc57`, including the heads of PRs #3/#4/#5; GitHub marked those PRs merged too. Main Quality run [44799336630](https://github.com/Quant-17/personal-finance-pwa/actions/runs/44799336630) passed. No later feature is included.
 
-## Release behavior
+## Current private app
 
-- The private Buy Simulator saves immutable named comparisons, restores original assumptions and explicitly switches to the current plan.
-- Transactions parses the documented five-column UTF-8 CSV locally, checks duplicates in the private workspace, and requires confirmation before atomically importing selected rows. Retries/concurrent imports cannot duplicate exact matching ledger entries under the standard isolation tested by CI.
-- CSV commit rejects a batch that would exceed the dashboard's supported derived totals, rolling back all rows; the UI retains the preview and explains that nothing was imported.
-- CSV posting updates current cash while saved comparisons retain their original assumptions. The combined browser flow verifies both behaviors in the same workspace.
-- Both features retain the existing no-store client and background/offline/sign-out lock. The public synthetic demo remains separate.
+- URL: https://folio-review.sid-17061999.workers.dev/
+- Version: `0.3.0-rc.3`; deployed source: `0b33b1afd6d6446991ccd20f49464641d5c9dc57`.
+- Worker version: `58afee9a-fb3d-48d0-a376-0f9af9121bc2`.
+- Deployment: `41cbf922-ab23-49e0-a640-559e864575c0`, 100% private-origin traffic.
+- Hosted release verification passed; all 18 served asset paths matched the clean configured-private build byte-for-byte. Automatic HTML handling and security headers are preserved.
+- A signed-out browser running v0.2.0-rc.1 showed Update app, activated it and rendered v0.3.0-rc.3 with the banner gone. No credentials were entered. Release screenshot: [signed-out app after update](docs/screenshots/phase3-signin.jpg). Physical iPhone/Windows activation and owner feature acceptance are not independently established by that browser check.
 
-See PHASE3_SETUP.md and CSV_IMPORT.md for detailed formats, limits and privacy/rollback semantics. Bank-specific column guessing, transfers/loan repayments from CSV and a force-duplicate import option are outside this release.
+The private Buy Simulator now saves/reopens immutable named comparisons with original assumptions or an explicit current-plan switch. Transactions supports the documented UTF-8 CSV format, local validation, duplicate preview and confirmed atomic import. Invalid/duplicate rows are excluded; import retries are idempotent, and batches exceeding supported derived totals roll back completely. Bank-specific column guessing, CSV transfers/loan repayments and forced duplicates remain outside scope. See PHASE3_SETUP.md and CSV_IMPORT.md.
 
-## Read-only hosted preflight
+## Applied database state
 
-The Supabase migration list on 20 November contains only `20261117172916`, `20261117174854` and `20261117175808`. Neither Phase 3 migration has been applied. Preflight inspected configuration metadata/advisories, not personal account records.
+Supabase assigned actual UTC migration versions during connected-tool application; repository filenames are aligned so a future CLI push will not replay their CREATE statements:
 
-Security advisors report an existing `auth_leaked_password_protection` WARN: leaked-password protection is disabled. [Supabase documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) says this feature requires Pro or above. The project stays free under the owner's no-paid-services constraint; no plan, Auth settings or third-party password checks were changed. This limitation must remain visible in the release review. Performance advisors reported no WARN/ERROR. Earlier Phase 2 no-warning statements are historical and do not supersede this preflight.
+1. `20261120190842_saved_purchase_simulations.sql`
+2. `20261120190854_csv_import_preview_and_commit.sql`
+3. `20261120191041_cache_saved_simulation_identity.sql`
 
-## Concrete release sequence after review
+The first two contain the reviewed additive feature DDL. Post-DDL advisors flagged the saved policies' JWT-extraction form; the third applies the same cached-JWT-object form already used by Phase 2. Ownership predicates, anonymous denial and ACLs are preserved. Performance WARN/ERROR findings then cleared. Original Phase 2 migrations remain intact. Do not run bootstrap.sql or the concurrency harness on managed Supabase.
 
-1. Merge this combined PR into main after its latest head/checks are reviewed. It includes the heads of PRs #3/#4/#5; those separate review branches need not be deployed independently. Verify their final GitHub states and main tree after the merge, retaining branches until the integration is confirmed.
-2. Recheck the hosted migration list. If the two new versions are absent, apply the reviewed additive migrations in order:
-   - `20261120154958_saved_purchase_simulations.sql`
-   - `20261120171312_csv_import_preview_and_commit.sql`
-   Do not replay existing CREATE statements. Do not run bootstrap.sql or the concurrency harness on managed Supabase.
-3. Run Supabase security/performance advisors after DDL. Verify new table/function ACLs and owner isolation with disposable rolled-back assertions; retain the known free-plan Auth warning and intentional private receipt no-policy INFO notices in evidence. Do not send real email or create persistent financial fixtures.
-4. Use a clean private build from the approved merged source, the existing publishable configuration and the same project origin. Run lint/typecheck/tests, production build and release verification. Confirm compiled version/source; never deploy the demo or fake-project artifact as private.
-5. Publish complete static assets only to the existing `folio-review` Worker, keeping the existing private origin/owner-confirmed Auth callback unchanged. Preserve automatic HTML handling and generated security headers. The `folio` synthetic Worker must remain unchanged.
-6. Verify the exact hosted source/version, root, all referenced assets, PWA and security headers. Owner acceptance checks the Update app flow, save/reopen, canonical CSV preview and a disposable confirmed import/cleanup. Existing owner sessions stay origin-scoped; no new account is required.
-7. Record the actual deployment/version and checks. Do not enable automatic deployment or start another feature as part of this release.
+Access inspection confirmed saved_simulations has RLS and authenticated owner SELECT/INSERT/DELETE, with no UPDATE or anon access. Private CSV receipts have RLS and no client table privileges. Public RPC wrappers are invokers, private entry points are owner-checking definers, and anon cannot execute them. Internal validation/detection helpers have no client execution grants.
 
-## Recovery points
+`supabase/tests/phase3_hosted_acceptance.sql` is a DDL-free smoke suite run against the actual project. It passed precision/frozen-assumption checks, duplicate preview without posting, atomic import/retry/range rollback, immutable rows, cross-user denial and signed-out RPC denial. Generated .invalid Auth/financial fixtures all rolled back. The assistant did not inspect personal account rows, send email or leave persistent financial fixtures.
 
-Current accepted private Worker version: `ba81d6f6-dd97-42aa-8ad2-78592e4c8c4c`, source `766fa9c`. The original demo remains `5e0cb7ff-e84b-4095-9d17-cff53db0d267`. Recheck those actual versions before publication and save any newer legitimate recovery point.
+## Validation and remaining acceptance
 
-For an app regression, restore the previous private asset version and verify headers/root. Retain both additive tables and import receipts; the previous app ignores them. A financial import is a separate user-confirmed mutation: asset rollback does not reverse its transactions, and no automatic financial deletion is authorized. A failed import transaction rolls back its whole batch; an uncertain response retries the unchanged request UUID. Keep CSV receipts so old retries remain idempotent.
+The reviewed combined release passed lint/typecheck, 85 unit tests plus two release regression tests, six demo and thirteen private browser flows, builds/release checks, combined SQL suites and the concurrent-import harness. A new combined flow proves that a CSV expense changes current cash without changing a saved comparison's original assumptions. Hosted smoke, deployed-byte checks and public browser activation provide separate live evidence.
+
+The owner should reopen the installed app, save open work before Update app, verify the v0.3.0-rc.3 footer, and use the existing account. Buy simulator contains Saved comparisons; Transactions contains Import transactions from CSV and an empty template download. Confirm save/reopen and CSV preview on the actual device. Any live financial import requires the owner's own explicit in-app selection/confirmation; no real-file import or automatic deletion is part of this release.
+
+The existing [leaked-password-protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remains: Supabase documents it as Pro-only, while the owner requires no paid services. No plan/Auth settings or third-party password checks were changed. Intentional private receipt no-policy INFO and new-index INFO notices are recorded separately from actionable findings.
+
+## Recovery and preservation
+
+The original synthetic folio Worker remains version `5e0cb7ff-e84b-4095-9d17-cff53db0d267`, deployment `92d02c4b-850d-46ae-81ea-3b51d7ed58a6`, verified unchanged through the API. No automatic deployment was enabled.
+
+The previous private recovery version is `ba81d6f6-dd97-42aa-8ad2-78592e4c8c4c` (source 766fa9c). For an app regression restore the private asset version and verify root/headers; retain the additive tables and retry receipts, which older app code ignores. Asset rollback does not undo financial imports. Do not drop tables, purge receipts or delete financial entries as an asset recovery step. Preserve existing origin-scoped sessions and the owner-confirmed Auth callback.

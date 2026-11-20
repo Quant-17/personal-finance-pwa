@@ -1,11 +1,11 @@
 # Working on Folio
 
 ## Scope
-Phase 3 saved simulations and CSV preview/import were authorized on 20 November 2026. This integration branch combines PRs #3, #4 and #5 for one reviewed release candidate. Preserve both features and all tests. Keep hosted data and deployments unchanged until the release decision. Phase 2 is merged and published at the existing private origin. Keep the synthetic demo and authenticated workspace in separate build modes and use the existing free Supabase project. Preserve the existing folio demo deployment. Use a review branch and retain the privacy/financial rules below. Keep the product calm, responsive and accessible on iPhone Safari PWA and Windows browsers.
+Phase 3 saved simulations and CSV preview/import were authorized on 20 November 2026. The owner approved the Phase 3 release by continuing after the concrete merge/migrate/deploy question; PR #6 (combining #3/#4/#5) is merged and v0.3.0-rc.3 is published at the private origin. Preserve both features and all tests. Deployment records/migration-version alignment and the semantics-preserving RLS cache fix are part of that release. Later features still need their own scope; preserve existing financial records. Keep the synthetic demo and authenticated workspace in separate build modes and use the existing free Supabase project. Preserve the existing folio demo deployment. Use a review branch and retain the privacy/financial rules below. Keep the product calm, responsive and accessible on iPhone Safari PWA and Windows browsers.
 
 ## Commands
 `npm ci`, `npm run dev`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run build:demo`, `npm run build:private-test`, `npm run test:private`, `npm run preview`.
-Optional browser checks: `npx playwright install chromium`, then `npx playwright test`. Demo tests use the demo build; private browser tests use build:private-test with fake intercepted Supabase endpoints. Both start preview servers. Replay sorted SQL migrations on disposable Postgres and run the 101-assertion integration suite. Never run bootstrap.sql on managed Supabase.
+Optional browser checks: `npx playwright install chromium`, then `npx playwright test`. Demo tests use the demo build; private browser tests use build:private-test with fake intercepted Supabase endpoints. Both start preview servers. Replay sorted SQL migrations on disposable Postgres and run the accounting, saved-comparison, CSV, concurrency and hosted-compatible acceptance suites. Never run bootstrap.sql on managed Supabase.
 
 ## Engineering rules
 - Store/model amounts as integer paise; use decimal-safe financial math. Changes to loan assumptions require tests and documentation.

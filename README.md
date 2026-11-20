@@ -59,6 +59,6 @@ npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 
 No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).
 
-## Phase 3 combined review
+## Phase 3 · available in the private app
 
-Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). Both hosted migrations and publication are pending the release decision; the live Phase 2 app remains unchanged.
+Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). The approved release is published at https://folio-review.sid-17061999.workers.dev/ as v0.3.0-rc.3. The additive migrations and hosted acceptance checks passed. Reopen the installed app and use Update app when offered. The original synthetic demo is preserved.
