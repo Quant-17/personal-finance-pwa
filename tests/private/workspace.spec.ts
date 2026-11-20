@@ -700,15 +700,13 @@ test("saved assumptions survive a CSV import that changes current available cash
     page.getByRole("button", { name: "Open Before CSV", exact: true }),
   ).toBeVisible();
   await page.goto("/#activity");
-  await page
-    .getByLabel("Choose CSV file")
-    .setInputFiles({
-      name: "combined-fixture.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Combined fixture expense\n",
-      ),
-    });
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "combined-fixture.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Combined fixture expense\n",
+    ),
+  });
   await page
     .getByRole("button", { name: "Check duplicates", exact: true })
     .click();
@@ -740,4 +738,57 @@ test("saved assumptions survive a CSV import that changes current available cash
   await expect(
     page.getByText("cash remains after purchase.", { exact: false }),
   ).toContainText("₹14,000");
+});
+
+test("CSV total-range rejection keeps the preview and reports that nothing was posted", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/preview_csv_import",
+    (route) => route.fulfill({ json: { duplicates: [false] } }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/import_csv_entries",
+    (route) =>
+      route.fulfill({
+        status: 400,
+        json: {
+          code: "22003",
+          message: "CSV import exceeds supported financial totals.",
+        },
+      }),
+  );
+  await login(page);
+  await page.goto("/#activity");
+  await page
+    .getByLabel("Choose CSV file")
+    .setInputFiles({
+      name: "range-fixture.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "date,type,amount,category,description\n2026-11-19,expense,1000.00,Food & groceries,Range fixture\n",
+      ),
+    });
+  await page
+    .getByRole("button", { name: "Check duplicates", exact: true })
+    .click();
+  await page
+    .getByLabel("I reviewed the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 transactions", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Nothing was imported.");
+  await expect(page.getByText("Range fixture", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Import complete:", { exact: false }),
+  ).toHaveCount(0);
+  await page.getByLabel("Select CSV row 2", { exact: true }).uncheck();
+  await expect(
+    page.getByLabel("I reviewed the selected rows", { exact: false }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("button", { name: "Import 0 transactions", exact: true }),
+  ).toBeDisabled();
 });

@@ -6,6 +6,7 @@ Prepared 20 November 2026. This review branch integrates PR #3's Phase 2 release
 
 - The private Buy Simulator saves immutable named comparisons, restores original assumptions and explicitly switches to the current plan.
 - Transactions parses the documented five-column UTF-8 CSV locally, checks duplicates in the private workspace, and requires confirmation before atomically importing selected rows. Retries/concurrent imports cannot duplicate exact matching ledger entries under the standard isolation tested by CI.
+- CSV commit rejects a batch that would exceed the dashboard's supported derived totals, rolling back all rows; the UI retains the preview and explains that nothing was imported.
 - CSV posting updates current cash while saved comparisons retain their original assumptions. The combined browser flow verifies both behaviors in the same workspace.
 - Both features retain the existing no-store client and background/offline/sign-out lock. The public synthetic demo remains separate.
 

@@ -154,6 +154,13 @@ export function CsvImport({
         ...payload,
         p_request_id: request.current.id,
       });
+      if (result.error?.code === "22003") {
+        if (mounted.current)
+          setError(
+            "Selected rows exceed the supported financial totals. Reduce the file amounts or select fewer rows. Nothing was imported.",
+          );
+        return;
+      }
       check(result);
       const counts = resultSchema.parse(result.data);
       if (counts.inserted + counts.skipped !== selected.length)

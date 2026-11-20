@@ -67,7 +67,7 @@ language sql security invoker set search_path='' as $$ select folio_private.prev
 create function folio_private.import_csv_entries(p_account uuid,p_rows jsonb,p_request_id uuid) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare owner_id uuid:=folio_private.current_owner(); rows jsonb; item jsonb; receipt folio_private.csv_import_receipts;
-  digest text; inserted integer:=0; skipped integer:=0; result jsonb; seen text[]:='{}';
+  digest text; inserted integer:=0; skipped integer:=0; result jsonb; seen text[]:='{}'; snapshot jsonb;
 begin
   if p_request_id is null or p_rows is null then raise exception 'A request ID and rows are required.'; end if;
   if octet_length(p_rows::text)>1048576 then raise exception 'Import payload exceeds 1 MiB.'; end if;
@@ -78,6 +78,8 @@ begin
     if receipt.payload_hash<>digest then raise exception 'Request ID already used for a different import. Check the ledger before retrying.'; end if;
     return receipt.result;
   end if;
+  -- Serialize owned balances in UUID order while checking derived account/summary totals.
+  perform 1 from public.accounts where user_id=owner_id order by id for update;
   -- Validate every row before any insertion. Failure rolls back the whole batch.
   rows:=folio_private.csv_rows(p_account,p_rows);
   for item in select value from jsonb_array_elements(rows) loop
@@ -88,6 +90,16 @@ begin
     end if;
     seen:=array_append(seen,item::text);
   end loop;
+  snapshot:=public.workspace_snapshot();
+  if exists (
+    select 1 from (
+      select (a->>'balance_paise')::numeric as amount from jsonb_array_elements(snapshot->'accounts') a
+      union all select value::numeric from jsonb_each_text(snapshot->'summary') where key<>'month'
+      union all select (b->>'spent_paise')::numeric from jsonb_array_elements(snapshot->'budgets') b
+      union all select (c->>'income_paise')::numeric from jsonb_array_elements(snapshot->'cashflow') c
+      union all select (c->>'outflow_paise')::numeric from jsonb_array_elements(snapshot->'cashflow') c
+    ) totals where abs(amount)>1000000000000
+  ) then raise exception 'CSV import exceeds supported financial totals.' using errcode='22003'; end if;
   result:=jsonb_build_object('inserted',inserted,'skipped',skipped);
   insert into folio_private.csv_import_receipts(user_id,request_id,payload_hash,result) values(owner_id,p_request_id,digest,result);
   return result;

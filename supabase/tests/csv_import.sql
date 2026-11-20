@@ -64,6 +64,11 @@ select pg_temp.csv_error(format('select public.import_csv_entries(%L,%L,null)',c
 select pg_temp.csv_error(format('select public.preview_csv_import(%L,%L)',current_setting('folio.csv_account_b'),current_setting('folio.csv_rows')),'42501','foreign account rejected');
 select pg_temp.csv_error(format('select public.preview_csv_import(%L,%L)',current_setting('folio.csv_account'),jsonb_build_array(current_setting('folio.csv_row')::jsonb||jsonb_build_object('category_id',current_setting('folio.csv_category_b')))),'42501','foreign category rejected');
 select pg_temp.csv_error(format('select public.preview_csv_import(%L,%L)',current_setting('folio.csv_account'),jsonb_build_array(current_setting('folio.csv_row')::jsonb||jsonb_build_object('occurred_on',folio_private.today()-31))),'42501','preopening date rejected');
+-- Per-row valid amounts must not strand the dashboard outside its total range.
+select set_config('folio.csv_income_category',(select id::text from public.categories where name='Salary'),true);
+select pg_temp.csv_error(format('select public.import_csv_entries(%L,%L,gen_random_uuid())',current_setting('folio.csv_account'),jsonb_build_array(current_setting('folio.csv_row')::jsonb||jsonb_build_object('kind','income','amount_paise',1000000000000,'category_id',current_setting('folio.csv_income_category'),'description','Too large income'))),'22003','account/asset total overflow rolls back');
+select pg_temp.csv_error(format('select public.import_csv_entries(%L,%L,gen_random_uuid())',current_setting('folio.csv_account'),jsonb_build_array(current_setting('folio.csv_row')::jsonb||'{"amount_paise":1000000000000,"description":"Too large expense"}'::jsonb)),'22003','monthly expense overflow rolls back');
+select pg_temp.csv_assert((select count(*)=2 from public.transactions),'range rejection retains original ledger only');
 update public.accounts set archived_at=now() where id=current_setting('folio.csv_account')::uuid;
 select pg_temp.csv_error(format('select public.preview_csv_import(%L,%L)',current_setting('folio.csv_account'),current_setting('folio.csv_rows')),'42501','archived account rejected');
 -- Completed receipt remains retry-safe even if the account has since been archived.
