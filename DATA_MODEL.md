@@ -35,3 +35,7 @@ Planned surplus uses profile income − living budget − active loan EMI. Inclu
 ## Validation and future scope
 
 `supabase/tests/security_and_accounting.sql` contains 101 isolation/accounting assertions on rolled-back fixtures. `bootstrap.sql` is for disposable non-Supabase Postgres only; never run it hosted. `hosted_acceptance.sql` is DDL-free and rolls back generated Auth/financial fixtures. User exports/deletion UI, immutable audit history, CSV imports, reminders and encrypted offline editing are later work. Database owner deletion cascades owned records, but no client account-deletion flow is provided.
+
+## Phase 3 · saved_simulations (review migration)
+
+Immutable owner-scoped v1 purchase snapshots store a name, integer price paise, numeric APR, EMI/delay months, payment method and integer-paise income/living/EMI/liquid-cash/reserve assumptions, plus UUID/version/creation time. RLS restricts SELECT/INSERT/DELETE to the non-anonymous owner; no UPDATE is granted. An owner/date/id index supports ten-record pages. A snapshot is independent of financial rows and never modifies balances or loans. The migration is additive and pending hosted rollout.

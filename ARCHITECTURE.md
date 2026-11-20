@@ -33,3 +33,7 @@ After one online load, private mode can load its shell offline but stays locked;
 ## Version identification
 
 Vite compiles the public package version into private-mode footers as `__FOLIO_VERSION__`. `folio-build.json` exposes the same `appVersion` alongside the Git revision and mode. This lets acceptance testers confirm service-worker activation without inspecting browser storage or exposing user data. A release-version change updates the app chunks/precache manifest and exercises the existing waiting-worker update prompt.
+
+## Phase 3 · private saved comparisons
+
+SavedSimulations wraps the existing simulator only in private mode. It validates incoming records, snapshots the five financial assumptions and restores those assumptions until the user explicitly chooses the current plan. The immutable v1 input format is paired with the existing paise-safe calculation; future math changes must preserve version compatibility. Reads paginate in stable date/id order and abort on unmount. The existing AuthGate and no-store fetch policy cover saved financial assumptions, with no browser persistence. Saving uses a stable content-associated UUID with INSERT ON CONFLICT DO NOTHING; no UPDATE policy or ledger RPC is introduced.

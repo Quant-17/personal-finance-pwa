@@ -58,3 +58,7 @@ npm run verify:release -- dist private https://YOUR_PROJECT.supabase.co
 [Product](PRODUCT_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Data model](DATA_MODEL.md) · [Roadmap](ROADMAP.md) · [Agent guide](AGENTS.md) · [Phase 2 setup](PHASE2_SETUP.md) · [Phase 1 deployment](DEPLOYMENT.md)
 
 No analytics, external fonts, bank credentials, full card numbers, push notifications or private offline editing. Loan estimates exclude fees, GST, insurance and lender-specific day counts. Original icons: `python scripts/generate-icons.py` (Pillow required).
+
+## Phase 3 review · saved purchase comparisons
+
+Private simulator snapshots can be named, saved, reopened with their original assumptions, switched to the current plan and deleted. The additive migration and rollout steps are in [PHASE3_SETUP.md](PHASE3_SETUP.md). This feature is under review; the hosted Phase 2 database/app have not been changed. CSV import is a later slice.
