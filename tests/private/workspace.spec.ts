@@ -172,6 +172,17 @@ test("offline and background locks remove private views; reconnect verifies agai
   await expect(
     page.getByRole("heading", { name: "Fixture checking" }),
   ).toBeVisible();
+  // Finish initial static-shell installation before deliberately interrupting the network.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          async () =>
+            !!(await navigator.serviceWorker.getRegistration())?.active,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(true);
   await context.setOffline(true);
   await expect(
     page.getByRole("heading", { name: "Workspace locked" }),
@@ -408,7 +419,9 @@ test("saved comparisons retry safely, survive refresh, restore assumptions and d
   await page
     .getByRole("button", { name: "Save comparison", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Comparison saved");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Comparison saved" }),
+  ).toBeVisible();
   expect(rows).toHaveLength(1);
   expect(savedIds[0]).toBe(savedIds[1]);
   expect(rows[0].price_paise).toBe(5000029);
@@ -1051,4 +1064,366 @@ test("saved document terms can be edited without the PDF and failed saves reuse 
       reported_emi_paise: 100000,
     },
   });
+});
+
+function investmentFixture() {
+  return {
+    id: "7f652a10-ef89-4c22-a990-188c07a81721",
+    name: "Fixture NPS",
+    scheme: "nps_tier_1",
+    provider: "Fixture CRA",
+    funding_source: "self",
+    locked_until: null as string | null,
+    account_id: null as string | null,
+    archived: false,
+    revision: 1,
+    value_paise: 2000029,
+    valued_on: "2026-01-01",
+    valuation_id: "7f652a10-ef89-4c22-a990-188c07a81722",
+    self_paise: 0,
+    employer_paise: 0,
+    withdrawn_paise: 0,
+    fy_self_paise: 0,
+    fy_employer_paise: 0,
+    activity_after_valuation: 0,
+  };
+}
+async function mockInvestments(page: Page, populated = false) {
+  const calls = await mock(page, true);
+  const holdings: ReturnType<typeof investmentFixture>[] = populated
+    ? [investmentFixture()]
+    : [];
+  const history: {
+    id: string;
+    holding_id: string;
+    kind: string;
+    amount_paise: number;
+    occurred_on: string;
+    note: string;
+    created_at: string;
+  }[] = populated
+    ? [
+        {
+          id: holdings[0].valuation_id,
+          holding_id: holdings[0].id,
+          kind: "valuation",
+          amount_paise: holdings[0].value_paise,
+          occurred_on: holdings[0].valued_on,
+          note: "Opening statement",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]
+    : [];
+  const saves: Record<string, unknown>[] = [];
+  const activity: Record<string, unknown>[] = [];
+  let failActivity = false;
+  const refresh = () => {
+    for (const h of holdings) {
+      const rows = history.filter((e) => e.holding_id === h.id);
+      const latest = rows
+        .filter((e) => e.kind === "valuation")
+        .sort(
+          (a, b) =>
+            b.occurred_on.localeCompare(a.occurred_on) ||
+            b.created_at.localeCompare(a.created_at),
+        )[0];
+      if (latest) {
+        h.value_paise = latest.amount_paise;
+        h.valued_on = latest.occurred_on;
+        h.valuation_id = latest.id;
+      }
+      h.self_paise = rows
+        .filter((e) => e.kind === "self")
+        .reduce((a, e) => a + e.amount_paise, 0);
+      h.employer_paise = rows
+        .filter((e) => e.kind === "employer")
+        .reduce((a, e) => a + e.amount_paise, 0);
+      h.withdrawn_paise = rows
+        .filter((e) => e.kind === "withdrawal")
+        .reduce((a, e) => a + e.amount_paise, 0);
+      h.fy_self_paise = h.self_paise;
+      h.fy_employer_paise = h.employer_paise;
+    }
+  };
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) => {
+    refresh();
+    const base = snapshot(true);
+    const extra = holdings
+      .filter((h) => !h.account_id)
+      .reduce((a, h) => a + h.value_paise, 0);
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...base,
+        investments: holdings,
+        summary: {
+          ...base.summary,
+          net_worth_paise: String(Number(base.summary.net_worth_paise) + extra),
+          assets_paise: String(Number(base.summary.assets_paise) + extra),
+        },
+      }),
+    });
+  });
+  await page.route("**/rest/v1/rpc/save_investment_holding", async (route) => {
+    const body = route.request().postDataJSON();
+    saves.push(body);
+    let h = holdings.find((h) => h.id === body.p_holding);
+    if (h) {
+      Object.assign(h, body.p_terms);
+      h.revision++;
+    } else {
+      h = {
+        ...investmentFixture(),
+        ...body.p_terms,
+        id: crypto.randomUUID(),
+        value_paise: body.p_initial_value_paise,
+        valued_on: body.p_valued_on,
+      };
+      holdings.push(h!);
+      history.push({
+        id: crypto.randomUUID(),
+        holding_id: h!.id,
+        kind: "valuation",
+        amount_paise: h!.value_paise,
+        occurred_on: h!.valued_on,
+        note: "Opening statement",
+        created_at: new Date().toISOString(),
+      });
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(h!.id),
+    });
+  });
+  await page.route("**/rest/v1/rpc/record_investment_entry", async (route) => {
+    const b = route.request().postDataJSON();
+    activity.push(b);
+    if (failActivity) {
+      failActivity = false;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Fixture temporary failure" }),
+      });
+      return;
+    }
+    let e = history.find((e) => e.id === b.p_entry);
+    if (b.p_delete) {
+      const index = history.findIndex((e) => e.id === b.p_entry);
+      history.splice(index, 1);
+    } else if (e) {
+      Object.assign(e, {
+        kind: b.p_kind,
+        amount_paise: b.p_amount_paise,
+        occurred_on: b.p_occurred_on,
+        note: b.p_note,
+      });
+    } else {
+      e = {
+        id: crypto.randomUUID(),
+        holding_id: b.p_holding,
+        kind: b.p_kind,
+        amount_paise: b.p_amount_paise,
+        occurred_on: b.p_occurred_on,
+        note: b.p_note,
+        created_at: new Date().toISOString(),
+      };
+      history.push(e);
+    }
+    const h = holdings.find((h) => h.id === b.p_holding)!;
+    h.revision++;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(e?.id ?? b.p_entry),
+    });
+  });
+  await page.route("**/rest/v1/investment_entries*", (route) => {
+    const u = new URL(route.request().url());
+    const id = u.searchParams.get("holding_id")?.replace("eq.", "");
+    const rows = history
+      .filter((e) => e.holding_id === id)
+      .sort(
+        (a, b) =>
+          b.occurred_on.localeCompare(a.occurred_on) ||
+          b.created_at.localeCompare(a.created_at),
+      );
+    const offset = Number(u.searchParams.get("offset") ?? 0);
+    return route.fulfill({
+      contentType: "application/json",
+      headers: {
+        "content-range": `${offset}-${Math.min(offset + 19, rows.length - 1)}/${rows.length}`,
+      },
+      body: JSON.stringify(rows.slice(offset, offset + 20)),
+    });
+  });
+  return {
+    calls,
+    holdings,
+    history,
+    saves,
+    activity,
+    failNextActivity: () => {
+      failActivity = true;
+    },
+  };
+}
+test("savings section creates self-funded and payroll holdings without posting bank activity", async ({
+  page,
+}) => {
+  const mock = await mockInvestments(page);
+  await login(page);
+  await page
+    .getByRole("link", { name: "Savings & investments", exact: true })
+    .click();
+  await expect(
+    page.getByText("A clearer view of your savings", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Add investment", exact: true })
+    .click();
+  await page
+    .getByLabel("Holding name", { exact: true })
+    .fill("Fixture personal NPS");
+  await page
+    .getByLabel("Latest reported value", { exact: false })
+    .fill("20000.29");
+  await expect(
+    page.getByLabel("Contribution source", { exact: true }),
+  ).toHaveValue("self");
+  await page
+    .getByRole("button", { name: "Save investment", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Fixture personal NPS", exact: true }),
+  ).toBeVisible();
+  expect(mock.saves[0]).toMatchObject({
+    p_initial_value_paise: 2000029,
+    p_terms: { scheme: "nps_tier_1", funding_source: "self", account_id: null },
+  });
+  await page
+    .getByRole("button", { name: "Add investment", exact: true })
+    .click();
+  await page.getByLabel("Scheme", { exact: true }).selectOption("epf");
+  await expect(
+    page.getByLabel("Contribution source", { exact: true }),
+  ).toHaveValue("payroll");
+  await page
+    .getByLabel("Holding name", { exact: true })
+    .fill("Fixture payroll EPF");
+  await page
+    .getByLabel("Latest reported value", { exact: false })
+    .fill("5000.00");
+  await page
+    .getByRole("button", { name: "Save investment", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Fixture payroll EPF", exact: true }),
+  ).toBeVisible();
+  expect(mock.saves[1]).toMatchObject({
+    p_terms: { scheme: "epf", funding_source: "payroll" },
+  });
+  expect(
+    mock.calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.getByText("₹45,000.29", { exact: true })).toBeVisible();
+});
+test("contribution history retries safely and does not invent a valuation or cash transaction", async ({
+  page,
+}) => {
+  const mock = await mockInvestments(page, true);
+  mock.failNextActivity();
+  await login(page);
+  await page
+    .getByRole("link", { name: "Savings & investments", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Record contribution", exact: true })
+    .click();
+  await page.getByLabel("Activity amount", { exact: false }).fill("123.29");
+  await page
+    .getByRole("button", { name: "Save history entry", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("unchanged retry");
+  await page
+    .getByRole("button", { name: "Save history entry", exact: true })
+    .click();
+  await expect(
+    page.getByText("Investment history saved.", { exact: false }),
+  ).toBeVisible();
+  expect(mock.activity).toHaveLength(2);
+  expect(mock.activity[0]).toEqual(mock.activity[1]);
+  expect(mock.activity[0]).toMatchObject({
+    p_kind: "self",
+    p_amount_paise: 12329,
+    p_expected_revision: 1,
+  });
+  expect(mock.holdings[0].value_paise).toBe(2000029);
+  expect(mock.history.filter((e) => e.kind === "self")).toHaveLength(1);
+  await page.getByRole("button", { name: "Update value", exact: true }).click();
+  await page.getByLabel("Reported value", { exact: false }).fill("21000.57");
+  await page
+    .getByRole("button", { name: "Save history entry", exact: true })
+    .click();
+  await expect(
+    page.getByText("Investment history saved.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("₹21,000.57", { exact: true }).first(),
+  ).toBeVisible();
+  expect(mock.holdings[0].value_paise).toBe(2100057);
+  expect(
+    mock.calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+});
+test("investment history is editable and clears when the workspace locks", async ({
+  page,
+  context,
+}) => {
+  const mock = await mockInvestments(page, true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page
+    .getByRole("link", { name: "Savings & investments", exact: true })
+    .click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await expect(
+    page.getByText("Opening statement", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Edit history entry", exact: true })
+    .click();
+  await page.getByLabel("Reported value", { exact: false }).fill("20500.29");
+  await page
+    .getByRole("button", { name: "Save history entry", exact: true })
+    .click();
+  await expect(
+    page.getByText("Investment history saved.", { exact: false }),
+  ).toBeVisible();
+  expect(mock.activity[0]).toMatchObject({
+    p_entry: investmentFixture().valuation_id,
+    p_amount_paise: 2050029,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await context.setOffline(true);
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Fixture NPS", exact: true }),
+  ).toHaveCount(0);
+  const stored = await page.evaluate(() =>
+    Object.keys(localStorage).filter(
+      (k) => !k.startsWith("folio-auth-") && k !== "folio-theme",
+    ),
+  );
+  expect(stored).toEqual([]);
 });

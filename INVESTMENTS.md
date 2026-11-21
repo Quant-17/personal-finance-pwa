@@ -1,0 +1,34 @@
+# Savings & investments · v0.3.2-rc.1 review
+
+A dedicated private section for NPS Tier I, NPS Tier II, PPF, EPF/EPFO and other manually valued investments. This is the owner-requested slice ahead of broader Stage 4 work. It is on a review branch: no hosted migration, deployment, real portfolio entry or provider connection has occurred.
+
+## Owner workflow
+
+1. Open **Savings & investments → Add investment**. Enter a name, scheme, optional provider, latest reported value and statement date. A lock-in/target-access date is optional and entered manually; the app does not determine statutory withdrawal eligibility. No PRAN, UAN, account number, password or provider login is required.
+2. NPS/PPF default to **Self-funded**; EPF defaults to **Deducted through payroll**, following the owner's clarification. Mixed funding can be chosen. Record your own and employer contributions separately. EPF reported values should exclude EPS pension amounts that are not part of the EPF balance.
+3. Record contribution or withdrawal history as needed. This records amounts and dates only: it does not post to bank accounts, change income/expenses, transfer cash, or infer a new statement value. In particular, EPF deductions already reflected in take-home salary are not deducted again. Record actual self-funded bank movements separately in the existing ledger. When using an existing investment account, a bank-to-investment transfer can represent its funding once.
+4. Use **Update value** for the full balance on a later statement, not the change in value. Latest statement date determines reported value; same-date reports use creation time and UUID to break ties. Backdated statements remain in history. Activity after the latest valuation date is flagged. Contributions and withdrawals are not automatically added to/subtracted from that dated snapshot.
+5. **History** offers 20-row pages and correction/removal. At least one valuation must remain. Removing the latest statement restores the previous reported value. These corrections do not alter bank transactions.
+6. If an investment is already included in an existing investment-type account, select it under **Net-worth treatment**. Net worth then uses the account balance, not an extra copy of the holding value. An account can link to only one holding. The reported holding value and account balance remain separately maintained; updating one does not update the other. Regular bank savings stay in Accounts, and savings goals remain cash earmarks.
+7. Archive a holding to hide it from the active list. Its value remains in portfolio and net-worth totals. Reopen it to add/edit history; archiving does not erase an asset.
+
+Portfolio totals use the latest reported value, not a live price. FY contribution cards use India's April–March financial year and distinguish your contributions from employer contributions. Recorded history is not assumed to be complete lifetime cost basis, so no return, CAGR, XIRR, interest accrual, market gain or tax benefit is inferred. Funding source is descriptive; it does not automate payroll or bank deductions. Use take-home income and account for planned self-funded contributions in your existing monthly plan until a dedicated contribution forecasting feature is introduced.
+
+## Accounting and security
+
+Two owner-scoped tables store holding metadata and valuation/contribution/withdrawal history. Authenticated clients have owner-only SELECT via cached-identity RLS; direct writes and anonymous access are denied. Narrow invoker RPC wrappers call unexposed owner-checking implementations with empty search paths. Every mutation has an idempotent request receipt and optimistic holding revision. Per-owner investment locks serialize portfolio mutations, and account links are verified under account locks. Unknown fields, future activity, invalid dates/types and unsafe totals are rejected server-side. Paise amounts and aggregate reporting retain exact integer precision.
+
+`investment_portfolio()` returns each holding's latest valuation, tracked history totals, FY totals and a count of later activity. `workspace_snapshot()` includes that portfolio and adds only unlinked reported values to assets/net worth. Investment holdings never raise liquid cash or Buy Simulator available cash; linked accounts retain the existing investment-account exclusion from spendable cash. Archived assets remain counted, consistent with existing account behavior. Holding values and account balances may have different as-of dates and require owner reconciliation.
+
+Private financial state remains in React memory. History fetches abort on unmount/lock/sign-out; mutation responses are ignored after unmount. No new browser storage, runtime caching, credentials, remote pricing service or paid API is introduced. The synthetic demo is unchanged. All fixtures are synthetic.
+
+## Validation and release
+
+Migration: `supabase/migrations/20261121085750_savings_investments.sql`. Do not apply it to hosted Supabase until release approval. A hosted tool may assign a different migration version; align filenames with actual history before any later CLI push. Never run bootstrap.sql on managed Supabase.
+
+- `src/private/investments.test.ts`: paise aggregation, India FY boundaries, archived/link treatment, dated values versus contribution totals, input validation.
+- `supabase/tests/investments.sql`: portfolio accounting, cash separation, self/payroll/employer history, reported valuations, edits/deletes, FY filtering, retries, stale forms, ownership, anonymous denial, archive/link guards and atomic range rejection.
+- `supabase/tests/investments_hosted_acceptance.sql`: DDL-free rollback-only smoke prepared for hosted release; generated .invalid users and synthetic records all roll back. It runs against disposable Postgres in CI now; hosted execution remains pending.
+- Private browser tests exercise empty/create flows, source defaults, exact paise, failed-request retry, value/history editing, mobile overflow and offline privacy lock. A two-connection investment retry harness checks that only one contribution/revision increment is committed and no bank posting occurs. Existing CSV, loan, saved-simulator and demo regressions remain in CI.
+
+For local preview use Node 24, `npm ci`, the existing publishable private-mode configuration and `npm run dev`. Replay migrations only on a disposable database. Run lint, typecheck, tests and builds using AGENTS.md commands. After an approved merge/migration, run hosted acceptance and advisors, deploy the private build, verify served assets/headers/PWA updates, and owner-test iPhone Safari and Windows. Existing v0.3.1-rc.1 remains the live private release until then. No release approval from a previous PR is reused for this slice.

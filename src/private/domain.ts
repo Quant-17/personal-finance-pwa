@@ -112,6 +112,27 @@ export const transactionSchema = z.object({
   transfer_id: id.nullable(),
   created_at: z.string(),
 });
+export const investmentHoldingSchema = z.object({
+  id,
+  name: z.string(),
+  scheme: z.enum(["nps_tier_1", "nps_tier_2", "ppf", "epf", "other"]),
+  provider: z.string(),
+  funding_source: z.enum(["self", "payroll", "mixed"]),
+  locked_until: z.string().nullable(),
+  account_id: id.nullable(),
+  archived: z.boolean(),
+  revision: z.number().int().positive(),
+  value_paise: paise.refine((v) => v >= 0),
+  valued_on: z.string(),
+  valuation_id: id,
+  self_paise: paise.refine((v) => v >= 0),
+  employer_paise: paise.refine((v) => v >= 0),
+  withdrawn_paise: paise.refine((v) => v >= 0),
+  fy_self_paise: paise.refine((v) => v >= 0),
+  fy_employer_paise: paise.refine((v) => v >= 0),
+  activity_after_valuation: z.number().int().nonnegative(),
+});
+export type InvestmentHolding = z.infer<typeof investmentHoldingSchema>;
 export const snapshotSchema = z.object({
   profile: z.object({
     id,
@@ -121,6 +142,7 @@ export const snapshotSchema = z.object({
     emergency_reserve_paise: paise,
   }),
   accounts: z.array(accountSchema),
+  investments: z.array(investmentHoldingSchema).optional().default([]),
   categories: z.array(categorySchema),
   loans: z.array(loanSchema),
   subscriptions: z.array(subscriptionSchema),
