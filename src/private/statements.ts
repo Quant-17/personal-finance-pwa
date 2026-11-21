@@ -8,6 +8,11 @@ import {
   statementDatePrefix,
 } from "./statementLayouts";
 export type StatementDraft = {
+  card_statement?: boolean;
+  direction?: "debit" | "credit" | "unknown";
+  narration?: string;
+  subscription_id?: string;
+  rule_note?: string;
   source_row: string;
   page: number;
   source: string;
@@ -25,7 +30,7 @@ export type StatementDraft = {
 export type StatementEntry = {
   source_row: string;
   entry:
-    | CsvEntry
+    | (CsvEntry & { subscription_id?: string })
     | {
         kind: "loan_payment";
         occurred_on: string;
@@ -147,12 +152,18 @@ export function extractStatement(
         ) &&
         line.text.trim() &&
         !numberPattern.test(line.text)
-      )
+      ) {
+        previous.narration = (
+          (previous.narration ?? previous.description) +
+          " " +
+          line.text.trim()
+        ).slice(0, 1200);
         previous.description = (
           previous.description +
           " " +
           line.text.trim()
         ).slice(0, 240);
+      }
       numberPattern.lastIndex = 0;
       continue;
     }
@@ -174,11 +185,13 @@ export function extractStatement(
         m[1].startsWith("("),
     }));
     let amount = "",
+      direction: StatementDraft["direction"] = "unknown",
       kind: StatementDraft["kind"] = "",
       note = "Review amount and transaction type.";
     if (card && values.length === 1) {
       amount = values[0].amount;
       kind = values[0].credit ? "" : "expense";
+      direction = values[0].credit ? "credit" : "debit";
       note = values[0].credit
         ? "Credit/refund/payment: reconcile manually; do not treat it as salary."
         : "Card debit: verify this is a settled purchase.";
@@ -199,10 +212,12 @@ export function extractStatement(
       const debits = classified.filter((v) => v.column?.label === "expense"),
         credits = classified.filter((v) => v.column?.label === "credit");
       if (debits.length === 1 && credits.length === 0) {
+        direction = "debit";
         amount = debits[0].amount;
         kind = "expense";
         note = "Debit column: compare with the original statement.";
       } else if (credits.length === 1 && debits.length === 0) {
+        direction = "credit";
         amount = credits[0].amount;
         note =
           "Credit: review whether income, refund or a transfer. Excluded until classified.";
@@ -236,6 +251,9 @@ export function extractStatement(
     ).slice(0, 240);
     const date = statementDate(dateMatch[1], endingMonth);
     rows.push({
+      direction,
+      card_statement: card,
+      narration: (line.narration ?? rest).slice(0, 1200),
       source_row: `${line.page}:${line.line}`,
       page: line.page,
       source: (line.source_context ?? line.text).slice(0, 1200),
@@ -327,9 +345,21 @@ export function reviewedStatementEntry(
   );
   if (!category)
     throw new Error("Choose a category matching the transaction type.");
+  if (
+    row.subscription_id &&
+    (row.kind !== "expense" ||
+      !s.subscriptions.some(
+        (sub) =>
+          sub.id === row.subscription_id &&
+          sub.active &&
+          (!sub.account_id || sub.account_id === account),
+      ))
+  )
+    throw new Error("Choose an active subscription for this account.");
   return {
     source_row: row.source_row,
     entry: {
+      ...(row.subscription_id ? { subscription_id: row.subscription_id } : {}),
       occurred_on: row.date,
       kind: row.kind,
       amount_paise: amount,

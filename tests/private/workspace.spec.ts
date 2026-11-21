@@ -1635,7 +1635,7 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
   ).toBe(false);
 });
 
-function positionedStatementPdf(kind: "sbi" | "kotak") {
+function positionedStatementPdf(kind: "sbi" | "kotak", recipient = false) {
   const cells: [string, number, number][] =
     kind === "sbi"
       ? [
@@ -1665,7 +1665,11 @@ function positionedStatementPdf(kind: "sbi" | "kotak") {
           ["Balance", 498, 750],
           ["7", 39, 700],
           ["03 May 2026", 73, 700],
-          ["SYNTHETIC SERVICE", 119, 700],
+          [
+            recipient ? "UPI/TEST CAFE/ABCD/111/food" : "SYNTHETIC SERVICE",
+            119,
+            700,
+          ],
           ["REF-ALPHA", 275, 700],
           ["10.37", 401, 700],
           ["8001.29", 529, 700],
@@ -2342,4 +2346,104 @@ test("debt simulator requires revolving card terms and reacts to protected savin
     .getByLabel("Monthly savings to protect (₹)", { exact: true })
     .fill("40000");
   await expect(page.getByRole("alert")).toContainText("short by");
+});
+
+test("recipient rules can be saved without importing, suggest next PDF and be disabled or forgotten", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  let saved: Record<string, unknown> | null = null;
+  let saves = 0;
+  let incomplete = false;
+  await page.route("**/rest/v1/statement_rules**", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      saved = {
+        ...route.request().postDataJSON(),
+        id: "6cbf5c15-56fa-4ef7-b977-ab26edc478c3",
+      };
+      saves++;
+    } else if (method === "PATCH")
+      saved = { ...saved, ...route.request().postDataJSON() };
+    const response = method === "GET" ? (saved ? [saved] : []) : saved;
+    if (method === "DELETE") saved = null;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: {
+        "content-range": `*/${saved ? (incomplete ? 2 : 1) : 0}`,
+        "access-control-expose-headers": "content-range",
+      },
+      body: JSON.stringify(response),
+    });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await page.getByLabel("Statement ending month").fill("2026-05");
+  const read = () =>
+    page.getByLabel("Choose statement PDF").setInputFiles({
+      name: "synthetic-recipient.pdf",
+      mimeType: "application/pdf",
+      buffer: positionedStatementPdf("kotak", true),
+    });
+  await read();
+  const category = page.locator('select[aria-label^="Category "]').first();
+  await expect(category).toHaveValue("");
+  await category.selectOption(categoryId);
+  await page.getByText("Remember TEST CAFE", { exact: true }).click();
+  await page.getByLabel("Remember deduction day 1:3").check();
+  await page
+    .getByRole("button", { name: "Save rule only", exact: true })
+    .click();
+  await expect(
+    page.getByText("Rule saved. No transaction was added."),
+  ).toBeVisible();
+  expect(saves).toBe(1);
+  expect(saved).toMatchObject({
+    recipient_key: "kotak-upi:ABCD:TEST CAFE",
+    category_id: categoryId,
+    amount_paise: null,
+    match_day: 3,
+    direction: "debit",
+  });
+  expect(
+    calls.some((c) => /import_statement_entries|record_entry/.test(c.path)),
+  ).toBe(false);
+  await read();
+  await expect(category).toHaveValue(categoryId);
+  await expect(page.getByText(/Remembered recipient: TEST CAFE/)).toBeVisible();
+  await expect(
+    page.locator('input[aria-label^="Select statement row "]').first(),
+  ).not.toBeChecked();
+  incomplete = true;
+  await read();
+  await expect(category).toHaveValue("");
+  await expect(
+    page.getByText("Rules unavailable. These rows need manual classification."),
+  ).toBeVisible();
+  incomplete = false;
+  await read();
+  await expect(category).toHaveValue(categoryId);
+  await category.selectOption("");
+  await expect(category).toHaveValue("");
+  await page
+    .getByText("Remembered rules for this account (1)", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Disable TEST CAFE", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Enable TEST CAFE", exact: true }),
+  ).toBeVisible();
+  await read();
+  await expect(category).toHaveValue("");
+  await page
+    .getByRole("button", { name: "Forget TEST CAFE", exact: true })
+    .click();
+  await expect(
+    page.getByText("Remembered rules for this account (0)", { exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.some((c) => /import_statement_entries|record_entry/.test(c.path)),
+  ).toBe(false);
 });

@@ -14,6 +14,14 @@ export type Database = {
   };
   public: {
     Tables: {
+      statement_rules: {
+        Row: import("./statementRules").StatementRule & { user_id: string };
+        Insert: import("./statementRules").RuleInput & { enabled?: boolean };
+        Update: Partial<import("./statementRules").RuleInput> & {
+          enabled?: boolean;
+        };
+        Relationships: [];
+      };
       investment_holdings: {
         Row: {
           id: string;

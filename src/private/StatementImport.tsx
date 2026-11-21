@@ -8,6 +8,12 @@ import { readPdfText } from "./readPdfText";
 import { extractStatement, reviewedStatementEntry } from "./statements";
 import type { StatementDraft, StatementEntry } from "./statements";
 import { check, db } from "./workspace";
+import {
+  RememberStatementRow,
+  RememberedStatementRules,
+} from "./StatementRules";
+import { statementRuleSchema, suggestStatementRule } from "./statementRules";
+import type { StatementRule, RuleInput } from "./statementRules";
 const countsSchema = z.object({
   inserted: z.number().int().min(0).max(500),
   skipped: z.number().int().min(0).max(500),
@@ -24,6 +30,9 @@ export function StatementImport({
       !a.archived_at && ["bank", "savings", "credit_card"].includes(a.type),
   );
   const [account, setAccount] = useState(accounts[0]?.id ?? "");
+  const [rules, setRules] = useState<StatementRule[]>([]);
+  const [ruleError, setRuleError] = useState("");
+  const [rulePending, setRulePending] = useState(false);
   const [month, setMonth] = useState(indiaDate().slice(0, 7));
   const [password, setPassword] = useState("");
   const [hash, setHash] = useState("");
@@ -39,6 +48,7 @@ export function StatementImport({
   const busy = useRef(false),
     mounted = useRef(true);
   const controller = useRef<AbortController | null>(null);
+  const rulesRead = useRef<AbortController | null>(null);
   const request = useRef({ signature: "", id: crypto.randomUUID() });
   useEffect(() => {
     mounted.current = true;
@@ -47,6 +57,105 @@ export function StatementImport({
       controller.current?.abort();
     };
   }, []);
+  useEffect(() => {
+    const c = new AbortController();
+    rulesRead.current = c;
+    if (account)
+      void (async () => {
+        try {
+          const result = await db()
+            .from("statement_rules")
+            .select("*", { count: "exact" })
+            .eq("account_id", account)
+            .order("id")
+            .limit(1000)
+            .abortSignal(c.signal);
+          check(result);
+          if (
+            result.count === null ||
+            result.count !== result.data!.length ||
+            result.count > 1000
+          )
+            throw new Error("Rules could not be loaded completely");
+          const data = z.array(statementRuleSchema).parse(result.data);
+          if (!c.signal.aborted) setRules(data);
+        } catch {
+          if (!c.signal.aborted)
+            setRuleError(
+              "Remembered rules could not load. PDF review remains manual; retry when connected.",
+            );
+        }
+      })();
+    return () => c.abort();
+  }, [account]);
+  const saveRule = async (rule: RuleInput) => {
+    if (busy.current || rulePending)
+      throw new Error("Wait for the current operation.");
+    busy.current = true;
+    rulesRead.current?.abort();
+    setRulePending(true);
+    try {
+      const result = await db()
+        .from("statement_rules")
+        .upsert(
+          { ...rule, enabled: true },
+          {
+            onConflict:
+              "account_id,direction,recipient_key,amount_paise,match_day",
+          },
+        )
+        .select("*")
+        .single();
+      check(result);
+      const saved = statementRuleSchema.parse(result.data);
+      if (mounted.current)
+        setRules((current) => [
+          ...current.filter((r) => r.id !== saved.id),
+          saved,
+        ]);
+    } catch {
+      throw new Error(
+        "Could not save rule. Nothing was imported. Retry when connected.",
+      );
+    } finally {
+      busy.current = false;
+      if (mounted.current) setRulePending(false);
+    }
+  };
+  const mutateRule = async (rule: StatementRule, remove: boolean) => {
+    if (busy.current || rulePending)
+      throw new Error("Wait for the current operation.");
+    busy.current = true;
+    rulesRead.current?.abort();
+    setRulePending(true);
+    try {
+      const result = remove
+        ? await db()
+            .from("statement_rules")
+            .delete()
+            .eq("id", rule.id)
+            .select("id")
+            .single()
+        : await db()
+            .from("statement_rules")
+            .update({ enabled: !rule.enabled })
+            .eq("id", rule.id)
+            .select("id")
+            .single();
+      check(result);
+      if (mounted.current)
+        setRules((current) =>
+          remove
+            ? current.filter((r) => r.id !== rule.id)
+            : current.map((r) =>
+                r.id === rule.id ? { ...r, enabled: !r.enabled } : r,
+              ),
+        );
+    } finally {
+      busy.current = false;
+      if (mounted.current) setRulePending(false);
+    }
+  };
   const invalidate = () => {
     setChecked(false);
     setConfirmed(false);
@@ -99,6 +208,7 @@ export function StatementImport({
     if (!file || busy.current) return;
     busy.current = true;
     setPending(true);
+    rulesRead.current?.abort();
     const localPassword = password;
     clear();
     const c = new AbortController();
@@ -117,7 +227,38 @@ export function StatementImport({
         s.accounts.find((a) => a.id === account)?.type === "credit_card",
       );
       if (mounted.current && !c.signal.aborted) {
-        setRows(drafts);
+        // Fetch again for another tab/device’s edits. Do not use stale rules after a failed request.
+        let fresh: StatementRule[] = [];
+        try {
+          const result = await db()
+            .from("statement_rules")
+            .select("*", { count: "exact" })
+            .eq("account_id", account)
+            .order("id")
+            .limit(1000)
+            .abortSignal(c.signal);
+          check(result);
+          if (
+            result.count === null ||
+            result.count !== result.data!.length ||
+            result.count > 1000
+          )
+            throw new Error("Rules could not be loaded completely");
+          fresh = z.array(statementRuleSchema).parse(result.data);
+          if (!c.signal.aborted) {
+            setRules(fresh);
+            setRuleError("");
+          }
+        } catch {
+          if (!c.signal.aborted)
+            setRuleError(
+              "Rules unavailable. These rows need manual classification.",
+            );
+        }
+        if (c.signal.aborted || !mounted.current) return;
+        setRows(
+          drafts.map((row) => suggestStatementRule(row, fresh, account, s)),
+        );
         setHash(doc.source_sha256);
         setPageCount(doc.pages.length);
       }
@@ -235,13 +376,23 @@ export function StatementImport({
         selected row and total with the PDF. Scanned images need manual entry;
         OCR is not included.
       </p>
+      <RememberedStatementRules
+        rules={rules}
+        snapshot={s}
+        pending={pending || rulePending}
+        onToggle={(r) => mutateRule(r, false)}
+        onDelete={(r) => mutateRule(r, true)}
+      />
+      {ruleError && <p role="status">{ruleError}</p>}
       <div className="statement-controls">
         <label>
           Statement account
           <select
-            disabled={pending || !accounts.length}
+            disabled={pending || rulePending || !accounts.length}
             value={account}
             onChange={(e) => {
+              setRules([]);
+              setRuleError("");
               setAccount(e.target.value);
               clear();
             }}
@@ -257,7 +408,7 @@ export function StatementImport({
         <label>
           Statement ending month
           <input
-            disabled={pending}
+            disabled={pending || rulePending}
             type="month"
             value={month}
             onChange={(e) => {
@@ -269,7 +420,7 @@ export function StatementImport({
         <label>
           PDF password (optional)
           <input
-            disabled={pending}
+            disabled={pending || rulePending}
             type="password"
             autoComplete="off"
             value={password}
@@ -280,7 +431,7 @@ export function StatementImport({
           Choose statement PDF
           <input
             key={fileKey}
-            disabled={pending || !account}
+            disabled={pending || rulePending || !account}
             type="file"
             accept=".pdf,application/pdf"
             onChange={(e) => void read(e.target.files?.[0])}
@@ -319,7 +470,7 @@ export function StatementImport({
             <label>
               Default expense category
               <select
-                disabled={pending}
+                disabled={pending || rulePending}
                 value={bulkCategory}
                 onChange={(e) => setBulkCategory(e.target.value)}
               >
@@ -335,7 +486,7 @@ export function StatementImport({
             </label>
             <Button
               variant="outline"
-              disabled={pending || !bulkCategory}
+              disabled={pending || rulePending || !bulkCategory}
               onClick={() => {
                 setRows((current) =>
                   current.map((r) =>
@@ -351,7 +502,7 @@ export function StatementImport({
             </Button>
             <Button
               variant="outline"
-              disabled={pending || !valid.length}
+              disabled={pending || rulePending || !valid.length}
               onClick={() => {
                 const ids = new Set(valid.map((p) => p.row.source_row));
                 setRows((current) =>
@@ -365,7 +516,11 @@ export function StatementImport({
             >
               Select reviewed valid rows
             </Button>
-            <Button variant="ghost" disabled={pending} onClick={clear}>
+            <Button
+              variant="ghost"
+              disabled={pending || rulePending}
+              onClick={clear}
+            >
               Clear statement preview
             </Button>
           </div>
@@ -414,7 +569,7 @@ export function StatementImport({
                     <td>
                       <input
                         aria-label={`Date ${r.source_row}`}
-                        disabled={pending}
+                        disabled={pending || rulePending}
                         type="date"
                         value={r.date}
                         onChange={(e) =>
@@ -425,7 +580,7 @@ export function StatementImport({
                     <td>
                       <input
                         aria-label={`Description ${r.source_row}`}
-                        disabled={pending}
+                        disabled={pending || rulePending}
                         maxLength={240}
                         value={r.description}
                         onChange={(e) =>
@@ -436,7 +591,7 @@ export function StatementImport({
                     <td>
                       <select
                         aria-label={`Type ${r.source_row}`}
-                        disabled={pending}
+                        disabled={pending || rulePending}
                         value={r.kind}
                         onChange={(e) =>
                           update(r.source_row, {
@@ -445,6 +600,7 @@ export function StatementImport({
                             loan_id: "",
                             principal: "",
                             interest: "",
+                            subscription_id: "",
                             selected: false,
                           })
                         }
@@ -460,7 +616,7 @@ export function StatementImport({
                     <td>
                       <input
                         aria-label={`Amount ${r.source_row}`}
-                        disabled={pending}
+                        disabled={pending || rulePending}
                         inputMode="decimal"
                         value={r.amount}
                         onChange={(e) =>
@@ -473,7 +629,7 @@ export function StatementImport({
                         <>
                           <select
                             aria-label={`Loan ${r.source_row}`}
-                            disabled={pending}
+                            disabled={pending || rulePending}
                             value={r.loan_id ?? ""}
                             onChange={(e) =>
                               update(r.source_row, { loan_id: e.target.value })
@@ -495,7 +651,7 @@ export function StatementImport({
                             Principal (₹)
                             <input
                               aria-label={`Principal ${r.source_row}`}
-                              disabled={pending}
+                              disabled={pending || rulePending}
                               inputMode="decimal"
                               value={r.principal ?? ""}
                               onChange={(e) =>
@@ -509,7 +665,7 @@ export function StatementImport({
                             Interest (₹)
                             <input
                               aria-label={`Interest ${r.source_row}`}
-                              disabled={pending}
+                              disabled={pending || rulePending}
                               inputMode="decimal"
                               value={r.interest ?? ""}
                               onChange={(e) =>
@@ -530,7 +686,7 @@ export function StatementImport({
                           {" "}
                           <select
                             aria-label={`Category ${r.source_row}`}
-                            disabled={pending || !r.kind}
+                            disabled={pending || rulePending || !r.kind}
                             value={r.category_id}
                             onChange={(e) =>
                               update(r.source_row, {
@@ -551,6 +707,41 @@ export function StatementImport({
                       )}
                     </td>
                     <td>
+                      {r.kind === "expense" && (
+                        <label>
+                          Subscription (optional)
+                          <select
+                            aria-label={`Subscription ${r.source_row}`}
+                            disabled={pending || rulePending}
+                            value={r.subscription_id ?? ""}
+                            onChange={(e) =>
+                              update(r.source_row, {
+                                subscription_id: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">No subscription link</option>
+                            {s.subscriptions
+                              .filter(
+                                (sub) =>
+                                  sub.active &&
+                                  (!sub.account_id ||
+                                    sub.account_id === account),
+                              )
+                              .map((sub) => (
+                                <option key={sub.id} value={sub.id}>
+                                  {sub.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                      )}
+                      <RememberStatementRow
+                        row={r}
+                        account={account}
+                        pending={pending || rulePending}
+                        onSave={saveRule}
+                      />
                       {duplicates.includes(r.source_row)
                         ? "Already imported / ledger match"
                         : issue || r.note}
@@ -567,7 +758,7 @@ export function StatementImport({
           </p>
           <Button
             variant="outline"
-            disabled={pending || !selected.length}
+            disabled={pending || rulePending || !selected.length}
             onClick={() => void preview()}
           >
             Check statement duplicates
@@ -584,7 +775,7 @@ export function StatementImport({
               <label className="csv-confirm">
                 <input
                   type="checkbox"
-                  disabled={pending || !selected.length}
+                  disabled={pending || rulePending || !selected.length}
                   checked={confirmed}
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
@@ -594,7 +785,9 @@ export function StatementImport({
                 credits.
               </label>
               <Button
-                disabled={pending || !confirmed || !selected.length}
+                disabled={
+                  pending || rulePending || !confirmed || !selected.length
+                }
                 onClick={() => void commit()}
               >
                 Import {selected.length} statement transactions
