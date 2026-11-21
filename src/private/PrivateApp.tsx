@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
+import { DataControls } from "./DataControls";
 import { DebtSimulator } from "./DebtSimulator";
 import { SavedSimulations } from "./SavedSimulations";
 import type { SimulatorInputs } from "../components/Simulator";
@@ -47,6 +48,7 @@ const pages = [
   ["simulator", "Buy simulator", Sparkles],
   ["debt-plan", "Debt repayment simulator", CalendarClock],
   ["settings", "Monthly plan", SlidersHorizontal],
+  ["data", "Data & privacy", ShieldCheck],
 ] as const;
 type Page = (typeof pages)[number][0];
 const currentPage = (): Page =>
@@ -901,6 +903,14 @@ function Workspace({
               )}
               {page === "investments" && (
                 <Investments snapshot={s} onRefresh={refresh} />
+              )}
+              {page === "data" && (
+                <DataControls
+                  snapshot={s}
+                  owner={user.id}
+                  email={user.email ?? ""}
+                  onDeleted={signOut}
+                />
               )}
               {page === "settings" && (
                 <>

@@ -519,6 +519,11 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      export_financial_data: { Args: never; Returns: Json };
+      delete_own_account: {
+        Args: { p_confirmation: string };
+        Returns: boolean;
+      };
       link_card_emi_deduction: {
         Args: { p_loan: string | null; p_transaction: string };
         Returns: string;
