@@ -5,7 +5,8 @@ do $$ begin
  if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
 end $$;
 create schema auth;
-create table auth.users(id uuid primary key, email text);
+create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
+create table auth.sessions(id uuid primary key, user_id uuid not null references auth.users(id) on delete cascade, not_after timestamptz);
 create function auth.uid() returns uuid language sql stable as $$
  select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid
 $$;

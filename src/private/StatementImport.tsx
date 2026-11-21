@@ -376,6 +376,13 @@ export function StatementImport({
         selected row and total with the PDF. Scanned images need manual entry;
         OCR is not included.
       </p>
+      <p className="small-note">
+        Before your first full-month import,{" "}
+        <a className="text-link" href="#data">
+          check opening balances and loan baselines
+        </a>
+        . Rule-only teaching never requires importing an older payment.
+      </p>
       <RememberedStatementRules
         rules={rules}
         snapshot={s}

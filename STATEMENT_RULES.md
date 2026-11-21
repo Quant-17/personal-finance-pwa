@@ -35,7 +35,7 @@ No supplied personal statements, names, amounts, dates or mandates are seeded in
 
 ## Verification and rollout
 
-Apply `supabase/migrations/20261121184516_remembered_statement_recipients.sql` before deploying this frontend. Existing import RPC signatures and old five-field income/expense payloads remain supported. A subscription-linked expense adds only `subscription_id`, validated against an active owned subscription and its optional account.
+Apply `supabase/migrations/20261121193723_remembered_statement_recipients.sql` before deploying this frontend. Existing import RPC signatures and old five-field income/expense payloads remain supported. A subscription-linked expense adds only `subscription_id`, validated against an active owned subscription and its optional account.
 
 Run lint, typecheck, Vitest, private and demo production builds/browser tests. Replay all migrations on disposable Postgres, run existing SQL accounting/isolation/concurrency suites, and `supabase/tests/statement_rules.sql` (synthetic records, transaction rolled back). Never use `bootstrap.sql` on hosted Supabase.
 

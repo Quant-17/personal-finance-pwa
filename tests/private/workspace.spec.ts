@@ -2447,3 +2447,182 @@ test("recipient rules can be saved without importing, suggest next PDF and be di
     calls.some((c) => /import_statement_entries|record_entry/.test(c.path)),
   ).toBe(false);
 });
+
+function financialArchiveFixture() {
+  const names = [
+    "profiles",
+    "accounts",
+    "categories",
+    "transactions",
+    "loans",
+    "loan_payments",
+    "subscriptions",
+    "budgets",
+    "savings_goals",
+    "goal_allocations",
+    "loan_document_details",
+    "saved_simulations",
+    "investment_holdings",
+    "investment_entries",
+    "statement_rules",
+  ];
+  const data = Object.fromEntries(
+    names.map((name) => [name, [] as Record<string, unknown>[]]),
+  );
+  data.transactions = [
+    {
+      user_id: owner,
+      amount_paise: "-10029",
+      occurred_on: "2026-01-01",
+      description: "Synthetic earlier expense",
+    },
+  ];
+  return {
+    format: "folio-financial-export",
+    schema_version: 1,
+    owner_id: owner,
+    exported_at: "2026-09-20T12:30:45+00:00",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+    data,
+  };
+}
+test("data export downloads complete owned history and readiness changes no records", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  await page.route("**/rest/v1/rpc/export_financial_data", (route) =>
+    route.fulfill({ json: financialArchiveFixture() }),
+  );
+  await login(page);
+  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await page.getByLabel("Month to reconcile").fill("2025-12");
+  await expect(
+    page.getByText(/Review the opening date and statement opening balance/),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Download financial data", exact: true })
+    .click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(
+    /^folio-export-\d{4}-\d{2}-\d{2}\.json$/,
+  );
+  const stream = await file.createReadStream();
+  let text = "";
+  for await (const chunk of stream!) text += chunk.toString();
+  expect(JSON.parse(text).data.transactions[0]).toMatchObject({
+    amount_paise: "-10029",
+    occurred_on: "2026-01-01",
+  });
+  expect(
+    calls.some((c) =>
+      /record_entry|record_loan_payment|import_statement_entries|delete_own_account/.test(
+        c.path,
+      ),
+    ),
+  ).toBe(false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+});
+test("an invalid export never produces a partial download", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route("**/rest/v1/rpc/export_financial_data", (route) =>
+    route.fulfill({
+      json: {
+        ...financialArchiveFixture(),
+        owner_id: "79a7ef42-47a8-49bd-95bb-2440263ad9a0",
+      },
+    }),
+  );
+  let downloads = 0;
+  page.on("download", () => downloads++);
+  await login(page);
+  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Download financial data", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Export could not be completed" }),
+  ).toBeVisible();
+  expect(downloads).toBe(0);
+});
+test("account deletion requires confirmation, current password and a deliberate final action", async ({
+  page,
+}) => {
+  await mock(page, true);
+  let deletes = 0;
+  await login(page);
+  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await page
+    .getByText("Open account deletion controls", { exact: true })
+    .click();
+  const erase = page.getByRole("button", {
+    name: "Permanently delete my account",
+    exact: true,
+  });
+  await expect(erase).toBeDisabled();
+  await page
+    .getByLabel("Account deletion confirmation", { exact: true })
+    .fill("DELETE MY ACCOUNT");
+  await page
+    .getByLabel("Current password for deletion", { exact: true })
+    .fill("wrong-fixture-password");
+  await page
+    .getByLabel("I have saved anything I need", { exact: false })
+    .check();
+  await page.route("**/auth/v1/token?grant_type=password", async (route) => {
+    const body = route.request().postDataJSON();
+    await route.fulfill(
+      body.password === "correct-fixture-password"
+        ? { json: session }
+        : {
+            status: 400,
+            json: {
+              error: "invalid_grant",
+              error_description: "Invalid login credentials",
+            },
+          },
+    );
+  });
+  await page.route("**/rest/v1/rpc/delete_own_account", async (route) => {
+    deletes++;
+    expect(route.request().postDataJSON()).toEqual({
+      p_confirmation: "DELETE MY ACCOUNT",
+    });
+    await route.fulfill({ json: true });
+  });
+  await erase.click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({
+        hasText: "Password confirmation failed. Nothing was deleted.",
+      }),
+  ).toBeVisible();
+  expect(deletes).toBe(0);
+  await expect(page.getByLabel("Current password for deletion")).toHaveValue(
+    "",
+  );
+  await page
+    .getByLabel("Current password for deletion")
+    .fill("correct-fixture-password");
+  await erase.click();
+  await expect(
+    page.getByRole("heading", { name: "A little peace of mind." }),
+  ).toBeVisible();
+  expect(deletes).toBe(1);
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).filter((k) => k.startsWith("folio-auth-")),
+    ),
+  ).toEqual([]);
+});
