@@ -1,6 +1,6 @@
-# Savings & investments · v0.3.2-rc.1 review
+# Savings & investments · v0.3.2-rc.1
 
-A dedicated private section for NPS Tier I, NPS Tier II, PPF, EPF/EPFO and other manually valued investments. This is the owner-requested slice ahead of broader Stage 4 work. It is on a review branch: no hosted migration, deployment, real portfolio entry or provider connection has occurred.
+A dedicated private section for NPS Tier I, NPS Tier II, PPF, EPF/EPFO and other manually valued investments. This is the owner-requested slice ahead of broader Stage 4 work. The owner explicitly approved PR #10 merge, hosted migration and private deployment. The feature is live; no real portfolio entries or provider connections were created. See INVESTMENTS_RELEASE.md for release evidence and remaining device acceptance.
 
 ## Owner workflow
 
@@ -24,11 +24,11 @@ Private financial state remains in React memory. History fetches abort on unmoun
 
 ## Validation and release
 
-Migration: `supabase/migrations/20261121085750_savings_investments.sql`. Do not apply it to hosted Supabase until release approval. A hosted tool may assign a different migration version; align filenames with actual history before any later CLI push. Never run bootstrap.sql on managed Supabase.
+Migration: `supabase/migrations/20261121092504_savings_investments.sql`. It is applied after owner approval. The repository filename is aligned to the assigned hosted version; the original review version was 20261121085750 and the SQL is unchanged. Never run bootstrap.sql on managed Supabase.
 
 - `src/private/investments.test.ts`: paise aggregation, India FY boundaries, archived/link treatment, dated values versus contribution totals, input validation.
 - `supabase/tests/investments.sql`: portfolio accounting, cash separation, self/payroll/employer history, reported valuations, edits/deletes, FY filtering, retries, stale forms, ownership, anonymous denial, archive/link guards and atomic range rejection.
-- `supabase/tests/investments_hosted_acceptance.sql`: DDL-free rollback-only smoke prepared for hosted release; generated .invalid users and synthetic records all roll back. It runs against disposable Postgres in CI now; hosted execution remains pending.
+- `supabase/tests/investments_hosted_acceptance.sql`: DDL-free rollback-only smoke prepared for hosted release; generated .invalid users and synthetic records all roll back. It runs against disposable Postgres in CI now; it also passed on the actual hosted project after migration.
 - Private browser tests exercise empty/create flows, source defaults, exact paise, failed-request retry, value/history editing, mobile overflow and offline privacy lock. A two-connection investment retry harness checks that only one contribution/revision increment is committed and no bank posting occurs. Existing CSV, loan, saved-simulator and demo regressions remain in CI.
 
-For local preview use Node 24, `npm ci`, the existing publishable private-mode configuration and `npm run dev`. Replay migrations only on a disposable database. Run lint, typecheck, tests and builds using AGENTS.md commands. After an approved merge/migration, run hosted acceptance and advisors, deploy the private build, verify served assets/headers/PWA updates, and owner-test iPhone Safari and Windows. Existing v0.3.1-rc.1 remains the live private release until then. No release approval from a previous PR is reused for this slice.
+For local preview use Node 24, `npm ci`, the existing publishable private-mode configuration and `npm run dev`. Replay migrations only on a disposable database. Run lint, typecheck, tests and builds using AGENTS.md commands. The approved merge/migration/deployment, hosted acceptance and live asset/header checks are complete. Owner iPhone Safari and Windows acceptance remains pending. The private app is v0.3.2-rc.1; broader Stage 4 remains paused.

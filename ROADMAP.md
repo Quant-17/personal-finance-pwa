@@ -34,9 +34,9 @@ Saved comparisons and canonical CSV import are integrated from PRs #4 and #5, wi
 
 The owner requested this slice before Stage 4. Implemented local digital-PDF extraction for CRED/Credit Saison, Kotak card EMI and L&T, editable terms and repayment rows with page references, explicitly confirmed paid-through suggestions, quoted EMI versus estimates, dated current-balance updates, owner-only structured persistence, retry/revision/duplicate guards and linked-card liability treatment. No original documents or owner financial figures are fixtures. See LOAN_DOCUMENT_IMPORT.md for limits and review/release gates. The owner explicitly approved PR #8 merge, hosted migration and private publication on 21 November 2026 IST. The release is live; owner device acceptance remains pending. Stage 4 is not started. See LOAN_DOCUMENT_RELEASE.md.
 
-## Owner-requested savings & investments · review branch
+## Owner-requested savings & investments · published
 
-NPS Tier I/Tier II, PPF, EPF/EPFO and other manual holdings; separate own/employer/payroll history, dated statement valuations, India FY totals, allocation view, editable/paginated history and archive support. Investment values contribute to net worth without becoming available cash; existing investment-account links prevent double-counting. Contributions do not automatically post bank transactions or adjust a statement value. See INVESTMENTS.md. Hosted migration/publication and actual-device acceptance remain pending. This narrow owner-requested slice does not start broader Stage 4 work.
+NPS Tier I/Tier II, PPF, EPF/EPFO and other manual holdings; separate own/employer/payroll history, dated statement valuations, India FY totals, allocation view, editable/paginated history and archive support. Investment values contribute to net worth without becoming available cash; existing investment-account links prevent double-counting. Contributions do not automatically post bank transactions or adjust a statement value. See INVESTMENTS.md. The owner explicitly approved PR #10 merge, migration and private publication. v0.3.2-rc.1 is live; actual-device acceptance remains pending. See INVESTMENTS_RELEASE.md. This narrow owner-requested slice does not start broader Stage 4 work.
 
 ## Later
 
