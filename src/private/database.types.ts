@@ -14,39 +14,6 @@ export type Database = {
   };
   public: {
     Tables: {
-      gmail_connections: {
-        Row: {
-          user_id: string;
-          status: string;
-          mailbox: string | null;
-          last_synced_at: string | null;
-          has_more: boolean;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-      gmail_receipts: {
-        Row: {
-          id: string;
-          user_id: string;
-          message_id: string;
-          dedupe_key: string;
-          merchant: string;
-          amount_paise: number | null;
-          occurred_on: string;
-          kind: string;
-          reference: string;
-          subscription_hint: string | null;
-          status: string;
-          needs_attention: boolean;
-          transaction_id: string | null;
-          created_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
       investment_holdings: {
         Row: {
           id: string;
@@ -526,19 +493,18 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      gmail_plan_status: { Args: Record<PropertyKey, never>; Returns: Json };
-      review_gmail_receipt: {
+      preview_statement_import: {
+        Args: { p_account: string; p_source_sha256: string; p_rows: Json };
+        Returns: Json;
+      };
+      import_statement_entries: {
         Args: {
-          p_receipt: string;
-          p_action: string;
-          p_account?: string;
-          p_category?: string;
-          p_amount_paise?: number;
-          p_date?: string;
-          p_subscription?: string;
-          p_existing?: string;
+          p_account: string;
+          p_source_sha256: string;
+          p_rows: Json;
+          p_request_id: string;
         };
-        Returns: string;
+        Returns: Json;
       };
       investment_portfolio: { Args: never; Returns: Json };
       save_investment_holding: {

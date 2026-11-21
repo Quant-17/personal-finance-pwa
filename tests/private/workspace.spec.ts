@@ -87,13 +87,7 @@ async function mock(page: Page, populated = false, confirmed = true) {
     else if (path === "/auth/v1/user")
       response = confirmed ? user : { ...user, email_confirmed_at: null };
     else if (path === "/rest/v1/rpc/workspace_snapshot") response = data;
-    else if (
-      path === "/rest/v1/transactions" ||
-      path === "/rest/v1/gmail_receipts"
-    )
-      response = [];
-    else if (path === "/rest/v1/rpc/gmail_plan_status")
-      response = { pending: 0, subscription_paid_paise: "0" };
+    else if (path === "/rest/v1/transactions") response = [];
     else if (
       path === "/rest/v1/accounts" &&
       route.request().method() === "POST"
@@ -549,11 +543,9 @@ test("CSV preview excludes invalid/repeated/existing rows and requires confirmat
   );
   await login(page);
   await page.goto("/#activity");
-  await page
-    .getByText("Advanced: legacy CSV import", { exact: true })
-    .evaluate((el) => {
-      (el.parentElement as HTMLDetailsElement).open = true;
-    });
+  await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
+    (el.parentElement as HTMLDetailsElement).open = true;
+  });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "synthetic.csv",
     mimeType: "text/csv",
@@ -626,22 +618,18 @@ test("CSV invalid files stay local, preview clears offline, and mobile layout re
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   await page.goto("/#activity");
-  await page
-    .getByText("Advanced: legacy CSV import", { exact: true })
-    .evaluate((el) => {
-      (el.parentElement as HTMLDetailsElement).open = true;
-    });
+  await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
+    (el.parentElement as HTMLDetailsElement).open = true;
+  });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "bad.csv",
     mimeType: "text/csv",
     buffer: Buffer.from("unexpected,header\n1,2"),
   });
   await expect(page.getByRole("alert")).toContainText("Use the columns");
-  await page
-    .getByText("Advanced: legacy CSV import", { exact: true })
-    .evaluate((el) => {
-      (el.parentElement as HTMLDetailsElement).open = true;
-    });
+  await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
+    (el.parentElement as HTMLDetailsElement).open = true;
+  });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "private-fixture.csv",
     mimeType: "text/csv",
@@ -734,11 +722,9 @@ test("saved assumptions survive a CSV import that changes current available cash
     page.getByRole("button", { name: "Open Before CSV", exact: true }),
   ).toBeVisible();
   await page.goto("/#activity");
-  await page
-    .getByText("Advanced: legacy CSV import", { exact: true })
-    .evaluate((el) => {
-      (el.parentElement as HTMLDetailsElement).open = true;
-    });
+  await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
+    (el.parentElement as HTMLDetailsElement).open = true;
+  });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "combined-fixture.csv",
     mimeType: "text/csv",
@@ -800,11 +786,9 @@ test("CSV total-range rejection keeps the preview and reports that nothing was p
   );
   await login(page);
   await page.goto("/#activity");
-  await page
-    .getByText("Advanced: legacy CSV import", { exact: true })
-    .evaluate((el) => {
-      (el.parentElement as HTMLDetailsElement).open = true;
-    });
+  await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
+    (el.parentElement as HTMLDetailsElement).open = true;
+  });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "range-fixture.csv",
     mimeType: "text/csv",
@@ -848,6 +832,9 @@ function loanPdf() {
     "1 6000.00 6000.00 0.00 6000.00",
     "2 0.00 6000.00 0.00 6000.00",
   ];
+  return textPdf(lines);
+}
+function textPdf(lines: string[]) {
   const stream = `BT /F1 10 Tf 40 780 Td ${lines.map((l, i) => (i ? "0 -20 Td " : "") + `(${l.replace(/[()\\]/g, "\\$&")}) Tj`).join("\n")} ET`;
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
@@ -1459,208 +1446,161 @@ test("investment history is editable and clears when the workspace locks", async
   expect(stored).toEqual([]);
 });
 
-const gmailReceiptId = "a1edc516-b3d9-4526-97a6-ecb341ebcf71";
-const gmailSubscriptionId = "445b9ca8-2a91-4461-bef7-12668dad3252";
-const receiptFixture = {
-  id: gmailReceiptId,
-  message_id: "abc123",
-  merchant: "Swiggy",
-  amount_paise: "10029",
-  occurred_on: "2026-11-19",
-  kind: "charge",
-  reference: "SYNTHETIC-RECEIPT",
-  subscription_hint: "Swiggy One",
-  needs_attention: false,
-};
-async function gmailMock(page: Page) {
-  const calls = await mock(page, true);
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_connections**",
-    (route) =>
-      route.fulfill({
-        json: {
-          status: "connected",
-          mailbox: "receipts@example.invalid",
-          last_synced_at: null,
-          has_more: false,
-        },
-      }),
-  );
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
-    (route) => route.fulfill({ json: [receiptFixture] }),
-  );
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
-    (route) =>
-      route.fulfill({
-        json: {
-          ...snapshot(true),
-          subscriptions: [
-            {
-              id: gmailSubscriptionId,
-              name: "Fixture membership",
-              amount_paise: 10029,
-              cadence: "monthly",
-              next_due_on: "2026-11-30",
-              active: true,
-              account_id: null,
-            },
-          ],
-        },
-      }),
-  );
-  return calls;
-}
-test("Gmail drafts require review and duplicate checking; interrupted posting retries once without changing assumptions", async ({
+const statementPdf = () =>
+  textPdf([
+    "SYNTHETIC SBI / KOTAK STATEMENT - TEST DATA ONLY",
+    "Account: fictitious bank - all entries synthetic",
+    "19/11/2026 SYNTHETIC LUNCH 100.29",
+    "20/11/2026 SYNTHETIC COMMUTE 250.07",
+  ]);
+test("PDF statement stays local; reviewed rows require duplicate checking and interrupted imports retry safely", async ({
   page,
 }) => {
-  await gmailMock(page);
-  const reviews: Record<string, unknown>[] = [];
-  let posted = false;
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/rpc/review_gmail_receipt",
-    async (route) => {
-      reviews.push(route.request().postDataJSON());
-      if (reviews.length === 1) await route.abort("failed");
-      else {
-        posted = true;
-        await route.fulfill({ json: "7110da46-5e3d-4827-8d02-b92369f18611" });
-      }
-    },
-  );
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
-    (route) => route.fulfill({ json: posted ? [] : [receiptFixture] }),
-  );
+  const calls = await mock(page, true);
+  const previews: Record<string, unknown>[] = [],
+    commits: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/rpc/preview_statement_import", async (route) => {
+    previews.push(route.request().postDataJSON());
+    await route.fulfill({ json: { duplicates: [false, false] } });
+  });
+  await page.route("**/rest/v1/rpc/import_statement_entries", async (route) => {
+    commits.push(route.request().postDataJSON());
+    if (commits.length === 1) await route.abort("failed");
+    else await route.fulfill({ json: { inserted: 2, skipped: 0 } });
+  });
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Email receipts", exact: true }),
+    page.getByRole("heading", { name: "Import monthly PDF statement" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Choose CSV file")).not.toBeVisible();
-  expect(reviews).toHaveLength(0);
-  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await expect(page.getByRole("button", { name: "Connect Gmail" })).toHaveCount(
+    0,
+  );
+  await page.getByLabel("Statement ending month").fill("2026-11");
+  await page.getByLabel("PDF password (optional)").fill("synthetic-local-only");
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
+  await expect(page.getByLabel("Description 1:3")).toHaveValue(
+    "SYNTHETIC LUNCH",
+  );
+  expect(previews).toHaveLength(0);
+  expect(commits).toHaveLength(0);
+  await expect(page.getByLabel("PDF password (optional)")).toHaveValue("");
+  for (const row of ["1:3", "1:4"]) {
+    await page
+      .getByLabel(`Type ${row}`, { exact: true })
+      .selectOption("expense");
+    await page
+      .getByLabel(`Category ${row}`, { exact: true })
+      .selectOption(categoryId);
+  }
   await page
-    .getByLabel("Link subscription (optional)")
-    .selectOption(gmailSubscriptionId);
-  await page.getByRole("button", { name: "Check existing expenses" }).click();
+    .getByRole("button", { name: "Select reviewed valid rows" })
+    .click();
+  await page
+    .getByRole("button", { name: "Check statement duplicates" })
+    .click();
   await expect(
-    page.getByRole("button", { name: "Confirm expense", exact: true }),
+    page.getByRole("button", { name: "Import 2 statement transactions" }),
   ).toBeDisabled();
   await page
-    .getByLabel(
-      "I verified this settled payment, its account, amount and date.",
-    )
+    .getByLabel("I compared the selected rows", { exact: false })
     .check();
   await page
-    .getByRole("button", { name: "Confirm expense", exact: true })
+    .getByRole("button", { name: "Import 2 statement transactions" })
     .click();
   await expect(page.getByRole("alert")).toContainText(
-    "Retry the unchanged receipt safely",
+    "Retry the unchanged selection safely",
   );
   await page
-    .getByRole("button", { name: "Confirm expense", exact: true })
+    .getByRole("button", { name: "Import 2 statement transactions" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Review Swiggy receipt" }),
-  ).toHaveCount(0);
-  expect(reviews).toHaveLength(2);
-  expect(reviews[0]).toEqual(reviews[1]);
-  expect(reviews[0]).toMatchObject({
-    p_receipt: gmailReceiptId,
-    p_action: "post",
-    p_amount_paise: 10029,
-    p_account: accountId,
-    p_category: categoryId,
-    p_subscription: gmailSubscriptionId,
-  });
-  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "This month, connected" }),
+    page.getByText("Statement import complete: 2 added", { exact: false }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Living budget after subscription estimate").locator(".."),
-  ).toContainText("19,899.71");
-  await page.getByRole("link", { name: "Buy simulator", exact: true }).click();
-  await expect(
-    page.getByText("Planned monthly income", { exact: false }),
-  ).toContainText("living expenses ₹20,000");
-  await expect(
-    page.getByText("₹30,000 available.", { exact: true }),
-  ).toBeVisible();
+  expect(commits).toHaveLength(2);
+  expect(commits[0]).toEqual(commits[1]);
+  expect(commits[0].p_source_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(
+    (commits[0].p_rows as { entry: { amount_paise: number } }[]).map(
+      (r) => r.entry.amount_paise,
+    ),
+  ).toEqual([10029, 25007]);
+  const all = JSON.stringify({ previews, commits, calls });
+  expect(all).not.toContain("synthetic-local-only");
+  expect(all).not.toContain("%PDF");
+  expect(all).not.toContain("SYNTHETIC SBI / KOTAK");
+  expect(calls.some((c) => /gmail|google/.test(c.path))).toBe(false);
 });
-test("Gmail matching expenses link instead of reposting, and refunds stay outside accounting", async ({
+test("PDF statement duplicate matches are excluded and edits reset confirmation", async ({
   page,
 }) => {
-  await gmailMock(page);
-  const reviews: Record<string, unknown>[] = [];
-  const existingId = "d94bb96e-bf3c-494f-b402-38c216210550";
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/transactions**",
-    (route) =>
-      route.fulfill({
-        json: [
-          {
-            id: existingId,
-            account_id: accountId,
-            category_id: categoryId,
-            kind: "expense",
-            amount_paise: -10029,
-            occurred_on: "2026-11-19",
-            description: "Existing lunch",
-            transfer_id: null,
-            created_at: "2026-11-19T00:00:00Z",
-          },
-        ],
-      }),
+  await mock(page, true);
+  const commits: unknown[] = [];
+  await page.route("**/rest/v1/rpc/preview_statement_import", (route) =>
+    route.fulfill({ json: { duplicates: [true, false] } }),
   );
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/rpc/review_gmail_receipt",
-    async (route) => {
-      reviews.push(route.request().postDataJSON());
-      await route.fulfill({ json: existingId });
-    },
-  );
+  await page.route("**/rest/v1/rpc/import_statement_entries", async (route) => {
+    commits.push(route.request().postDataJSON());
+    await route.fulfill({ json: { inserted: 1, skipped: 0 } });
+  });
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
-  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
-  await page.getByRole("button", { name: "Check existing expenses" }).click();
-  await page.getByLabel("Matching expense").selectOption(existingId);
-  await page
-    .getByLabel(
-      "I verified this settled payment, its account, amount and date.",
-    )
-    .check();
-  await page
-    .getByRole("button", { name: "Link existing expense", exact: true })
-    .click();
-  await expect.poll(() => reviews.length).toBe(1);
-  expect(reviews[0]).toMatchObject({
-    p_action: "link",
-    p_existing: existingId,
+  await page.getByLabel("Statement ending month").fill("2026-11");
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
   });
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
-    (route) => route.fulfill({ json: [{ ...receiptFixture, kind: "refund" }] }),
-  );
-  await page.getByRole("button", { name: "Refresh inbox" }).click();
-  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await expect(page.getByLabel("Description 1:3")).toBeVisible();
+  for (const row of ["1:3", "1:4"]) {
+    await page
+      .getByLabel(`Type ${row}`, { exact: true })
+      .selectOption("expense");
+    await page
+      .getByLabel(`Category ${row}`, { exact: true })
+      .selectOption(categoryId);
+  }
+  await page
+    .getByRole("button", { name: "Select reviewed valid rows" })
+    .click();
+  await page
+    .getByRole("button", { name: "Check statement duplicates" })
+    .click();
+  await expect(page.getByLabel("Select statement row 1:3")).toBeDisabled();
+  await expect(page.getByLabel("Select statement row 1:3")).not.toBeChecked();
+  await page
+    .getByLabel("I compared the selected rows", { exact: false })
+    .check();
+  await page.getByLabel("Amount 1:4", { exact: true }).fill("251.07");
   await expect(
-    page.getByText("Record any required correction manually", { exact: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Confirm expense", exact: true }),
+    page.getByLabel("I compared the selected rows", { exact: false }),
   ).toHaveCount(0);
+  expect(commits).toHaveLength(0);
 });
-test("mobile receipt inbox clears on lock and never caches email or financial responses", async ({
+test("statement preview clears on lock, rejects invalid PDF and fits mobile without caching financial content", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await gmailMock(page);
+  await mock(page, true);
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
-  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "bad.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("not a pdf"),
+  });
+  await expect(page.getByRole("alert")).toContainText("valid PDF");
+  await page.getByLabel("Statement ending month").fill("2026-11");
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
+  await expect(page.getByLabel("Description 1:3")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -1676,9 +1616,11 @@ test("mobile receipt inbox clears on lock and never caches email or financial re
   await expect(
     page.getByRole("heading", { name: "Workspace locked" }),
   ).toBeVisible();
-  await expect(
-    page.getByText("SYNTHETIC-RECEIPT", { exact: false }),
-  ).toHaveCount(0);
+  await expect(page.getByLabel("Description 1:3")).toHaveCount(0);
+  const storage = await page.evaluate(() =>
+    Object.values(localStorage).join(" "),
+  );
+  expect(storage).not.toContain("SYNTHETIC LUNCH");
   const cached = await page.evaluate(async () =>
     (
       await Promise.all(
@@ -1688,77 +1630,114 @@ test("mobile receipt inbox clears on lock and never caches email or financial re
       )
     ).flat(),
   );
-  expect(cached.some((url) => /supabase\.co|gmail\.googleapis/.test(url))).toBe(
-    false,
-  );
-});
-test("Gmail connect requires scope acknowledgement and sync creates drafts without posting expenses", async ({
-  page,
-}) => {
-  const calls = await mock(page, true);
-  let connected = false,
-    synced = false;
-  const actions: string[] = [];
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_connections**",
-    (route) =>
-      route.fulfill({
-        json: connected
-          ? {
-              status: "connected",
-              mailbox: "receipts@example.invalid",
-              last_synced_at: null,
-              has_more: false,
-            }
-          : null,
-      }),
-  );
-  await page.route(
-    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
-    (route) => route.fulfill({ json: synced ? [receiptFixture] : [] }),
-  );
-  await page.route(
-    "https://fixture.supabase.co/functions/v1/gmail-receipts",
-    async (route) => {
-      actions.push(route.request().postDataJSON().action);
-      if (actions.at(-1) === "connect")
-        await route.fulfill({
-          json: { url: "https://attacker.invalid/consent" },
-        });
-      else {
-        synced = true;
-        await route.fulfill({
-          json: { status: "ok", candidates: 1, has_more: false },
-        });
-      }
-    },
-  );
-  await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
-  const connect = page.getByRole("button", {
-    name: "Connect Gmail",
-    exact: true,
-  });
-  await expect(connect).toBeDisabled();
-  await page
-    .getByLabel("I understand Gmail grants mailbox read access", {
-      exact: false,
-    })
-    .check();
-  await connect.click();
-  await expect(page.getByRole("alert")).toContainText("Gmail is unavailable");
-  expect(page.url()).toContain("127.0.0.1");
-  expect(actions).toEqual(["connect"]);
-  connected = true;
-  await page.getByRole("button", { name: "Refresh inbox" }).click();
-  await page
-    .getByRole("button", { name: "Sync receipts", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Review Swiggy receipt" }),
-  ).toBeVisible();
-  expect(actions).toEqual(["connect", "sync"]);
   expect(
-    calls.some((c) => /review_gmail_receipt|record_entry/.test(c.path)),
+    cached.some((url) => /supabase\.co|googleapis|mail\.google/.test(url)),
   ).toBe(false);
 });
+
+function positionedStatementPdf(kind: "sbi" | "kotak") {
+  const cells: [string, number, number][] =
+    kind === "sbi"
+      ? [
+          ["SYNTHETIC SBI GRID - TEST DATA ONLY", 20, 800],
+          ["Balance", 515, 750],
+          ["SYNTHETIC FIRST LINE", 138, 707],
+          ["01/05/2026", 28, 700],
+          ["03/05/2026", 85, 700],
+          ["-", 305, 700],
+          ["132.47", 355, 700],
+          ["8867.53", 525, 700],
+          ["WRAPPED NARRATION", 138, 690],
+          ["SYNTHETIC DEPOSIT", 138, 657],
+          ["02/05/2026", 28, 650],
+          ["04/05/2026", 85, 650],
+          ["-", 305, 650],
+          ["200.29", 440, 650],
+          ["9067.82", 525, 650],
+        ]
+      : [
+          ["SYNTHETIC KOTAK GRID - TEST DATA ONLY", 20, 800],
+          ["Date", 75, 750],
+          ["Description", 124, 750],
+          ["Ref No.", 280, 750],
+          ["Withdrawal (Dr.)", 355, 750],
+          ["Deposit (Cr.)", 429, 750],
+          ["Balance", 498, 750],
+          ["7", 39, 700],
+          ["03 May 2026", 73, 700],
+          ["SYNTHETIC SERVICE", 119, 700],
+          ["REF-ALPHA", 275, 700],
+          ["10.37", 401, 700],
+          ["8001.29", 529, 700],
+          ["WRAPPED DESCRIPTION", 119, 690],
+          ["8", 39, 660],
+          ["04 May 2026", 73, 660],
+          ["SYNTHETIC CREDIT", 119, 660],
+          ["REF-BETA", 275, 660],
+          ["500.00", 465, 660],
+          ["8501.29", 529, 660],
+        ];
+  const stream = cells
+    .map(
+      ([t, x, y]) =>
+        `BT /F1 9 Tf 1 0 0 1 ${x} ${y} Tm (${t.replace(/[()\\]/g, "\\$&")}) Tj ET`,
+    )
+    .join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [i, obj] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${obj}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((o) => String(o).padStart(10, "0") + " 00000 n \n")
+    .join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
+for (const bank of ["sbi", "kotak"] as const)
+  test(`${bank} table adapter reads synthetic positioned PDF columns and wrapped descriptions locally`, async ({
+    page,
+  }) => {
+    const calls = await mock(page, true);
+    await login(page);
+    await page.getByRole("link", { name: "Transactions", exact: true }).click();
+    await page.getByLabel("Statement ending month").fill("2026-05");
+    await page
+      .getByLabel("Choose statement PDF")
+      .setInputFiles({
+        name: `synthetic-${bank}.pdf`,
+        mimeType: "application/pdf",
+        buffer: positionedStatementPdf(bank),
+      });
+    const descriptions = page.locator('input[aria-label^="Description "]'),
+      dates = page.locator('input[aria-label^="Date "]'),
+      amounts = page.locator('input[aria-label^="Amount "]'),
+      types = page.locator('select[aria-label^="Type "]');
+    await expect(descriptions).toHaveCount(2);
+    await expect(dates.nth(0)).toHaveValue("2026-05-03");
+    await expect(dates.nth(1)).toHaveValue("2026-05-04");
+    await expect(amounts.first()).toHaveValue(
+      bank === "sbi" ? "132.47" : "10.37",
+    );
+    await expect(types.first()).toHaveValue("expense");
+    await expect(types.nth(1)).toHaveValue("");
+    await expect(descriptions.first()).toHaveValue(
+      bank === "sbi"
+        ? "SYNTHETIC FIRST LINE WRAPPED NARRATION"
+        : "SYNTHETIC SERVICE WRAPPED DESCRIPTION · REF-ALPHA",
+    );
+    expect(
+      calls.some((c) =>
+        /statement_import|statement_entries|record_entry/.test(c.path),
+      ),
+    ).toBe(false);
+  });

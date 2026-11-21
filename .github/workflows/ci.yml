@@ -15,10 +15,6 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.5.6
-      - run: deno check supabase/functions/gmail-receipts/index.ts
       - run: npm run build:demo
       - run: npm run verify:release -- dist demo
       - run: npx playwright install --with-deps chromium
@@ -70,6 +66,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/investments_hosted_acceptance.sql
           bash supabase/tests/investments_concurrency.sh
           bash supabase/tests/csv_concurrency.sh
-          psql -v ON_ERROR_STOP=1 -f supabase/tests/gmail_receipts.sql
-          bash supabase/tests/gmail_concurrency.sh
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/email_removal.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/statements.sql
+          bash supabase/tests/statements_concurrency.sh
           psql -v ON_ERROR_STOP=1 -f supabase/tests/phase3_hosted_acceptance.sql
