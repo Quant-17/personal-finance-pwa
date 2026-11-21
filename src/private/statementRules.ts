@@ -125,6 +125,13 @@ export function suggestStatementRule(
       (r.amount_paise === null || r.amount_paise === amount),
   );
   if (!matches.length) return row;
+  if (
+    (row.card_statement ||
+      s.accounts.some((a) => a.id === account && a.type === "credit_card")) &&
+    row.direction === "credit" &&
+    matches.some((r) => r.kind !== "exclude")
+  )
+    return row;
   // A stale or conflicting rule must not silently fall back to a different classification.
   const targets = new Set(
     matches.map((r) =>
@@ -140,13 +147,6 @@ export function suggestStatementRule(
       note: "Remembered rules conflict or their target is unavailable. Classify manually.",
     };
   const r = matches[0];
-  if (
-    (row.card_statement ||
-      s.accounts.some((a) => a.id === account && a.type === "credit_card")) &&
-    row.direction === "credit" &&
-    r.kind !== "exclude"
-  )
-    return row;
   if (
     recipient.exclusionOnly &&
     (r.kind !== "exclude" || r.amount_paise === null)
