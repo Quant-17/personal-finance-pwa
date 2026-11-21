@@ -36,4 +36,16 @@ Interactive comparisons, a balance chart, payoff order, month inspector and acce
 
 New tests cover final-payment caps, half-up rounding, priority allocation, rollover, fee-inclusive budgets, locked extras, full lump payoff with zero ongoing budget, affordability, bounded/non-amortizing plans, input validation, conservation, closed balances, linked-card partitioning and mismatches. Browser tests verify reserve/savings guards, source refresh, automatic timer refresh, missing card terms, mobile containment and absence of financial mutation RPCs. The new navigation item exposed short-window sidebar overflow; desktop navigation now scrolls within the sidebar, retaining Appearance/Sign out access. Existing privacy and sign-out tests passed with this fix.
 
-No schema migration, new credentials, paid API or real financial import is required. Release identifiers will be recorded after the clean build and hosted verification.
+No schema migration, new credentials, paid API or real financial import is required. Release identifiers follow below.
+
+## Published · v0.3.8-rc.1
+
+PR #22 is merged as `f73c89d007786781921b2a3ae766160264dd27b7`. Private https://folio-review.sid-17061999.workers.dev/#debt-plan serves **v0.3.8-rc.1**. No Supabase migration, Auth change, new API/key, owner-data import or financial mutation was performed.
+
+- Local lint/typecheck, **152 Vitest + 2 release tests** passed. The full **30 private browser tests** passed after the sidebar fix; final debt/mobile/automatic-refresh/signout tests passed again after month-level display refinements.
+- Final PR CI **44931906814** and merged-main CI **44932174829** passed, including demo/private builds, six demo and 30 private browser tests, existing database/security regressions and concurrency harnesses.
+- Clean-source build/preflight and hosted version/root/manifest/app-shell/service-worker/exact-origin CSP checks passed. All **20 hosted files match exact bytes**; JavaScript/PDF worker MIME is correct. The deployed source is `f73c89d`.
+- Published **21 November 2026 at 23:22:38 IST**. Worker version `60b7d234-2c5a-4d1e-a05c-cbf3e46b0a7f`, deployment `874c85ef-b51f-4eb0-8bad-041c7f377428`, 100% traffic.
+- Public demo deployment `92d02c4b-850d-46ae-81ea-3b51d7ed58a6` / version `5e0cb7ff-e84b-4095-9d17-cff53db0d267` is unchanged. Previous private v0.3.7-rc.1 Worker version `d78f7fce-8957-4219-b280-5ba07faa5b1f` is the frontend rollback reference; no database rollback is needed.
+
+Refresh or use **Update app**, then open **Debt repayment simulator**. Debt/cash balances refresh from saved records and scenario edits recalculate immediately. Review lender rate/prepayment assumptions; the model is not a bank-confirmed settlement quote. Scenario overrides reset when the component/session is left. Actual physical-device acceptance remains owner review; recorded November opening-balance reconciliation is still a separate pending task.
