@@ -38,6 +38,10 @@ The owner requested this slice before Stage 4. Implemented local digital-PDF ext
 
 NPS Tier I/Tier II, PPF, EPF/EPFO and other manual holdings; separate own/employer/payroll history, dated statement valuations, India FY totals, allocation view, editable/paginated history and archive support. Investment values contribute to net worth without becoming available cash; existing investment-account links prevent double-counting. Contributions do not automatically post bank transactions or adjust a statement value. See INVESTMENTS.md. The owner explicitly approved PR #10 merge, migration and private publication. v0.3.2-rc.1 is live; actual-device acceptance remains pending. See INVESTMENTS_RELEASE.md. This narrow owner-requested slice does not start broader Stage 4 work.
 
+## Owner-requested Gmail receipts · review implementation
+
+Keep the complete transaction ledger and manual monthly expense entry. Add Gmail/Google Workspace receipt sync into reviewable drafts, supported merchant parsing, owner confirmation/duplicate reconciliation and explicit subscription links. Show normalized recurring estimates, actual settled expenses and pending drafts within Monthly Plan while retaining inclusive subscription budgeting and original saved assumptions. Google OAuth, encrypted server credentials, scoped backend operations, pagination/checkpointing and a server scheduling recipe are included. No live Gmail consent, server secrets, migration, Edge deployment, schedule or owner real-receipt acceptance has occurred. See GMAIL_IMPORT.md. Broader Stage 4 remains paused.
+
 ## Later
 
 Broader bank-format column mapping, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.

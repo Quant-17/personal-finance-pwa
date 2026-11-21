@@ -87,7 +87,13 @@ async function mock(page: Page, populated = false, confirmed = true) {
     else if (path === "/auth/v1/user")
       response = confirmed ? user : { ...user, email_confirmed_at: null };
     else if (path === "/rest/v1/rpc/workspace_snapshot") response = data;
-    else if (path === "/rest/v1/transactions") response = [];
+    else if (
+      path === "/rest/v1/transactions" ||
+      path === "/rest/v1/gmail_receipts"
+    )
+      response = [];
+    else if (path === "/rest/v1/rpc/gmail_plan_status")
+      response = { pending: 0, subscription_paid_paise: "0" };
     else if (
       path === "/rest/v1/accounts" &&
       route.request().method() === "POST"
@@ -543,6 +549,11 @@ test("CSV preview excludes invalid/repeated/existing rows and requires confirmat
   );
   await login(page);
   await page.goto("/#activity");
+  await page
+    .getByText("Advanced: legacy CSV import", { exact: true })
+    .evaluate((el) => {
+      (el.parentElement as HTMLDetailsElement).open = true;
+    });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "synthetic.csv",
     mimeType: "text/csv",
@@ -615,12 +626,22 @@ test("CSV invalid files stay local, preview clears offline, and mobile layout re
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   await page.goto("/#activity");
+  await page
+    .getByText("Advanced: legacy CSV import", { exact: true })
+    .evaluate((el) => {
+      (el.parentElement as HTMLDetailsElement).open = true;
+    });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "bad.csv",
     mimeType: "text/csv",
     buffer: Buffer.from("unexpected,header\n1,2"),
   });
   await expect(page.getByRole("alert")).toContainText("Use the columns");
+  await page
+    .getByText("Advanced: legacy CSV import", { exact: true })
+    .evaluate((el) => {
+      (el.parentElement as HTMLDetailsElement).open = true;
+    });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "private-fixture.csv",
     mimeType: "text/csv",
@@ -713,6 +734,11 @@ test("saved assumptions survive a CSV import that changes current available cash
     page.getByRole("button", { name: "Open Before CSV", exact: true }),
   ).toBeVisible();
   await page.goto("/#activity");
+  await page
+    .getByText("Advanced: legacy CSV import", { exact: true })
+    .evaluate((el) => {
+      (el.parentElement as HTMLDetailsElement).open = true;
+    });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "combined-fixture.csv",
     mimeType: "text/csv",
@@ -774,6 +800,11 @@ test("CSV total-range rejection keeps the preview and reports that nothing was p
   );
   await login(page);
   await page.goto("/#activity");
+  await page
+    .getByText("Advanced: legacy CSV import", { exact: true })
+    .evaluate((el) => {
+      (el.parentElement as HTMLDetailsElement).open = true;
+    });
   await page.getByLabel("Choose CSV file").setInputFiles({
     name: "range-fixture.csv",
     mimeType: "text/csv",
@@ -1426,4 +1457,308 @@ test("investment history is editable and clears when the workspace locks", async
     ),
   );
   expect(stored).toEqual([]);
+});
+
+const gmailReceiptId = "a1edc516-b3d9-4526-97a6-ecb341ebcf71";
+const gmailSubscriptionId = "445b9ca8-2a91-4461-bef7-12668dad3252";
+const receiptFixture = {
+  id: gmailReceiptId,
+  message_id: "abc123",
+  merchant: "Swiggy",
+  amount_paise: "10029",
+  occurred_on: "2026-11-19",
+  kind: "charge",
+  reference: "SYNTHETIC-RECEIPT",
+  subscription_hint: "Swiggy One",
+  needs_attention: false,
+};
+async function gmailMock(page: Page) {
+  const calls = await mock(page, true);
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_connections**",
+    (route) =>
+      route.fulfill({
+        json: {
+          status: "connected",
+          mailbox: "receipts@example.invalid",
+          last_synced_at: null,
+          has_more: false,
+        },
+      }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
+    (route) => route.fulfill({ json: [receiptFixture] }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/workspace_snapshot",
+    (route) =>
+      route.fulfill({
+        json: {
+          ...snapshot(true),
+          subscriptions: [
+            {
+              id: gmailSubscriptionId,
+              name: "Fixture membership",
+              amount_paise: 10029,
+              cadence: "monthly",
+              next_due_on: "2026-11-30",
+              active: true,
+              account_id: null,
+            },
+          ],
+        },
+      }),
+  );
+  return calls;
+}
+test("Gmail drafts require review and duplicate checking; interrupted posting retries once without changing assumptions", async ({
+  page,
+}) => {
+  await gmailMock(page);
+  const reviews: Record<string, unknown>[] = [];
+  let posted = false;
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/review_gmail_receipt",
+    async (route) => {
+      reviews.push(route.request().postDataJSON());
+      if (reviews.length === 1) await route.abort("failed");
+      else {
+        posted = true;
+        await route.fulfill({ json: "7110da46-5e3d-4827-8d02-b92369f18611" });
+      }
+    },
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
+    (route) => route.fulfill({ json: posted ? [] : [receiptFixture] }),
+  );
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Email receipts", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Choose CSV file")).not.toBeVisible();
+  expect(reviews).toHaveLength(0);
+  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await page
+    .getByLabel("Link subscription (optional)")
+    .selectOption(gmailSubscriptionId);
+  await page.getByRole("button", { name: "Check existing expenses" }).click();
+  await expect(
+    page.getByRole("button", { name: "Confirm expense", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByLabel(
+      "I verified this settled payment, its account, amount and date.",
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Confirm expense", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Retry the unchanged receipt safely",
+  );
+  await page
+    .getByRole("button", { name: "Confirm expense", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Review Swiggy receipt" }),
+  ).toHaveCount(0);
+  expect(reviews).toHaveLength(2);
+  expect(reviews[0]).toEqual(reviews[1]);
+  expect(reviews[0]).toMatchObject({
+    p_receipt: gmailReceiptId,
+    p_action: "post",
+    p_amount_paise: 10029,
+    p_account: accountId,
+    p_category: categoryId,
+    p_subscription: gmailSubscriptionId,
+  });
+  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "This month, connected" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Living budget after subscription estimate").locator(".."),
+  ).toContainText("19,899.71");
+  await page.getByRole("link", { name: "Buy simulator", exact: true }).click();
+  await expect(
+    page.getByText("Planned monthly income", { exact: false }),
+  ).toContainText("living expenses ₹20,000");
+  await expect(
+    page.getByText("₹30,000 available.", { exact: true }),
+  ).toBeVisible();
+});
+test("Gmail matching expenses link instead of reposting, and refunds stay outside accounting", async ({
+  page,
+}) => {
+  await gmailMock(page);
+  const reviews: Record<string, unknown>[] = [];
+  const existingId = "d94bb96e-bf3c-494f-b402-38c216210550";
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/transactions**",
+    (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: existingId,
+            account_id: accountId,
+            category_id: categoryId,
+            kind: "expense",
+            amount_paise: -10029,
+            occurred_on: "2026-11-19",
+            description: "Existing lunch",
+            transfer_id: null,
+            created_at: "2026-11-19T00:00:00Z",
+          },
+        ],
+      }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/rpc/review_gmail_receipt",
+    async (route) => {
+      reviews.push(route.request().postDataJSON());
+      await route.fulfill({ json: existingId });
+    },
+  );
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await page.getByRole("button", { name: "Check existing expenses" }).click();
+  await page.getByLabel("Matching expense").selectOption(existingId);
+  await page
+    .getByLabel(
+      "I verified this settled payment, its account, amount and date.",
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Link existing expense", exact: true })
+    .click();
+  await expect.poll(() => reviews.length).toBe(1);
+  expect(reviews[0]).toMatchObject({
+    p_action: "link",
+    p_existing: existingId,
+  });
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
+    (route) => route.fulfill({ json: [{ ...receiptFixture, kind: "refund" }] }),
+  );
+  await page.getByRole("button", { name: "Refresh inbox" }).click();
+  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  await expect(
+    page.getByText("Record any required correction manually", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Confirm expense", exact: true }),
+  ).toHaveCount(0);
+});
+test("mobile receipt inbox clears on lock and never caches email or financial responses", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gmailMock(page);
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await page.getByRole("button", { name: "Review Swiggy receipt" }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", {
+      value: "hidden",
+      configurable: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(
+    page.getByRole("heading", { name: "Workspace locked" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("SYNTHETIC-RECEIPT", { exact: false }),
+  ).toHaveCount(0);
+  const cached = await page.evaluate(async () =>
+    (
+      await Promise.all(
+        (await caches.keys()).map(async (key) =>
+          (await (await caches.open(key)).keys()).map((r) => r.url),
+        ),
+      )
+    ).flat(),
+  );
+  expect(cached.some((url) => /supabase\.co|gmail\.googleapis/.test(url))).toBe(
+    false,
+  );
+});
+test("Gmail connect requires scope acknowledgement and sync creates drafts without posting expenses", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  let connected = false,
+    synced = false;
+  const actions: string[] = [];
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_connections**",
+    (route) =>
+      route.fulfill({
+        json: connected
+          ? {
+              status: "connected",
+              mailbox: "receipts@example.invalid",
+              last_synced_at: null,
+              has_more: false,
+            }
+          : null,
+      }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/rest/v1/gmail_receipts**",
+    (route) => route.fulfill({ json: synced ? [receiptFixture] : [] }),
+  );
+  await page.route(
+    "https://fixture.supabase.co/functions/v1/gmail-receipts",
+    async (route) => {
+      actions.push(route.request().postDataJSON().action);
+      if (actions.at(-1) === "connect")
+        await route.fulfill({
+          json: { url: "https://attacker.invalid/consent" },
+        });
+      else {
+        synced = true;
+        await route.fulfill({
+          json: { status: "ok", candidates: 1, has_more: false },
+        });
+      }
+    },
+  );
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  const connect = page.getByRole("button", {
+    name: "Connect Gmail",
+    exact: true,
+  });
+  await expect(connect).toBeDisabled();
+  await page
+    .getByLabel("I understand Gmail grants mailbox read access", {
+      exact: false,
+    })
+    .check();
+  await connect.click();
+  await expect(page.getByRole("alert")).toContainText("Gmail is unavailable");
+  expect(page.url()).toContain("127.0.0.1");
+  expect(actions).toEqual(["connect"]);
+  connected = true;
+  await page.getByRole("button", { name: "Refresh inbox" }).click();
+  await page
+    .getByRole("button", { name: "Sync receipts", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Review Swiggy receipt" }),
+  ).toBeVisible();
+  expect(actions).toEqual(["connect", "sync"]);
+  expect(
+    calls.some((c) => /review_gmail_receipt|record_entry/.test(c.path)),
+  ).toBe(false);
 });

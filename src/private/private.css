@@ -962,3 +962,68 @@ progress {
     max-width: none;
   }
 }
+
+.receipt-draft {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem 0;
+}
+.receipt-draft > a {
+  display: inline-block;
+  margin: 0.5rem 1rem 0.5rem 0;
+}
+.receipt-review {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.receipt-review label {
+  display: grid;
+  gap: 0.5rem;
+}
+.receipt-review .csv-confirm {
+  display: flex;
+}
+.receipt-review input:not([type="checkbox"]),
+.receipt-review select {
+  min-height: 44px;
+  max-width: 100%;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface);
+  color: inherit;
+  padding: 0.65rem;
+}
+.plan-breakdown {
+  display: grid;
+  gap: 0.85rem;
+}
+.plan-breakdown > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.plan-breakdown dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.legacy-import {
+  margin-bottom: 1rem;
+}
+.legacy-import summary {
+  cursor: pointer;
+  padding: 0.75rem;
+}
+
+.receipt-review .editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 620px) {
+  .receipt-review .editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

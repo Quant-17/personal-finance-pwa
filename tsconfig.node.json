@@ -17,6 +17,10 @@
     "vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
-    "tests"
+    "tests",
+    "supabase/functions/gmail-receipts/handler.ts",
+    "supabase/functions/gmail-receipts/receipts.ts",
+    "supabase/functions/gmail-receipts/crypto.ts",
+    "supabase/functions/gmail-receipts/*.test.ts"
   ]
 }

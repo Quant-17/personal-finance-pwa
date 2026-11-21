@@ -38,6 +38,8 @@ import { displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
 import { Investments } from "./Investments";
+import { EmailReceipts } from "./EmailReceipts";
+import { MonthlySummary } from "./MonthlySummary";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
 const pages = [
@@ -189,6 +191,75 @@ function Workspace({
         month: s.summary.month,
       }
     : null;
+  const subscriptionsPanel = s && (
+    <section className="card private-panel">
+      <div className="panel-heading">
+        <h2>Subscriptions</h2>
+        {add("subscription", "Add subscription")}
+      </div>
+      <p>
+        Planned recurring charges stay inside your living budget. Link a
+        reviewed email receipt to record its actual expense once.
+      </p>
+      {s.subscriptions.map((sub) => (
+        <article className="ledger-row" key={sub.id}>
+          <div>
+            <strong>
+              {sub.name}
+              {!sub.active ? " · Paused" : ""}
+            </strong>
+            <span>
+              {sub.cadence} · due {displayDate(sub.next_due_on)}
+            </span>
+          </div>
+          <strong>{money(sub.amount_paise)}</strong>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              setEditor({
+                kind: "subscription",
+                record: {
+                  id: sub.id,
+                  values: {
+                    name: sub.name,
+                    amount: moneyToInput(sub.amount_paise),
+                    cadence: sub.cadence,
+                    date: sub.next_due_on,
+                  },
+                },
+              })
+            }
+          >
+            Edit subscription
+          </Button>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              void action(async () => {
+                check(
+                  await db()
+                    .from("subscriptions")
+                    .update({ active: !sub.active })
+                    .eq("id", sub.id),
+                );
+              })
+            }
+          >
+            {sub.active ? "Pause" : "Resume"}
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={pending}
+            onClick={() => remove("subscriptions", sub.id, sub.name)}
+          >
+            Delete
+          </Button>
+        </article>
+      ))}
+      {!s.subscriptions.length && empty("No recurring subscriptions.")}
+    </section>
+  );
   return (
     <div className="private-shell">
       <aside className="private-sidebar">
@@ -466,15 +537,23 @@ function Workspace({
               {page === "activity" && (
                 <>
                   {importNotice && <p role="status">{importNotice}</p>}
-                  <CsvImport
+                  <EmailReceipts
                     snapshot={s}
-                    onImported={({ inserted, skipped, excluded }) => {
-                      setImportNotice(
-                        `Import complete: ${inserted} added, ${skipped} matched the ledger at posting, ${excluded} excluded from the selection.`,
-                      );
-                      refresh();
-                    }}
+                    onPosted={refresh}
+                    onSubscription={() => open("subscription")}
                   />
+                  <details className="legacy-import">
+                    <summary>Advanced: legacy CSV import</summary>
+                    <CsvImport
+                      snapshot={s}
+                      onImported={({ inserted, skipped, excluded }) => {
+                        setImportNotice(
+                          `Import complete: ${inserted} added, ${skipped} matched the ledger at posting, ${excluded} excluded from the selection.`,
+                        );
+                        refresh();
+                      }}
+                    />
+                  </details>
                   <div className="page-actions">
                     {add("entry", "Add transaction")}
                     {add("transfer", "Transfer")}
@@ -681,7 +760,6 @@ function Workspace({
                       Import loan PDF
                     </Button>
                     {add("payment", "Record repayment")}
-                    {add("subscription", "Add subscription")}
                   </div>
                   {loanNotice && <p role="status">{loanNotice}</p>}
                   {documentReview && (
@@ -813,73 +891,7 @@ function Workspace({
                     ))}
                     {!s.loans.length && empty("No tracked loans.")}
                   </section>
-                  <section className="card private-panel">
-                    <h2>Subscriptions</h2>
-                    <p>
-                      Forecasts only. Charges do not automatically appear in the
-                      ledger.
-                    </p>
-                    {s.subscriptions.map((sub) => (
-                      <article className="ledger-row" key={sub.id}>
-                        <div>
-                          <strong>
-                            {sub.name}
-                            {!sub.active ? " · Paused" : ""}
-                          </strong>
-                          <span>
-                            {sub.cadence} · due {displayDate(sub.next_due_on)}
-                          </span>
-                        </div>
-                        <strong>{money(sub.amount_paise)}</strong>
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            setEditor({
-                              kind: "subscription",
-                              record: {
-                                id: sub.id,
-                                values: {
-                                  name: sub.name,
-                                  amount: moneyToInput(sub.amount_paise),
-                                  cadence: sub.cadence,
-                                  date: sub.next_due_on,
-                                },
-                              },
-                            })
-                          }
-                        >
-                          Edit subscription
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={pending}
-                          onClick={() =>
-                            void action(async () => {
-                              check(
-                                await db()
-                                  .from("subscriptions")
-                                  .update({ active: !sub.active })
-                                  .eq("id", sub.id),
-                              );
-                            })
-                          }
-                        >
-                          {sub.active ? "Pause" : "Resume"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() =>
-                            remove("subscriptions", sub.id, sub.name)
-                          }
-                        >
-                          Delete
-                        </Button>
-                      </article>
-                    ))}
-                    {!s.subscriptions.length &&
-                      empty("No recurring subscriptions.")}
-                  </section>
+                  {subscriptionsPanel}
                 </>
               )}
               {page === "simulator" && plan && (
@@ -901,6 +913,8 @@ function Workspace({
               )}
               {page === "settings" && (
                 <>
+                  <MonthlySummary snapshot={s} />
+                  {subscriptionsPanel}
                   <section className="card private-panel">
                     <h2>Your monthly assumptions</h2>
                     <p>
