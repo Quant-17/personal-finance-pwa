@@ -53,6 +53,18 @@ select pg_temp.gmail_assert((public.gmail_plan_status()->>'pending')::int=0,'pos
 select pg_temp.gmail_assert((select amount_paise=10029 from public.subscriptions),'receipt does not change subscription forecast');
 select pg_temp.gmail_assert((public.workspace_snapshot()->'budgets'->0->>'spent_paise')::bigint=10029,'receipt enters category budget once');
 select pg_temp.gmail_assert((public.workspace_snapshot()->'profile'->>'monthly_living_budget_paise')::bigint=200000,'receipt does not rewrite monthly assumptions');
+set local role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+select public.gmail_service('ingest',current_setting('folio.gmail_a')::uuid,jsonb_build_object('lease',current_setting('folio.gmail_lease'),'rows',jsonb_build_array(
+ jsonb_build_object('message_id','abc333','dedupe_key','Uber:refund:SYNTHETIC-123','merchant','Uber','amount_paise',10029,'occurred_on',current_date,'kind','refund','reference','SYNTHETIC-123'),
+ jsonb_build_object('message_id','abc444','dedupe_key','Zomato:cancellation:SYNTHETIC-456','merchant','Zomato','amount_paise',5000,'occurred_on',current_date,'kind','cancellation','reference','SYNTHETIC-456'),
+ jsonb_build_object('message_id','abc555','dedupe_key','Zomato:charge:SYNTHETIC-456','merchant','Zomato','amount_paise',5000,'occurred_on',current_date,'kind','charge','reference','SYNTHETIC-456'))));
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.gmail_a'),'is_anonymous',false)::text,true);
+select pg_temp.gmail_assert((select needs_attention from public.gmail_receipts where id=current_setting('folio.gmail_receipt')::uuid),'later refund flags an already posted charge for reconciliation');
+select pg_temp.gmail_assert((select needs_attention from public.gmail_receipts where dedupe_key='Zomato:charge:SYNTHETIC-456'),'charge arriving after cancellation also needs reconciliation');
+select pg_temp.gmail_assert((select count(*)=1 and sum(amount_paise)=-10029 from public.transactions),'refund/cancellation never silently reverses or reposts financial history');
+select pg_temp.gmail_error(format('select public.review_gmail_receipt(%L,''post'',%L,%L,5000,folio_private.today())',(select id from public.gmail_receipts where dedupe_key='Zomato:charge:SYNTHETIC-456'),current_setting('folio.gmail_bank'),current_setting('folio.gmail_category')),'P0001','known cancellation prevents posting a pending charge');
 select set_config('request.jwt.claim.sub',current_setting('folio.gmail_b'),true);
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.gmail_b'),'is_anonymous',false)::text,true);
 select pg_temp.gmail_assert((select count(*)=0 from public.gmail_receipts),'second owner cannot read receipts');
@@ -69,7 +81,7 @@ insert into public.gmail_receipts(user_id,message_id,dedupe_key,merchant,amount_
  (current_setting('folio.gmail_a')::uuid,'fed654','Uber:refund:REFUND','Uber',10029,folio_private.today(),'refund'),
  (current_setting('folio.gmail_a')::uuid,'bad123','Uber:charge:MANUAL','Uber',10029,folio_private.today(),'charge');
 select set_config('folio.gmail_conflict',(select id::text from public.gmail_receipts where dedupe_key='Uber:charge:CONFLICT'),true);
-select set_config('folio.gmail_refund',(select id::text from public.gmail_receipts where kind='refund'),true);
+select set_config('folio.gmail_refund',(select id::text from public.gmail_receipts where dedupe_key='Uber:refund:REFUND'),true);
 select set_config('folio.gmail_manual',(select id::text from public.gmail_receipts where dedupe_key='Uber:charge:MANUAL'),true);
 set local role service_role;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);

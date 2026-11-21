@@ -40,6 +40,7 @@ create table public.gmail_receipts (
  foreign key(transaction_id,user_id) references public.transactions(id,user_id) on delete set null (transaction_id)
 );
 create index gmail_receipts_owner_status_idx on public.gmail_receipts(user_id,status,created_at desc);
+create index gmail_receipts_reference_idx on public.gmail_receipts(user_id,merchant,reference) where reference<>'';
 create index gmail_receipts_transaction_idx on public.gmail_receipts(transaction_id,user_id);
 alter table public.gmail_receipts enable row level security;
 revoke all on public.gmail_receipts from public,anon,authenticated;
@@ -113,6 +114,11 @@ begin
      insert into public.gmail_receipts(user_id,message_id,dedupe_key,merchant,amount_paise,occurred_on,kind,reference,subscription_hint)
        values(p_user,r.message_id,r.dedupe_key,r.merchant,r.amount_paise,r.occurred_on,r.kind,r.reference,r.subscription_hint)
        on conflict(user_id,dedupe_key) do update set needs_attention=public.gmail_receipts.needs_attention or public.gmail_receipts.amount_paise is distinct from excluded.amount_paise;
+     if r.reference<>'' then
+       update public.gmail_receipts charge set needs_attention=true
+       where charge.user_id=p_user and charge.merchant=r.merchant and charge.reference=r.reference and charge.kind='charge'
+        and exists(select 1 from public.gmail_receipts reversal where reversal.user_id=p_user and reversal.merchant=r.merchant and reversal.reference=r.reference and reversal.kind in ('refund','cancellation'));
+     end if;
    end loop;
    return 'true';
  end if;

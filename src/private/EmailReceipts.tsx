@@ -284,8 +284,8 @@ export function EmailReceipts({
           </p>
           {r.needs_attention && (
             <p className="form-error">
-              Conflicting amounts found for this order. Reconcile it manually in
-              Transactions.
+              A conflicting amount, refund or cancellation was found for this
+              order. Reconcile it manually in Transactions.
             </p>
           )}
           <a
