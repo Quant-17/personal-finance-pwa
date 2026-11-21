@@ -32,6 +32,10 @@ export function ruleFromRow(
     throw new Error(
       "No reliable recipient identity was extracted. Keep this row manual.",
     );
+  if (row.card_statement && row.direction === "credit" && row.kind)
+    throw new Error(
+      "Card credits need reconciliation. Only an exclusion rule can be saved.",
+    );
   if (recipient.exclusionOnly && row.kind)
     throw new Error(
       "This narration does not identify the recipient. Save an exclusion and review it in the dedicated section.",
@@ -136,6 +140,13 @@ export function suggestStatementRule(
       note: "Remembered rules conflict or their target is unavailable. Classify manually.",
     };
   const r = matches[0];
+  if (
+    (row.card_statement ||
+      s.accounts.some((a) => a.id === account && a.type === "credit_card")) &&
+    row.direction === "credit" &&
+    r.kind !== "exclude"
+  )
+    return row;
   if (
     recipient.exclusionOnly &&
     (r.kind !== "exclude" || r.amount_paise === null)

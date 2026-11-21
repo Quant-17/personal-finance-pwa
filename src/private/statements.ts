@@ -8,6 +8,7 @@ import {
   statementDatePrefix,
 } from "./statementLayouts";
 export type StatementDraft = {
+  card_statement?: boolean;
   direction?: "debit" | "credit" | "unknown";
   narration?: string;
   subscription_id?: string;
@@ -251,6 +252,7 @@ export function extractStatement(
     const date = statementDate(dateMatch[1], endingMonth);
     rows.push({
       direction,
+      card_statement: card,
       narration: (line.narration ?? rest).slice(0, 1200),
       source_row: `${line.page}:${line.line}`,
       page: line.page,

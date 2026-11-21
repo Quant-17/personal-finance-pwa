@@ -225,6 +225,21 @@ describe("remembered suggestions", () => {
       "Review in Investments",
     );
   });
+  it("never applies an income rule to a card credit without reconciliation", () => {
+    const credit = {
+      ...row,
+      card_statement: true,
+      direction: "credit" as const,
+      kind: "income" as const,
+    };
+    expect(() => ruleFromRow(credit, "bank", false)).toThrow(/reconciliation/);
+    const income = {
+      ...rule,
+      direction: "credit" as const,
+      kind: "income" as const,
+    };
+    expect(suggestStatementRule(credit, [income], "bank", s)).toBe(credit);
+  });
   it("rejects ambiguous or incomplete learning", () => {
     expect(() =>
       ruleFromRow({ ...row, direction: "unknown" }, "bank", false),
