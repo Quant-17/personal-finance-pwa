@@ -2171,11 +2171,12 @@ test("loan progress separates reported instalments, recorded debt and schedule e
     ),
   ).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  // Recharts applies ResizeObserver measurements after the viewport changes.
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
   await page.screenshot({
     path: test.info().outputPath("loan-progress-mobile.png"),
     fullPage: true,
