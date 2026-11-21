@@ -69,3 +69,5 @@ Historical email tables/functions are dropped by forward removal migration 20261
 December tracking adds `profiles.tracking_start_date` (reporting/new-posting cutoff), `loans.deduction_anchor_on` (planned monthly date), and nullable owner-composite subscription/card-EMI links on settled expense transactions. Links add no money; actual EMI dates remain in `loan_payments`. Current balances and debt still include all retained history. See DECEMBER_TRACKING.md.
 
 Loan progress adds nullable `loans.progress_first_due_on` and `payments_reported_through`. These are owner-reported display metadata, not ledger payments or a recalculated outstanding balance.
+
+`statement_rules` stores owner-isolated, account/direction/recipient-specific classification metadata, with an optional integer-paise condition and category, standalone loan, subscription or exclusion target. Composite owner foreign keys prevent references to another user's records. Nullable-amount natural-key uniqueness makes explicit saves idempotent. Rules contain no monthly principal/interest split and saving/deleting them never changes the ledger. See STATEMENT_RULES.md.

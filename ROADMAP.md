@@ -53,3 +53,5 @@ The owner additionally authorized reviewed statement EMI classification with a l
 Published private v0.3.6-rc.1 (PR #18, migration 20261121163128): reporting cutoff, saved recurring deduction calendar/actual dates, and interactive cash-flow/category/asset charts implemented together. Preserve all financial history and the public demo. See DECEMBER_TRACKING.md.
 
 Published private v0.3.8-rc.1 (PR #22), adaptive debt repayment simulator: minimum-only/avalanche/snowball comparison, surplus and optional spare-cash repayment, protected reserve/savings, editable lender assumptions and interactive monthly payoff projections. See DEBT_REPAYMENT_SIMULATOR.md. This narrow addition does not start broader Stage 4.
+
+Remembered statement recipients: narrow owner-requested extension before Stage 4, implemented on a review branch. Includes local description parsing, private rule-only teaching, editable suggestions, subscription deduction links and safeguards for EMI splits/transfers/investments. Personal starter mappings and hosted rollout are separate from synthetic validation; see STATEMENT_RULES.md.

@@ -31,3 +31,6 @@ Optional browser checks: `npx playwright install chromium`, then `npx playwright
 - Reuse UI components/tokens; honor reduced motion, keyboard focus, touch targets and dark appearance.
 - Verify lint, typecheck, relevant tests and production build before handoff. Document any checks that could not run.
 - Keep package-lock.json committed; use no paid services or paid APIs.
+
+## Remembered statement recipients · owner request
+The owner requested remembered statement classifications and supplied SBI/Kotak PDFs strictly as templates for recipient analysis, not financial imports. Build account/direction/recipient-specific rules with optional exact amounts, reviewed category/loan/subscription/exclusion targets and a save-rule-only path. Preserve manual confirmation, immutable paise accounting and duplicate protection; never remember EMI principal/interest splits. Never seed supplied names, dates, payee identifiers, mandates or amounts in source/fixtures/migrations. Owner-confirmed starter mappings may only become private runtime metadata, without posting the supplied transactions. Unknown people and ambiguous merchant purposes stay unclassified. Investment contributions and self/card-bill transfers must not become ordinary expenses. See STATEMENT_RULES.md. No broader Stage 4 work.

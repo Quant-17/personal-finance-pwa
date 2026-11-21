@@ -48,6 +48,7 @@ describe("monthly statement extraction", () => {
     expect(rows[0]).toMatchObject({
       date: "2026-11-19",
       amount: "1250.29",
+      direction: "debit",
       kind: "expense",
       source_row: "1:2",
       selected: false,
@@ -55,6 +56,7 @@ describe("monthly statement extraction", () => {
     });
     expect(rows[1]).toMatchObject({
       amount: "20000.00",
+      direction: "credit",
       kind: "",
       selected: false,
     });
