@@ -8,7 +8,7 @@ The **Savings & investments** section for NPS, PPF, EPF and other manual holding
 
 The owner retired Gmail/Google receipt syncing. Email access and its metadata have been removed, and the pre-email UI was temporarily restored before the new PDF release. The owner-approved **monthly PDF statement review/import** is published as **v0.3.4-rc.1**, with adapters validated against the supplied SBI/Kotak styles. The attached statement rows were not imported; the owner must review/confirm entries in-app. See [STATEMENT_RELEASE.md](STATEMENT_RELEASE.md). See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md) for supported layouts, password handling, duplicate safeguards, remaining limits and release status.
 
-A review-branch extension adds **EMI / loan repayment** to statement row types, with a linked loan and exact reviewed principal/interest split. It is not yet published. See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md#reviewed-statement-emis--review-branch).
+Private **v0.3.5-rc.1** adds **EMI / loan repayment** to statement row types, with a linked loan and exact reviewed principal/interest split. The owner-approved release is live; see [STATEMENT_EMIS_RELEASE.md](STATEMENT_EMIS_RELEASE.md). See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md#reviewed-statement-emis--review-branch).
 
 ## Preview
 
@@ -68,3 +68,5 @@ No analytics, external fonts, bank credentials, full card numbers, push notifica
 ## Phase 3 · available in the private app
 
 Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). The approved release is published at https://folio-review.sid-17061999.workers.dev/ as v0.3.0-rc.3. The additive migrations and hosted acceptance checks passed. Reopen the installed app and use Update app when offered. The original synthetic demo is preserved.
+
+The December tracking update adds a configurable transaction reporting start, a recurring deduction calendar with actual payment history, and interactive cash-flow/spending/asset charts. See [DECEMBER_TRACKING.md](DECEMBER_TRACKING.md) for accounting semantics, use and release status.

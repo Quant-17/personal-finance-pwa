@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
-  BarChart,
-  Bar,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   LayoutDashboard,
   Wallet,
   ReceiptText,
@@ -39,6 +30,8 @@ import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
 import { Investments } from "./Investments";
 import { StatementImport } from "./StatementImport";
+import { RecurringDeductions } from "./RecurringDeductions";
+import { FinancialInsights } from "./FinancialInsights";
 import { MonthlySummary } from "./MonthlySummary";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
@@ -111,6 +104,8 @@ function Workspace({
     loading,
     error,
     refresh,
+    includeEarlier,
+    setIncludeEarlier,
   } = useWorkspace();
   const [page, setPage] = useState<Page>(currentPage);
   const [editor, setEditor] = useState<EditIntent | null>(null);
@@ -210,7 +205,7 @@ function Workspace({
               {!sub.active ? " · Paused" : ""}
             </strong>
             <span>
-              {sub.cadence} · due {displayDate(sub.next_due_on)}
+              {sub.cadence} · schedule from {displayDate(sub.next_due_on)}
             </span>
           </div>
           <strong>{money(sub.amount_paise)}</strong>
@@ -332,6 +327,22 @@ function Workspace({
           {loading && <p role="status">Loading your records…</p>}
           {s && (
             <>
+              {s.profile.tracking_start_date && (
+                <div className="tracking-banner">
+                  <CalendarClock size={20} />
+                  <div>
+                    <strong>
+                      Transaction tracking from{" "}
+                      {displayDate(s.profile.tracking_start_date)}
+                    </strong>
+                    <p>
+                      Earlier history and balances are preserved. Planned
+                      deductions are separate from actual payments.
+                    </p>
+                  </div>
+                  <a href="#settings">Manage dates →</a>
+                </div>
+              )}
               {page === "overview" && (
                 <>
                   <div className="private-stats">
@@ -380,58 +391,7 @@ function Workspace({
                       {add("plan", "Set monthly plan")}
                     </section>
                   )}
-                  <section className="card private-panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>Money in, money out</h2>
-                        <p>
-                          Six months of settled activity. Transfers are
-                          excluded.
-                        </p>
-                      </div>
-                    </div>
-                    <div
-                      className="private-chart"
-                      role="img"
-                      aria-label="Six-month income and outflow bar chart"
-                    >
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={s.cashflow}>
-                          <CartesianGrid
-                            stroke="var(--border)"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="month"
-                            tickFormatter={(v) => String(v).slice(0, 7)}
-                          />
-                          <YAxis
-                            tickFormatter={(v) => money(Number(v))}
-                            width={90}
-                          />
-                          <Tooltip
-                            formatter={(v) => money(Number(v))}
-                            contentStyle={{
-                              background: "var(--surface)",
-                              borderColor: "var(--border)",
-                            }}
-                          />
-                          <Bar
-                            dataKey="income_paise"
-                            name="Income"
-                            fill="var(--primary)"
-                            radius={[4, 4, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="outflow_paise"
-                            name="Outflow"
-                            fill="var(--teal)"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </section>
+                  <FinancialInsights snapshot={s} />
                   <section className="card private-panel">
                     <h2>Plan for the month</h2>
                     <p>
@@ -537,6 +497,20 @@ function Workspace({
               )}
               {page === "activity" && (
                 <>
+                  {s.profile.tracking_start_date && (
+                    <label className="history-toggle">
+                      <input
+                        type="checkbox"
+                        checked={includeEarlier}
+                        onChange={(e) => {
+                          setIncludeEarlier(e.target.checked);
+                          setLedgerPage(0);
+                        }}
+                      />{" "}
+                      Show earlier records for reference (excluded from tracking
+                      reports)
+                    </label>
+                  )}
                   {importNotice && <p role="status">{importNotice}</p>}
                   <StatementImport
                     snapshot={s}
@@ -896,6 +870,11 @@ function Workspace({
                     ))}
                     {!s.loans.length && empty("No tracked loans.")}
                   </section>
+                  <RecurringDeductions
+                    snapshot={s}
+                    onRefresh={refresh}
+                    onEdit={setEditor}
+                  />
                   {subscriptionsPanel}
                 </>
               )}
@@ -919,6 +898,11 @@ function Workspace({
               {page === "settings" && (
                 <>
                   <MonthlySummary snapshot={s} />
+                  <RecurringDeductions
+                    snapshot={s}
+                    onRefresh={refresh}
+                    onEdit={setEditor}
+                  />
                   {subscriptionsPanel}
                   <section className="card private-panel">
                     <h2>Your monthly assumptions</h2>

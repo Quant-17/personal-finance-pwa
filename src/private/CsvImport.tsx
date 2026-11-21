@@ -76,7 +76,13 @@ export function CsvImport({
       );
       const opening = accounts.find((a) => a.id === account)?.opening_date;
       if (!opening) throw new Error("Choose an active account first.");
-      const parsed = csvPreview(text, snapshot.categories, opening);
+      const parsed = csvPreview(
+        text,
+        snapshot.categories,
+        [opening, snapshot.profile.tracking_start_date ?? opening]
+          .sort()
+          .at(-1)!,
+      );
       if (mounted.current && epoch.current === version)
         setRows(
           parsed.map((row) => ({

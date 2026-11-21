@@ -290,3 +290,18 @@ describe("reviewed statement EMI splits", () => {
       ).toThrow();
   });
 });
+
+it("excludes otherwise valid statement rows before the configured tracking start", () => {
+  const row = {
+    ...extractStatement(bankRows, "2026-11", false)[0],
+    category_id: "food",
+  };
+  expect(() =>
+    reviewedStatementEntry(
+      row,
+      { ...s, profile: { tracking_start_date: "2026-12-01" } } as Snapshot,
+      "bank",
+      "2026-11-21",
+    ),
+  ).toThrow("tracking start");
+});

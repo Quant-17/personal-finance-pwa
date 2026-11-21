@@ -13,6 +13,7 @@ export function useWorkspace() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [page, setPage] = useState(0);
+  const [includeEarlier, setIncludeEarlier] = useState(false);
   const [count, setCount] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,9 +44,15 @@ export function useWorkspace() {
           .abortSignal(controller.signal);
         check(result);
         const parsed = snapshotSchema.parse(result.data);
-        const ledger = await db()
+        let ledgerQuery = db()
           .from("transactions")
-          .select("*", { count: "exact" })
+          .select("*", { count: "exact" });
+        if (parsed.profile.tracking_start_date && !includeEarlier)
+          ledgerQuery = ledgerQuery.gte(
+            "occurred_on",
+            parsed.profile.tracking_start_date,
+          );
+        const ledger = await ledgerQuery
           .order("occurred_on", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id")
@@ -77,6 +84,17 @@ export function useWorkspace() {
       active = false;
       controller.abort();
     };
-  }, [revision, page]);
-  return { snapshot, entries, page, setPage, count, error, loading, refresh };
+  }, [revision, page, includeEarlier]);
+  return {
+    snapshot,
+    entries,
+    page,
+    setPage,
+    count,
+    error,
+    loading,
+    refresh,
+    includeEarlier,
+    setIncludeEarlier,
+  };
 }

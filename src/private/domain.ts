@@ -70,6 +70,7 @@ const loanSchema = z.object({
   outstanding_paise: paise,
   reported_emi_paise: paise.nullable().optional().default(null),
   card_account_id: id.nullable().optional().default(null),
+  deduction_anchor_on: z.string().nullable().optional(),
   has_document: z.boolean().optional().default(false),
 });
 const subscriptionSchema = z.object({
@@ -110,6 +111,8 @@ export const transactionSchema = z.object({
   occurred_on: z.string(),
   description: z.string(),
   transfer_id: id.nullable(),
+  subscription_id: id.nullable().optional(),
+  card_emi_loan_id: id.nullable().optional(),
   created_at: z.string(),
 });
 export const investmentHoldingSchema = z.object({
@@ -137,6 +140,7 @@ export const snapshotSchema = z.object({
   profile: z.object({
     id,
     display_name: z.string(),
+    tracking_start_date: z.string().nullable().optional(),
     monthly_income_paise: paise,
     monthly_living_budget_paise: paise,
     emergency_reserve_paise: paise,
@@ -159,6 +163,29 @@ export const snapshotSchema = z.object({
     net_worth_paise: paise,
     existing_emi_paise: paise,
   }),
+  deductions: z
+    .array(
+      z.object({
+        transaction_id: id,
+        kind: z.enum(["loan", "subscription", "card_emi"]),
+        commitment_id: id,
+        paid_on: z.string(),
+        amount_paise: paise,
+        principal_paise: paise.nullable(),
+        interest_paise: paise.nullable(),
+      }),
+    )
+    .optional(),
+  category_spending: z
+    .array(
+      z.object({
+        month: z.string(),
+        category_id: id,
+        name: z.string(),
+        amount_paise: paise,
+      }),
+    )
+    .optional(),
   cashflow: z.array(
     z.object({ month: z.string(), income_paise: paise, outflow_paise: paise }),
   ),

@@ -1779,13 +1779,11 @@ test("PDF EMI review requires exact principal/interest and posts a linked repaym
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
   await page.getByLabel("Statement ending month").fill("2026-11");
-  await page
-    .getByLabel("Choose statement PDF")
-    .setInputFiles({
-      name: "synthetic.pdf",
-      mimeType: "application/pdf",
-      buffer: statementPdf(),
-    });
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
   await page
     .getByLabel("Type 1:3", { exact: true })
     .selectOption("loan_payment");
@@ -1821,4 +1819,241 @@ test("PDF EMI review requires exact principal/interest and posts a linked repaym
       },
     },
   ]);
+});
+
+test("December tracking, calendar dates and interactive chart controls preserve private accounting", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const loanId = "93f093ba-b008-4415-b0ea-4b3e2bd6b88c",
+    subId = "a73e3c99-e4d7-459c-bae9-578fc9fbb04d";
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        profile: {
+          ...snapshot(true).profile,
+          tracking_start_date: "2026-12-01",
+        },
+        loans: [
+          {
+            id: loanId,
+            name: "Synthetic dated EMI",
+            principal_paise: 600000,
+            apr: 12,
+            tenure_months: 12,
+            start_date: "2026-01-01",
+            status: "active",
+            emi_paise: 53000,
+            outstanding_paise: 600000,
+            reported_emi_paise: null,
+            card_account_id: null,
+            has_document: false,
+            deduction_anchor_on: "2026-12-03",
+          },
+        ],
+        subscriptions: [
+          {
+            id: subId,
+            name: "Synthetic month-end subscription",
+            account_id: null,
+            amount_paise: 900,
+            cadence: "monthly",
+            next_due_on: "2026-12-31",
+            active: true,
+          },
+        ],
+        cashflow: [],
+        deductions: [],
+        category_spending: [],
+      },
+    }),
+  );
+  const saves: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/loans*", (route) => {
+    saves.push(route.request().postDataJSON());
+    return route.fulfill({ json: [] });
+  });
+  await login(page);
+  await expect(
+    page.getByText("Transaction tracking from 1 Dec 2026", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cash flow", exact: true }).click();
+  await expect(page.getByText("Your tracking is ready to begin")).toBeVisible();
+  await page.getByRole("button", { name: "Asset mix", exact: true }).click();
+  await page.getByRole("button", { name: /Fixture checking/ }).click();
+  await expect(page.getByText(/of positive assets/)).toBeVisible();
+  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
+  await expect(page.getByLabel("Deduction month")).toHaveValue("2026-12");
+  await expect(page.locator(".deduction-timeline")).toContainText(
+    "Synthetic dated EMI",
+  );
+  await expect(
+    page.locator(".deduction-timeline time").first(),
+  ).toHaveAttribute("datetime", "2026-12-03");
+  await page.screenshot({
+    path: test.info().outputPath("deduction-calendar.png"),
+    fullPage: true,
+  });
+  await page.getByLabel("Deduction month").fill("2027-02");
+  await expect(page.locator(".deduction-timeline time").last()).toHaveAttribute(
+    "datetime",
+    "2027-02-28",
+  );
+  await page
+    .getByText("Save or change an EMI deduction date", { exact: true })
+    .click();
+  await page.getByLabel("First tracked deduction").fill("2026-12-05");
+  await page
+    .getByRole("button", { name: "Save EMI date", exact: true })
+    .click();
+  await expect(
+    page.getByText("EMI deduction date saved. No payment was posted."),
+  ).toBeVisible();
+  expect(saves).toEqual([{ deduction_anchor_on: "2026-12-05" }]);
+  expect(
+    calls.some((c) =>
+      /record_entry|record_loan_payment|import_statement_entries/.test(c.path),
+    ),
+  ).toBe(false);
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("deduction-calendar-mobile-dark.png"),
+    fullPage: true,
+  });
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await expect(
+    page.getByLabel("Show earlier records for reference", { exact: false }),
+  ).not.toBeChecked();
+  await page
+    .getByLabel("Show earlier records for reference", { exact: false })
+    .check();
+  await expect(
+    page.getByLabel("Show earlier records for reference", { exact: false }),
+  ).toBeChecked();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("chart filters and subscription expense links do not create extra transactions", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const subId = "a73e3c99-e4d7-459c-bae9-578fc9fbb04d",
+    entryId = "35500d63-d599-4356-8862-313f6b5c319c";
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        profile: {
+          ...snapshot(true).profile,
+          tracking_start_date: "2026-10-01",
+        },
+        cashflow: [
+          { month: "2026-10-01", income_paise: 500000, outflow_paise: 300000 },
+          { month: "2026-11-01", income_paise: 600000, outflow_paise: 200000 },
+        ],
+        category_spending: [
+          {
+            month: "2026-11-01",
+            category_id: categoryId,
+            name: "Synthetic food",
+            amount_paise: 200000,
+          },
+        ],
+        subscriptions: [
+          {
+            id: subId,
+            name: "Synthetic subscription",
+            account_id: null,
+            amount_paise: 1000,
+            cadence: "monthly",
+            next_due_on: "2026-10-05",
+            active: true,
+          },
+        ],
+        deductions: [],
+      },
+    }),
+  );
+  await page.route("**/rest/v1/transactions*", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: entryId,
+          account_id: accountId,
+          category_id: categoryId,
+          kind: "expense",
+          amount_paise: -1000,
+          occurred_on: "2026-11-05",
+          description: "Synthetic receipt",
+          transfer_id: null,
+          subscription_id: null,
+          card_emi_loan_id: null,
+          created_at: "2026-11-05T00:00:00Z",
+        },
+      ],
+    }),
+  );
+  const links: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/rpc/link_subscription_deduction", (route) => {
+    links.push(route.request().postDataJSON());
+    return route.fulfill({ json: entryId });
+  });
+  await login(page);
+  await page.getByLabel("Chart period").selectOption("12");
+  await page
+    .getByRole("button", { name: "Income series", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Income series", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel("Inspect cash-flow month").selectOption("2026-10");
+  await expect(page.getByText(/2026-10 · Net cash flow/)).toBeVisible();
+  await page.getByRole("button", { name: "Spending mix", exact: true }).click();
+  await page.getByLabel("Spending month").fill("2026-11");
+  await page.getByRole("button", { name: /Synthetic food/ }).click();
+  await expect(page.getByText(/100% of this month’s expenses/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("financial-insights.png"),
+    fullPage: true,
+  });
+  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
+  await page
+    .getByText("Link an already-recorded subscription or card EMI expense", {
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "Find recorded expenses", exact: true })
+    .click();
+  await page
+    .getByLabel("Recorded expense", { exact: true })
+    .selectOption(entryId);
+  await page
+    .getByRole("button", {
+      name: "Link expense without reposting",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText("Deduction linked. No additional money was posted."),
+  ).toBeVisible();
+  expect(links).toEqual([{ p_subscription: subId, p_transaction: entryId }]);
 });

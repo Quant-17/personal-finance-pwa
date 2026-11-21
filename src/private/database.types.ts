@@ -290,6 +290,7 @@ export type Database = {
       };
       loans: {
         Row: {
+          deduction_anchor_on: string | null;
           reported_emi_paise: number | null;
           card_account_id: string | null;
           apr: number;
@@ -304,6 +305,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          deduction_anchor_on?: string | null;
           reported_emi_paise?: number | null;
           card_account_id?: string | null;
           apr: number;
@@ -318,6 +320,7 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          deduction_anchor_on?: string | null;
           reported_emi_paise?: number | null;
           card_account_id?: string | null;
           apr?: number;
@@ -335,6 +338,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          tracking_start_date: string | null;
           created_at: string;
           currency: string;
           display_name: string;
@@ -345,6 +349,7 @@ export type Database = {
           timezone: string;
         };
         Insert: {
+          tracking_start_date?: string | null;
           created_at?: string;
           currency?: string;
           display_name?: string;
@@ -355,6 +360,7 @@ export type Database = {
           timezone?: string;
         };
         Update: {
+          tracking_start_date?: string | null;
           created_at?: string;
           currency?: string;
           display_name?: string;
@@ -433,6 +439,8 @@ export type Database = {
       };
       transactions: {
         Row: {
+          subscription_id: string | null;
+          card_emi_loan_id: string | null;
           account_id: string;
           amount_paise: number;
           category_id: string | null;
@@ -446,6 +454,8 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          subscription_id?: string | null;
+          card_emi_loan_id?: string | null;
           account_id: string;
           amount_paise: number;
           category_id?: string | null;
@@ -459,6 +469,8 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          subscription_id?: string | null;
+          card_emi_loan_id?: string | null;
           account_id?: string;
           amount_paise?: number;
           category_id?: string | null;
@@ -493,6 +505,25 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      link_card_emi_deduction: {
+        Args: { p_loan: string | null; p_transaction: string };
+        Returns: string;
+      };
+      link_subscription_deduction: {
+        Args: { p_subscription: string | null; p_transaction: string };
+        Returns: string;
+      };
+      record_subscription_charge: {
+        Args: {
+          p_subscription: string;
+          p_account: string;
+          p_category: string;
+          p_amount_paise: number;
+          p_occurred_on: string;
+          p_request_id: string;
+        };
+        Returns: string;
+      };
       preview_statement_import: {
         Args: { p_account: string; p_source_sha256: string; p_rows: Json };
         Returns: Json;
