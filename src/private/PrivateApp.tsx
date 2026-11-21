@@ -31,6 +31,7 @@ import { LoanDocumentImport } from "./LoanDocumentImport";
 import { Investments } from "./Investments";
 import { StatementImport } from "./StatementImport";
 import { RecurringDeductions } from "./RecurringDeductions";
+import { LoanProgress } from "./LoanProgress";
 import { FinancialInsights } from "./FinancialInsights";
 import { MonthlySummary } from "./MonthlySummary";
 import { CsvImport } from "./CsvImport";
@@ -740,6 +741,7 @@ function Workspace({
                     </Button>
                     {add("payment", "Record repayment")}
                   </div>
+                  <LoanProgress snapshot={s} onRefresh={refresh} />
                   {loanNotice && <p role="status">{loanNotice}</p>}
                   {documentReview && (
                     <LoanDocumentImport

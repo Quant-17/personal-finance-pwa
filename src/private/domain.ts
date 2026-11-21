@@ -70,6 +70,8 @@ const loanSchema = z.object({
   outstanding_paise: paise,
   reported_emi_paise: paise.nullable().optional().default(null),
   card_account_id: id.nullable().optional().default(null),
+  progress_first_due_on: z.string().nullable().optional(),
+  payments_reported_through: z.string().nullable().optional(),
   deduction_anchor_on: z.string().nullable().optional(),
   has_document: z.boolean().optional().default(false),
 });

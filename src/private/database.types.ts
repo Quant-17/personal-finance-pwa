@@ -290,6 +290,8 @@ export type Database = {
       };
       loans: {
         Row: {
+          progress_first_due_on: string | null;
+          payments_reported_through: string | null;
           deduction_anchor_on: string | null;
           reported_emi_paise: number | null;
           card_account_id: string | null;
@@ -305,6 +307,8 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          progress_first_due_on?: string | null;
+          payments_reported_through?: string | null;
           deduction_anchor_on?: string | null;
           reported_emi_paise?: number | null;
           card_account_id?: string | null;
@@ -320,6 +324,8 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          progress_first_due_on?: string | null;
+          payments_reported_through?: string | null;
           deduction_anchor_on?: string | null;
           reported_emi_paise?: number | null;
           card_account_id?: string | null;

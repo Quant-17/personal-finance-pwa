@@ -69,6 +69,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/email_removal.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/statements.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/december_tracking.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/loan_progress.sql
           bash supabase/tests/statements_concurrency.sh
           bash supabase/tests/statement_emis_concurrency.sh
           psql -v ON_ERROR_STOP=1 -f supabase/tests/phase3_hosted_acceptance.sql
