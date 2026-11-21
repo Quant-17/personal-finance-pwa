@@ -2025,11 +2025,11 @@ test("chart filters and subscription expense links do not create extra transacti
   await page.getByRole("button", { name: /Synthetic food/ }).click();
   await expect(page.getByText(/100% of this month’s expenses/)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
   await page.screenshot({
     path: test.info().outputPath("financial-insights.png"),
     fullPage: true,
