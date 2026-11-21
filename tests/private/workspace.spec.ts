@@ -1915,6 +1915,17 @@ test("December tracking, calendar dates and interactive chart controls preserve 
       /record_entry|record_loan_payment|import_statement_entries/.test(c.path),
     ),
   ).toBe(false);
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("deduction-calendar-mobile-dark.png"),
+    fullPage: true,
+  });
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
   await expect(
     page.getByLabel("Show earlier records for reference", { exact: false }),
@@ -2012,6 +2023,12 @@ test("chart filters and subscription expense links do not create extra transacti
   await page.getByLabel("Spending month").fill("2026-11");
   await page.getByRole("button", { name: /Synthetic food/ }).click();
   await expect(page.getByText(/100% of this month’s expenses/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: test.info().outputPath("financial-insights.png"),
     fullPage: true,
