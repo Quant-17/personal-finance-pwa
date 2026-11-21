@@ -2057,3 +2057,128 @@ test("chart filters and subscription expense links do not create extra transacti
   ).toBeVisible();
   expect(links).toEqual([{ p_subscription: subId, p_transaction: entryId }]);
 });
+
+test("loan progress separates reported instalments, recorded debt and schedule estimates", async ({
+  page,
+}) => {
+  const calls = await mock(page, true),
+    loanId = "93f093ba-b008-4415-b0ea-4b3e2bd6b88c";
+  const terms = {
+    name: "Synthetic progress loan",
+    provider: "lt_finance",
+    source_sha256: "b".repeat(64),
+    source_page_count: 1,
+    original_principal_paise: 1200000,
+    original_months: 12,
+    nominal_rate: 0,
+    disclosure_apr: null,
+    net_disbursed_paise: null,
+    fees_paise: null,
+    reported_emi_paise: 100000,
+    current_outstanding_paise: 600000,
+    remaining_months: 6,
+    as_of: "2026-11-01",
+    paid_through: null,
+    first_due_on: "2026-08-01",
+    balance_basis: "manual",
+    card_account_id: null,
+    schedule_origin: "none",
+    schedule: [],
+    source_pages: {
+      principal: 1,
+      rate: 1,
+      apr: null,
+      emi: 1,
+      tenure: 1,
+      first_due: 1,
+    },
+  };
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        loans: [
+          {
+            id: loanId,
+            name: terms.name,
+            principal_paise: 600000,
+            apr: 0,
+            tenure_months: 6,
+            start_date: "2026-11-01",
+            status: "active",
+            emi_paise: 100000,
+            outstanding_paise: 600000,
+            reported_emi_paise: 100000,
+            card_account_id: null,
+            has_document: true,
+            progress_first_due_on: "2026-08-01",
+            payments_reported_through: "2026-11-21",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/rest/v1/loan_document_details*", (route) =>
+    route.fulfill({ json: { details: terms } }),
+  );
+  const saved: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/loans*", (route) => {
+    saved.push(route.request().postDataJSON());
+    return route.fulfill({ json: [] });
+  });
+  await login(page);
+  await page
+    .getByRole("link", { name: "Loans & subscriptions", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Loan payment progress", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".loan-progress-stats")).toContainText("4 / 12");
+  await expect(
+    page.getByText("50% of principal reduced", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Estimated principal remaining",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByLabel("Inspect instalment", { exact: true }).focus();
+  await page
+    .getByLabel("Inspect instalment", { exact: true })
+    .press("ArrowRight");
+  await expect(
+    page.locator(".loan-progress .insight-detail").last(),
+  ).toContainText("EMI 2");
+  await page.getByLabel("First EMI date", { exact: true }).fill("2026-08-02");
+  await page
+    .getByRole("button", { name: "Save on-time payment report", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Progress dates saved. No repayments or balances were changed.",
+    ),
+  ).toBeVisible();
+  expect(saved).toEqual([
+    {
+      progress_first_due_on: "2026-08-02",
+      payments_reported_through: "2026-11-21",
+    },
+  ]);
+  expect(
+    calls.some((c) =>
+      /record_entry|record_loan_payment|import_statement_entries/.test(c.path),
+    ),
+  ).toBe(false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Recharts applies ResizeObserver measurements after the viewport changes.
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("loan-progress-mobile.png"),
+    fullPage: true,
+  });
+});
