@@ -51,3 +51,5 @@ Broader bank-format column mapping, forecast automation, export/deletion UI, imm
 The owner additionally authorized reviewed statement EMI classification with a linked standalone loan and exact principal/interest split. PR #16, hosted migration 20261121160204 and private v0.3.5-rc.1 publication are complete after owner approval. See STATEMENT_EMIS_RELEASE.md. Existing debt-payment summaries are reused, with no living-expense double counting.
 
 Published private v0.3.6-rc.1 (PR #18, migration 20261121163128): reporting cutoff, saved recurring deduction calendar/actual dates, and interactive cash-flow/category/asset charts implemented together. Preserve all financial history and the public demo. See DECEMBER_TRACKING.md.
+
+Owner-requested adaptive debt repayment simulator: minimum-only/avalanche/snowball comparison, surplus and optional spare-cash repayment, protected reserve/savings, editable lender assumptions and interactive monthly payoff projections. See DEBT_REPAYMENT_SIMULATOR.md. This narrow addition does not start broader Stage 4.

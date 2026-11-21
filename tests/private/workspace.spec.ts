@@ -2182,3 +2182,164 @@ test("loan progress separates reported instalments, recorded debt and schedule e
     fullPage: true,
   });
 });
+
+test("debt simulator follows saved finances, protects reserve and never posts payments", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const calls = await mock(page, true),
+    loanId = "93f093ba-b008-4415-b0ea-4b3e2bd6b88c";
+  let balance = 600000;
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        loans: [
+          {
+            id: loanId,
+            name: "Synthetic repayment loan",
+            principal_paise: 600000,
+            apr: 12,
+            tenure_months: 12,
+            start_date: "2026-01-01",
+            status: "active",
+            emi_paise: 53000,
+            outstanding_paise: balance,
+            reported_emi_paise: 53000,
+            card_account_id: null,
+            has_document: false,
+            deduction_anchor_on: "2026-01-03",
+          },
+        ],
+      },
+    }),
+  );
+  await login(page);
+  await page
+    .getByRole("link", { name: "Debt repayment simulator", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Your adaptive repayment plan",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByText("Debt balances and prepayment assumptions", { exact: true })
+    .click();
+  await expect(
+    page.getByText("₹6,000.00 outstanding", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Compare your routes", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("One-time payment from spare cash (₹)", { exact: true })
+    .fill("10000.01");
+  await expect(page.getByRole("alert")).toContainText("exceeds spare cash");
+  await page
+    .getByLabel("One-time payment from spare cash (₹)", { exact: true })
+    .fill("1000");
+  await expect(
+    page.getByRole("heading", { name: "Compare your routes", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Scenario monthly income (₹)", { exact: true })
+    .fill("10");
+  await expect(page.getByRole("alert")).toContainText("short by");
+  await expect(
+    page.getByRole("heading", { name: "Compare your routes", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Use current finances", exact: true })
+    .click();
+  balance = 300000;
+  await page
+    .getByRole("button", { name: "Refresh finances", exact: true })
+    .click();
+  await expect(
+    page.getByText("₹3,000.00 outstanding", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Use monthly surplus", { exact: true }).focus();
+  await page
+    .getByLabel("Use monthly surplus", { exact: true })
+    .press("ArrowLeft");
+  await page.getByRole("button", { name: /Smallest balance first/ }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page
+    .getByText("Debt balances and prepayment assumptions", { exact: true })
+    .click();
+  await page.screenshot({
+    path: test.info().outputPath("debt-simulator-mobile.png"),
+    fullPage: true,
+  });
+  await page
+    .getByText("Debt balances and prepayment assumptions", { exact: true })
+    .click();
+  balance = 200000;
+  await page.clock.fastForward(61000);
+  await expect(
+    page.getByText("₹2,000.00 outstanding", { exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.some((c) =>
+      /record_entry|record_loan_payment|record_transfer|save_|import_statement_entries/.test(
+        c.path,
+      ),
+    ),
+  ).toBe(false);
+});
+
+test("debt simulator requires revolving card terms and reacts to protected savings", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        accounts: [
+          ...snapshot(true).accounts,
+          {
+            id: "93f093ba-b008-4415-b0ea-4b3e2bd6b88c",
+            name: "Synthetic revolving card",
+            type: "credit_card",
+            opening_balance_paise: -100000,
+            opening_date: "2026-01-01",
+            balance_paise: -100000,
+            archived_at: null,
+          },
+        ],
+      },
+    }),
+  );
+  await login(page);
+  await page
+    .getByRole("link", { name: "Debt repayment simulator", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "annual rate and monthly minimum",
+  );
+  await page
+    .getByLabel("Annual rate Synthetic revolving card · revolving balance", {
+      exact: true,
+    })
+    .fill("36");
+  await page
+    .getByLabel("Minimum Synthetic revolving card · revolving balance", {
+      exact: true,
+    })
+    .fill("100");
+  await expect(
+    page.getByRole("heading", { name: "Compare your routes", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Monthly savings to protect (₹)", { exact: true })
+    .fill("40000");
+  await expect(page.getByRole("alert")).toContainText("short by");
+});

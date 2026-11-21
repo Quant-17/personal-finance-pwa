@@ -72,3 +72,5 @@ Private saved comparisons and CSV import are integrated in this release branch. 
 Published private **v0.3.6-rc.1** adds a configurable transaction reporting start, a recurring deduction calendar with actual payment history, and interactive cash-flow/spending/asset charts. See [DECEMBER_TRACKING.md](DECEMBER_TRACKING.md) for accounting semantics, use and release status.
 
 Published private **v0.3.7-rc.1** loan payment-progress charts add principal reduction, reported on-time instalments and a reviewed/estimated repayment curve. See [LOAN_PROGRESS.md](LOAN_PROGRESS.md).
+
+The adaptive **Debt repayment simulator** compares minimum-only, highest-interest-first and smallest-balance-first plans using current debt/cash balances and monthly assumptions. It supports protected savings/reserve and optional spare-cash repayment. See [DEBT_REPAYMENT_SIMULATOR.md](DEBT_REPAYMENT_SIMULATOR.md).
