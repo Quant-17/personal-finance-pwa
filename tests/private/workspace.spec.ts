@@ -172,6 +172,17 @@ test("offline and background locks remove private views; reconnect verifies agai
   await expect(
     page.getByRole("heading", { name: "Fixture checking" }),
   ).toBeVisible();
+  // Finish initial static-shell installation before deliberately interrupting the network.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          async () =>
+            !!(await navigator.serviceWorker.getRegistration())?.active,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(true);
   await context.setOffline(true);
   await expect(
     page.getByRole("heading", { name: "Workspace locked" }),
@@ -408,7 +419,9 @@ test("saved comparisons retry safely, survive refresh, restore assumptions and d
   await page
     .getByRole("button", { name: "Save comparison", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Comparison saved");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Comparison saved" }),
+  ).toBeVisible();
   expect(rows).toHaveLength(1);
   expect(savedIds[0]).toBe(savedIds[1]);
   expect(rows[0].price_paise).toBe(5000029);
