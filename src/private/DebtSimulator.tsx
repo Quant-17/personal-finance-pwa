@@ -336,10 +336,10 @@ export function DebtSimulator({
         )}
         {cap && cap.surplus < 0 && !calculation.error && (
           <p className="form-error">
-            Current minimums exceed available monthly funds by{" "}
-            {money(-cap.surplus)}. A proposed plan must first eliminate enough
-            minimums with the one-time payment; otherwise it is marked
-            unaffordable.
+            Quoted minimums exceed available monthly funds by{" "}
+            {money(-cap.surplus)}. A plan is affordable only when its actual
+            minimums, after any one-time payoff and final-payment caps, fit
+            within that budget.
           </p>
         )}
         {calculation.error && (
