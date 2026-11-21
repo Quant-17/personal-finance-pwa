@@ -14,12 +14,28 @@ export type StatementDraft = {
   date: string;
   description: string;
   amount: string;
-  kind: "expense" | "income" | "";
+  kind: "expense" | "income" | "loan_payment" | "";
+  loan_id?: string;
+  principal?: string;
+  interest?: string;
   category_id: string;
   selected: boolean;
   note: string;
 };
-export type StatementEntry = { source_row: string; entry: CsvEntry };
+export type StatementEntry = {
+  source_row: string;
+  entry:
+    | CsvEntry
+    | {
+        kind: "loan_payment";
+        occurred_on: string;
+        amount_paise: number;
+        loan_id: string;
+        principal_paise: number;
+        interest_paise: number;
+        description: string;
+      };
+};
 const months = [
   "jan",
   "feb",
@@ -212,7 +228,7 @@ export function extractStatement(
     if (risky) {
       kind = "";
       note =
-        "Possible transfer, repayment, credit or unsettled transaction. Use its dedicated ledger form unless you verify it is a normal expense/income.";
+        "Possible transfer, repayment, credit or unsettled transaction. For a standalone loan EMI, select EMI / loan repayment and review its split; otherwise use the dedicated form or verify normal income/expense.";
     }
     const description = (
       line.narration ??
@@ -261,17 +277,49 @@ export function reviewedStatementEntry(
     );
   if (!row.kind)
     throw new Error(
-      "Choose income or expense; leave transfers/repayments excluded.",
+      "Choose income, expense or EMI / loan repayment; leave transfers excluded.",
     );
+  const amount = moneyInput(row.amount);
+  if (amount <= 0) throw new Error("Enter a positive amount in rupees.");
+  if (!row.description.trim() || row.description.length > 240)
+    throw new Error("Review a description of 1–240 characters.");
+  if (row.kind === "loan_payment") {
+    if (a.type === "credit_card")
+      throw new Error("Choose the bank account that paid this EMI.");
+    const loan = s.loans.find(
+      (l) =>
+        l.id === row.loan_id && l.status === "active" && !l.card_account_id,
+    );
+    if (!loan) throw new Error("Choose an active standalone loan.");
+    if (row.date < loan.start_date)
+      throw new Error(
+        "Payment predates the loan tracking balance. Do not import payments already included in that balance.",
+      );
+    const principal = moneyInput(row.principal ?? ""),
+      interest = moneyInput(row.interest ?? "");
+    if (principal + interest !== amount)
+      throw new Error(
+        "Reviewed principal + interest must equal the statement debit exactly.",
+      );
+    // Outstanding is enforced by PostgreSQL only for new rows, after duplicate detection.
+    return {
+      source_row: row.source_row,
+      entry: {
+        kind: "loan_payment",
+        occurred_on: row.date,
+        amount_paise: amount,
+        loan_id: loan.id,
+        principal_paise: principal,
+        interest_paise: interest,
+        description: row.description.trim(),
+      },
+    };
+  }
   const category = s.categories.find(
     (c) => c.id === row.category_id && c.kind === row.kind,
   );
   if (!category)
     throw new Error("Choose a category matching the transaction type.");
-  const amount = moneyInput(row.amount);
-  if (amount <= 0) throw new Error("Enter a positive amount in rupees.");
-  if (!row.description.trim() || row.description.length > 240)
-    throw new Error("Review a description of 1–240 characters.");
   return {
     source_row: row.source_row,
     entry: {

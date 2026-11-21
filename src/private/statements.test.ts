@@ -228,3 +228,65 @@ describe("monthly statement extraction", () => {
     ).toThrow("at most 500");
   });
 });
+
+describe("reviewed statement EMI splits", () => {
+  const loan = {
+    id: "loan",
+    status: "active",
+    card_account_id: null,
+    start_date: "2026-10-01",
+    outstanding_paise: 500000,
+  };
+  const snapshot = { ...s, loans: [loan] } as Snapshot;
+  const row = {
+    ...extractStatement(bankRows, "2026-11", false)[0],
+    kind: "loan_payment" as const,
+    loan_id: "loan",
+    principal: "1000.20",
+    interest: "250.09",
+  };
+  it("sends exact paise and a linked loan without an expense category", () => {
+    expect(
+      reviewedStatementEntry(row, snapshot, "bank", "2026-11-21").entry,
+    ).toEqual({
+      kind: "loan_payment",
+      loan_id: "loan",
+      principal_paise: 100020,
+      interest_paise: 25009,
+      amount_paise: 125029,
+      occurred_on: "2026-11-19",
+      description: row.description,
+    });
+  });
+  it("rejects missing splits, mismatches and extra decimal places", () => {
+    for (const edit of [
+      { principal: "" },
+      { interest: "250.08" },
+      { principal: "1000.201" },
+    ])
+      expect(() =>
+        reviewedStatementEntry(
+          { ...row, ...edit },
+          snapshot,
+          "bank",
+          "2026-11-21",
+        ),
+      ).toThrow();
+  });
+  it("rejects unowned, card-linked, closed and pre-baseline loans", () => {
+    for (const edit of [
+      { id: "other" },
+      { card_account_id: "card" },
+      { status: "closed" },
+      { start_date: "2026-11-20" },
+    ])
+      expect(() =>
+        reviewedStatementEntry(
+          row,
+          { ...snapshot, loans: [{ ...loan, ...edit }] } as Snapshot,
+          "bank",
+          "2026-11-21",
+        ),
+      ).toThrow();
+  });
+});

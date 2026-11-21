@@ -1711,13 +1711,11 @@ for (const bank of ["sbi", "kotak"] as const)
     await login(page);
     await page.getByRole("link", { name: "Transactions", exact: true }).click();
     await page.getByLabel("Statement ending month").fill("2026-05");
-    await page
-      .getByLabel("Choose statement PDF")
-      .setInputFiles({
-        name: `synthetic-${bank}.pdf`,
-        mimeType: "application/pdf",
-        buffer: positionedStatementPdf(bank),
-      });
+    await page.getByLabel("Choose statement PDF").setInputFiles({
+      name: `synthetic-${bank}.pdf`,
+      mimeType: "application/pdf",
+      buffer: positionedStatementPdf(bank),
+    });
     const descriptions = page.locator('input[aria-label^="Description "]'),
       dates = page.locator('input[aria-label^="Date "]'),
       amounts = page.locator('input[aria-label^="Amount "]'),
@@ -1741,3 +1739,86 @@ for (const bank of ["sbi", "kotak"] as const)
       ),
     ).toBe(false);
   });
+
+test("PDF EMI review requires exact principal/interest and posts a linked repayment", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const loanId = "93f093ba-b008-4415-b0ea-4b3e2bd6b88c";
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        loans: [
+          {
+            id: loanId,
+            name: "Synthetic loan",
+            principal_paise: 600000,
+            apr: 12,
+            tenure_months: 12,
+            start_date: "2026-01-01",
+            status: "active",
+            emi_paise: 53000,
+            outstanding_paise: 600000,
+            reported_emi_paise: null,
+            card_account_id: null,
+            has_document: false,
+          },
+        ],
+      },
+    }),
+  );
+  const commits: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/rpc/preview_statement_import", (route) =>
+    route.fulfill({ json: { duplicates: [false] } }),
+  );
+  await page.route("**/rest/v1/rpc/import_statement_entries", (route) => {
+    commits.push(route.request().postDataJSON());
+    return route.fulfill({ json: { inserted: 1, skipped: 0 } });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await page.getByLabel("Statement ending month").fill("2026-11");
+  await page
+    .getByLabel("Choose statement PDF")
+    .setInputFiles({
+      name: "synthetic.pdf",
+      mimeType: "application/pdf",
+      buffer: statementPdf(),
+    });
+  await page
+    .getByLabel("Type 1:3", { exact: true })
+    .selectOption("loan_payment");
+  await page.getByLabel("Loan 1:3", { exact: true }).selectOption(loanId);
+  await page.getByLabel("Principal 1:3", { exact: true }).fill("90.00");
+  await page.getByLabel("Interest 1:3", { exact: true }).fill("10.28");
+  await expect(page.getByLabel("Select statement row 1:3")).toBeDisabled();
+  await page.getByLabel("Interest 1:3", { exact: true }).fill("10.29");
+  await page.getByLabel("Select statement row 1:3").check();
+  await page
+    .getByRole("button", { name: "Check statement duplicates" })
+    .click();
+  await page
+    .getByLabel("I compared the selected rows", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Import 1 statement transactions" })
+    .click();
+  await expect(
+    page.getByText("Statement import complete: 1 added", { exact: false }),
+  ).toBeVisible();
+  expect(commits[0].p_rows).toEqual([
+    {
+      source_row: "1:3",
+      entry: {
+        kind: "loan_payment",
+        loan_id: loanId,
+        amount_paise: 10029,
+        principal_paise: 9000,
+        interest_paise: 1029,
+        occurred_on: "2026-11-19",
+        description: "SYNTHETIC LUNCH",
+      },
+    },
+  ]);
+});

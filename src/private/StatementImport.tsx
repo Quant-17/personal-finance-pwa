@@ -89,7 +89,7 @@ export function StatementImport({
     (p): p is typeof p & { entry: StatementEntry } => !!p.entry,
   );
   // <=500 integer-paise rows, each <=10^12: sums stay within JS's safe integer range.
-  const total = (kind: "expense" | "income") =>
+  const total = (kind: "expense" | "income" | "loan_payment") =>
     selected.reduce(
       (sum, p) =>
         sum + (p.entry.entry.kind === kind ? p.entry.entry.amount_paise : 0),
@@ -290,8 +290,9 @@ export function StatementImport({
       <p className="small-note">
         For a protected PDF, enter its password before choosing the file.
         Limits: 10 MiB, 60 pages, 500 detected rows. Missing years use the
-        ending month; verify inferred dates. Credits, transfers, loan EMIs and
-        card repayments need explicit classification or their dedicated forms.
+        ending month; verify inferred dates. Transfers, refunds and card
+        repayments need their dedicated forms. Standalone loan EMIs can be
+        linked below with a reviewed principal/interest split.
       </p>
       <p className="small-note">
         SBI’s two-date grid uses Post Date, with Value Date kept in the source
@@ -382,7 +383,7 @@ export function StatementImport({
                   <th>Description</th>
                   <th>Type</th>
                   <th>Amount ₹</th>
-                  <th>Category</th>
+                  <th>Category / loan</th>
                   <th>Review</th>
                 </tr>
               </thead>
@@ -441,6 +442,9 @@ export function StatementImport({
                           update(r.source_row, {
                             kind: e.target.value as StatementDraft["kind"],
                             category_id: "",
+                            loan_id: "",
+                            principal: "",
+                            interest: "",
                             selected: false,
                           })
                         }
@@ -448,6 +452,9 @@ export function StatementImport({
                         <option value="">Exclude / needs review</option>
                         <option value="expense">Expense</option>
                         <option value="income">Income</option>
+                        <option value="loan_payment">
+                          EMI / loan repayment
+                        </option>
                       </select>
                     </td>
                     <td>
@@ -462,23 +469,86 @@ export function StatementImport({
                       />
                     </td>
                     <td>
-                      <select
-                        aria-label={`Category ${r.source_row}`}
-                        disabled={pending || !r.kind}
-                        value={r.category_id}
-                        onChange={(e) =>
-                          update(r.source_row, { category_id: e.target.value })
-                        }
-                      >
-                        <option value="">Choose category</option>
-                        {s.categories
-                          .filter((c) => c.kind === r.kind)
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                      </select>
+                      {r.kind === "loan_payment" ? (
+                        <>
+                          <select
+                            aria-label={`Loan ${r.source_row}`}
+                            disabled={pending}
+                            value={r.loan_id ?? ""}
+                            onChange={(e) =>
+                              update(r.source_row, { loan_id: e.target.value })
+                            }
+                          >
+                            <option value="">Choose loan</option>
+                            {s.loans
+                              .filter(
+                                (l) =>
+                                  l.status === "active" && !l.card_account_id,
+                              )
+                              .map((l) => (
+                                <option key={l.id} value={l.id}>
+                                  {l.name}
+                                </option>
+                              ))}
+                          </select>
+                          <label>
+                            Principal (₹)
+                            <input
+                              aria-label={`Principal ${r.source_row}`}
+                              disabled={pending}
+                              inputMode="decimal"
+                              value={r.principal ?? ""}
+                              onChange={(e) =>
+                                update(r.source_row, {
+                                  principal: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Interest (₹)
+                            <input
+                              aria-label={`Interest ${r.source_row}`}
+                              disabled={pending}
+                              inputMode="decimal"
+                              value={r.interest ?? ""}
+                              onChange={(e) =>
+                                update(r.source_row, {
+                                  interest: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <small>
+                            Use the lender’s split. Paid from the selected
+                            account. Exclude payments already included in the
+                            loan’s tracking balance; no fees or estimates.
+                          </small>
+                        </>
+                      ) : (
+                        <>
+                          {" "}
+                          <select
+                            aria-label={`Category ${r.source_row}`}
+                            disabled={pending || !r.kind}
+                            value={r.category_id}
+                            onChange={(e) =>
+                              update(r.source_row, {
+                                category_id: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Choose category</option>
+                            {s.categories
+                              .filter((c) => c.kind === r.kind)
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                          </select>
+                        </>
+                      )}
                     </td>
                     <td>
                       {duplicates.includes(r.source_row)
@@ -492,7 +562,8 @@ export function StatementImport({
           </div>
           <p>
             Selected expenses {money(total("expense"))} · Selected income{" "}
-            {money(total("income"))}
+            {money(total("income"))} · Selected EMIs{" "}
+            {money(total("loan_payment"))}
           </p>
           <Button
             variant="outline"
@@ -518,8 +589,9 @@ export function StatementImport({
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
                 I compared the selected rows, dates, categories and totals with
-                the original statement and excluded transfers, repayments and
-                unclassified credits.
+                the original statement, reviewed EMI principal/interest splits
+                and excluded transfers, card repayments and unclassified
+                credits.
               </label>
               <Button
                 disabled={pending || !confirmed || !selected.length}

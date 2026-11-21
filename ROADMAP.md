@@ -47,3 +47,5 @@ The replacement implements local readable-PDF extraction, optional local passwor
 ## Later
 
 Broader bank-format column mapping, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.
+
+The owner additionally authorized reviewed statement EMI classification with a linked standalone loan and exact principal/interest split. Implemented on the statement-emis review branch; private publication remains pending. Existing debt-payment summaries are reused, with no living-expense double counting.
