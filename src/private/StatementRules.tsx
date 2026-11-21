@@ -43,7 +43,7 @@ export function RememberStatementRow({
     }
   };
   return (
-    <details>
+    <details className="min-w-0 break-words">
       <summary>Remember {recipient.name}</summary>
       <p>{recipient.detail}</p>
       <p>
@@ -119,7 +119,7 @@ export function RememberedStatementRules({
     }
   };
   return (
-    <details>
+    <details className="min-w-0 break-words">
       <summary>Remembered rules for this account ({rules.length})</summary>
       <p>
         Suggestions are applied when you read the next PDF. They never select or
@@ -152,17 +152,19 @@ export function RememberedStatementRules({
           <p>{r.review_note}</p>
           <Button
             variant="outline"
+            aria-label={`${r.enabled ? "Disable" : "Enable"} ${r.recipient_name}`}
             disabled={pending || busy}
             onClick={() => void action(() => onToggle(r))}
           >
-            {r.enabled ? "Disable" : "Enable"} {r.recipient_name}
+            {r.enabled ? "Disable" : "Enable"}
           </Button>{" "}
           <Button
             variant="outline"
+            aria-label={`Forget ${r.recipient_name}`}
             disabled={pending || busy}
             onClick={() => void action(() => onDelete(r))}
           >
-            Forget {r.recipient_name}
+            Forget
           </Button>
         </div>
       ))}
