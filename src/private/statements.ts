@@ -275,6 +275,13 @@ export function reviewedStatementEntry(
     throw new Error(
       "Use a settled date on/after account opening and not in the future.",
     );
+  if (
+    s.profile?.tracking_start_date &&
+    row.date < s.profile.tracking_start_date
+  )
+    throw new Error(
+      "This row predates your transaction tracking start. Leave it excluded.",
+    );
   if (!row.kind)
     throw new Error(
       "Choose income, expense or EMI / loan repayment; leave transfers excluded.",

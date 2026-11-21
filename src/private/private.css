@@ -1027,3 +1027,185 @@ progress {
   max-width: 220px;
   white-space: normal;
 }
+
+.tracking-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+.tracking-banner p {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.tracking-banner a {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--primary);
+}
+.insight-tabs,
+.insight-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  align-items: center;
+}
+.insight-controls label,
+.insight-month {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.insights select,
+.insights input,
+.private-panel > .panel-heading input {
+  min-height: 44px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.5rem;
+  color: var(--text);
+}
+.insight-chip {
+  border: 1px solid var(--border);
+  border-radius: 2rem;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.insight-detail,
+.deduction-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  border-radius: 0.8rem;
+  background: var(--bg);
+  margin: 1rem 0;
+}
+.insight-detail span {
+  color: var(--muted);
+}
+.insight-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 1rem;
+  margin: 1rem 0;
+}
+.insight-pie-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+.insight-legend,
+.deduction-timeline,
+.deduction-history {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.insight-legend button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+  padding: 0.65rem;
+  background: none;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  cursor: pointer;
+}
+.insight-legend button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--bg);
+}
+.insight-legend button i {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.insight-legend strong {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.deduction-timeline li,
+.deduction-history li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.deduction-timeline time {
+  display: grid;
+  justify-items: center;
+  flex: 0 0 50px;
+  border-radius: 0.7rem;
+  padding: 0.6rem;
+  background: var(--bg);
+  font-size: 0.75rem;
+}
+.deduction-timeline time strong {
+  font-size: 1.3rem;
+}
+.deduction-timeline li > div,
+.deduction-history li > div {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+.deduction-timeline li span,
+.deduction-history span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.history-toggle {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+@media (max-width: 650px) {
+  .insight-pie-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .tracking-banner {
+    flex-wrap: wrap;
+  }
+  .tracking-banner a {
+    margin-left: 0;
+  }
+  .tracking-banner > div {
+    flex: 1;
+    min-width: 180px;
+  }
+  .deduction-timeline li,
+  .deduction-history li {
+    flex-wrap: wrap;
+  }
+  .insight-chip {
+    display: none;
+  }
+}
+.insight-legend button span,
+.deduction-timeline li > div strong,
+.deduction-history li > div strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

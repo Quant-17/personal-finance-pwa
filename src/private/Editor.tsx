@@ -16,7 +16,8 @@ export type EditorKind =
   | "goal"
   | "allocation"
   | "category"
-  | "plan";
+  | "plan"
+  | "subscriptionCharge";
 export type EditIntent = {
   kind: EditorKind;
   entry?: Entry;
@@ -43,6 +44,7 @@ const titles: Record<EditorKind, string> = {
   allocation: "Earmark savings",
   category: "Create a category",
   plan: "Your monthly plan",
+  subscriptionCharge: "Record subscription deduction",
 };
 export function Editor({
   intent,
@@ -67,233 +69,290 @@ export function Editor({
     c.name + " · " + c.kind,
   ]);
   const fields: Field[] =
-    kind === "account"
+    kind === "subscriptionCharge"
       ? [
-          { name: "name", label: "Account name" },
           {
-            name: "type",
-            label: "Account type",
-            options: [
-              "bank",
-              "savings",
-              "credit_card",
-              "cash",
-              "investment",
-            ].map((v) => [v, v.replace("_", " ")]),
+            name: "subscription",
+            label: "Subscription",
+            options: s.subscriptions
+              .filter((x) => x.active)
+              .map((x) => [x.id, x.name] as [string, string]),
           },
+          { name: "account", label: "Paid from", options: accounts },
           {
-            name: "amount",
-            label: "Opening balance (₹)",
-            value: "0",
-            hint: "Use a negative balance for money owed on a credit card.",
+            name: "category",
+            label: "Expense category",
+            options: s.categories
+              .filter((c) => c.kind === "expense")
+              .map((c) => [c.id, c.name] as [string, string]),
           },
+          { name: "amount", label: "Amount (₹)" },
           {
             name: "date",
-            label: "Opening date",
+            label: "Actual deduction date",
             type: "date",
             value: indiaDate(),
           },
         ]
-      : kind === "entry"
+      : kind === "account"
         ? [
+            { name: "name", label: "Account name" },
             {
-              name: "account",
-              label: "Account",
-              options: accounts,
-              value: entry?.account_id,
-            },
-            {
-              name: "kind",
-              label: "Transaction type",
+              name: "type",
+              label: "Account type",
               options: [
-                ["expense", "Expense"],
-                ["income", "Income"],
-              ],
-              value: entry?.kind,
-            },
-            {
-              name: "category",
-              label: "Category (match transaction type)",
-              options: categoryOptions,
-              value: entry?.category_id ?? undefined,
+                "bank",
+                "savings",
+                "credit_card",
+                "cash",
+                "investment",
+              ].map((v) => [v, v.replace("_", " ")]),
             },
             {
               name: "amount",
-              label: "Amount (₹)",
-              value: entry ? moneyToInput(Math.abs(entry.amount_paise)) : "",
+              label: "Opening balance (₹)",
+              value: "0",
+              hint: "Use a negative balance for money owed on a credit card.",
             },
             {
               name: "date",
-              label: "Date",
+              label: "Opening date",
               type: "date",
-              value: entry?.occurred_on ?? indiaDate(),
-            },
-            {
-              name: "description",
-              label: "Description",
-              optional: true,
-              value: entry?.description,
+              value: indiaDate(),
             },
           ]
-        : kind === "transfer"
+        : kind === "entry"
           ? [
-              { name: "account", label: "From account", options: accounts },
-              { name: "to", label: "To account", options: accounts },
-              { name: "amount", label: "Amount (₹)" },
-              { name: "date", label: "Date", type: "date", value: indiaDate() },
-              { name: "description", label: "Description", optional: true },
+              {
+                name: "account",
+                label: "Account",
+                options: accounts,
+                value: entry?.account_id,
+              },
+              {
+                name: "kind",
+                label: "Transaction type",
+                options: [
+                  ["expense", "Expense"],
+                  ["income", "Income"],
+                ],
+                value: entry?.kind,
+              },
+              {
+                name: "category",
+                label: "Category (match transaction type)",
+                options: categoryOptions,
+                value: entry?.category_id ?? undefined,
+              },
+              {
+                name: "amount",
+                label: "Amount (₹)",
+                value: entry ? moneyToInput(Math.abs(entry.amount_paise)) : "",
+              },
+              {
+                name: "date",
+                label: "Date",
+                type: "date",
+                value: entry?.occurred_on ?? indiaDate(),
+              },
+              {
+                name: "description",
+                label: "Description",
+                optional: true,
+                value: entry?.description,
+              },
             ]
-          : kind === "loan"
+          : kind === "transfer"
             ? [
-                { name: "name", label: "Loan name" },
-                { name: "amount", label: "Outstanding principal to track (₹)" },
-                {
-                  name: "apr",
-                  label: "Annual interest rate (%)",
-                  type: "number",
-                  value: "12",
-                },
-                {
-                  name: "tenure",
-                  label: "Remaining months",
-                  type: "number",
-                  value: "12",
-                },
+                { name: "account", label: "From account", options: accounts },
+                { name: "to", label: "To account", options: accounts },
+                { name: "amount", label: "Amount (₹)" },
                 {
                   name: "date",
-                  label: "Tracking start date",
+                  label: "Date",
                   type: "date",
                   value: indiaDate(),
                 },
+                { name: "description", label: "Description", optional: true },
               ]
-            : kind === "payment"
+            : kind === "loan"
               ? [
+                  { name: "name", label: "Loan name" },
                   {
-                    name: "loan",
-                    label: "Loan",
-                    options: s.loans
-                      .filter((l) => l.status === "active" && !l.card_account_id)
-                      .map((l) => [l.id, l.name]),
+                    name: "amount",
+                    label: "Outstanding principal to track (₹)",
                   },
-                  { name: "account", label: "Paid from", options: accounts },
-                  { name: "principal", label: "Principal repaid (₹)" },
-                  { name: "interest", label: "Interest paid (₹)", value: "0" },
+                  {
+                    name: "apr",
+                    label: "Annual interest rate (%)",
+                    type: "number",
+                    value: "12",
+                  },
+                  {
+                    name: "tenure",
+                    label: "Remaining months",
+                    type: "number",
+                    value: "12",
+                  },
                   {
                     name: "date",
-                    label: "Payment date",
+                    label: "Tracking start date",
                     type: "date",
                     value: indiaDate(),
                   },
-                  { name: "description", label: "Description", optional: true },
                 ]
-              : kind === "subscription"
+              : kind === "payment"
                 ? [
-                    { name: "name", label: "Subscription name" },
-                    { name: "amount", label: "Charge (₹)" },
                     {
-                      name: "cadence",
-                      label: "Repeats",
-                      options: [
-                        ["monthly", "Monthly"],
-                        ["yearly", "Yearly"],
-                        ["weekly", "Weekly"],
-                      ],
+                      name: "loan",
+                      label: "Loan",
+                      options: s.loans
+                        .filter(
+                          (l) => l.status === "active" && !l.card_account_id,
+                        )
+                        .map((l) => [l.id, l.name]),
+                    },
+                    { name: "account", label: "Paid from", options: accounts },
+                    { name: "principal", label: "Principal repaid (₹)" },
+                    {
+                      name: "interest",
+                      label: "Interest paid (₹)",
+                      value: "0",
                     },
                     {
                       name: "date",
-                      label: "Next due date",
+                      label: "Payment date",
                       type: "date",
                       value: indiaDate(),
                     },
+                    {
+                      name: "description",
+                      label: "Description",
+                      optional: true,
+                    },
                   ]
-                : kind === "budget"
+                : kind === "subscription"
                   ? [
+                      { name: "name", label: "Subscription name" },
+                      { name: "amount", label: "Charge (₹)" },
                       {
-                        name: "category",
-                        label: "Expense category",
-                        options: s.categories
-                          .filter((c) => c.kind === "expense")
-                          .map((c) => [c.id, c.name]),
+                        name: "cadence",
+                        label: "Repeats",
+                        options: [
+                          ["monthly", "Monthly"],
+                          ["yearly", "Yearly"],
+                          ["weekly", "Weekly"],
+                        ],
                       },
-                      { name: "amount", label: "This month’s limit (₹)" },
+                      {
+                        name: "date",
+                        label: "Deduction schedule starts",
+                        type: "date",
+                        value:
+                          s.profile.tracking_start_date &&
+                          s.profile.tracking_start_date > indiaDate()
+                            ? s.profile.tracking_start_date
+                            : indiaDate(),
+                        hint: "The saved day repeats; planned dates never post expenses.",
+                      },
                     ]
-                  : kind === "goal"
+                  : kind === "budget"
                     ? [
-                        { name: "name", label: "What are you saving for?" },
-                        { name: "amount", label: "Target (₹)" },
                         {
-                          name: "date",
-                          label: "Target date",
-                          type: "date",
-                          optional: true,
+                          name: "category",
+                          label: "Expense category",
+                          options: s.categories
+                            .filter((c) => c.kind === "expense")
+                            .map((c) => [c.id, c.name]),
                         },
+                        { name: "amount", label: "This month’s limit (₹)" },
                       ]
-                    : kind === "allocation"
+                    : kind === "goal"
                       ? [
+                          { name: "name", label: "What are you saving for?" },
+                          { name: "amount", label: "Target (₹)" },
                           {
-                            name: "goal",
-                            label: "Savings goal",
-                            options: s.goals.map((g) => [g.id, g.name]),
-                          },
-                          {
-                            name: "account",
-                            label: "Source account",
-                            options: accounts.filter(
-                              ([id]) =>
-                                s.accounts.find((a) => a.id === id)?.type !==
-                                  "credit_card" &&
-                                s.accounts.find((a) => a.id === id)?.type !==
-                                  "investment",
-                            ),
-                          },
-                          {
-                            name: "amount",
-                            label: "New total earmarked from this account (₹)",
-                            hint: "Replaces this goal/account allocation. Enter 0 to release it.",
+                            name: "date",
+                            label: "Target date",
+                            type: "date",
+                            optional: true,
                           },
                         ]
-                      : kind === "category"
+                      : kind === "allocation"
                         ? [
-                            { name: "name", label: "Category name" },
                             {
-                              name: "kind",
-                              label: "Category type",
-                              options: [
-                                ["expense", "Expense"],
-                                ["income", "Income"],
-                              ],
+                              name: "goal",
+                              label: "Savings goal",
+                              options: s.goals.map((g) => [g.id, g.name]),
+                            },
+                            {
+                              name: "account",
+                              label: "Source account",
+                              options: accounts.filter(
+                                ([id]) =>
+                                  s.accounts.find((a) => a.id === id)?.type !==
+                                    "credit_card" &&
+                                  s.accounts.find((a) => a.id === id)?.type !==
+                                    "investment",
+                              ),
+                            },
+                            {
+                              name: "amount",
+                              label:
+                                "New total earmarked from this account (₹)",
+                              hint: "Replaces this goal/account allocation. Enter 0 to release it.",
                             },
                           ]
-                        : [
-                            {
-                              name: "name",
-                              label: "Display name",
-                              value: s.profile.display_name,
-                              optional: true,
-                            },
-                            {
-                              name: "income",
-                              label: "Planned monthly income (₹)",
-                              value: moneyToInput(
-                                s.profile.monthly_income_paise,
-                              ),
-                            },
-                            {
-                              name: "living",
-                              label: "Planned living expenses (₹)",
-                              value: moneyToInput(
-                                s.profile.monthly_living_budget_paise,
-                              ),
-                              hint: "Include subscriptions; exclude loan EMIs, which are added separately.",
-                            },
-                            {
-                              name: "reserve",
-                              label: "Emergency reserve target (₹)",
-                              value: moneyToInput(
-                                s.profile.emergency_reserve_paise,
-                              ),
-                            },
-                          ];
+                        : kind === "category"
+                          ? [
+                              { name: "name", label: "Category name" },
+                              {
+                                name: "kind",
+                                label: "Category type",
+                                options: [
+                                  ["expense", "Expense"],
+                                  ["income", "Income"],
+                                ],
+                              },
+                            ]
+                          : [
+                              {
+                                name: "tracking",
+                                label: "Transaction tracking starts",
+                                type: "date",
+                                value:
+                                  s.profile.tracking_start_date ?? "2026-12-01",
+                                hint: "Earlier history and all balances are preserved. New transactions before this date are rejected; reports start here.",
+                              },
+                              {
+                                name: "name",
+                                label: "Display name",
+                                value: s.profile.display_name,
+                                optional: true,
+                              },
+                              {
+                                name: "income",
+                                label: "Planned monthly income (₹)",
+                                value: moneyToInput(
+                                  s.profile.monthly_income_paise,
+                                ),
+                              },
+                              {
+                                name: "living",
+                                label: "Planned living expenses (₹)",
+                                value: moneyToInput(
+                                  s.profile.monthly_living_budget_paise,
+                                ),
+                                hint: "Include subscriptions; exclude loan EMIs, which are added separately.",
+                              },
+                              {
+                                name: "reserve",
+                                label: "Emergency reserve target (₹)",
+                                value: moneyToInput(
+                                  s.profile.emergency_reserve_paise,
+                                ),
+                              },
+                            ];
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       fields.map((f) => [
@@ -320,6 +379,23 @@ export function Editor({
       const v = values;
       const database = db();
       const amount = () => moneyInput(v.amount, kind === "account");
+      if (
+        ["entry", "transfer", "payment", "subscriptionCharge"].includes(kind) &&
+        s.profile.tracking_start_date &&
+        v.date < s.profile.tracking_start_date
+      )
+        throw new Error("Use a date on/after your transaction tracking start.");
+      if (kind === "subscriptionCharge")
+        check(
+          await database.rpc("record_subscription_charge", {
+            p_subscription: v.subscription,
+            p_account: v.account,
+            p_category: v.category,
+            p_amount_paise: amount(),
+            p_occurred_on: v.date,
+            p_request_id: request.current,
+          }),
+        );
       if (kind === "account") {
         const values = {
           name: v.name.trim(),
@@ -404,16 +480,14 @@ export function Editor({
       }
       if (kind === "budget")
         check(
-          await database
-            .from("budgets")
-            .upsert(
-              {
-                category_id: v.category,
-                month: indiaMonth(),
-                limit_paise: amount(),
-              },
-              { onConflict: "user_id,category_id,month" },
-            ),
+          await database.from("budgets").upsert(
+            {
+              category_id: v.category,
+              month: indiaMonth(),
+              limit_paise: amount(),
+            },
+            { onConflict: "user_id,category_id,month" },
+          ),
         );
       if (kind === "goal") {
         const values = {
@@ -453,6 +527,7 @@ export function Editor({
           await database
             .from("profiles")
             .update({
+              tracking_start_date: v.tracking,
               display_name: v.name.trim(),
               monthly_income_paise: moneyInput(v.income),
               monthly_living_budget_paise: moneyInput(v.living),
@@ -510,6 +585,17 @@ export function Editor({
           Transactions.
         </p>
       )}
+      {s.profile.tracking_start_date &&
+        s.profile.tracking_start_date > indiaDate() &&
+        ["entry", "transfer", "payment", "subscriptionCharge"].includes(
+          kind,
+        ) && (
+          <p className="small-note">
+            Transaction tracking begins on {s.profile.tracking_start_date}. You
+            can save schedules now; record settled payments from that date after
+            they occur.
+          </p>
+        )}
       {error && (
         <p role="alert" className="form-error">
           {error}
@@ -565,7 +651,17 @@ export function Editor({
             {field.hint && <span className="small-note">{field.hint}</span>}
           </label>
         ))}
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={
+            pending ||
+            (!!s.profile.tracking_start_date &&
+              s.profile.tracking_start_date > indiaDate() &&
+              ["entry", "transfer", "payment", "subscriptionCharge"].includes(
+                kind,
+              ))
+          }
+        >
           {pending ? "Saving…" : "Save"}
         </Button>
       </form>

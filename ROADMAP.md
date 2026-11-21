@@ -49,3 +49,5 @@ The replacement implements local readable-PDF extraction, optional local passwor
 Broader bank-format column mapping, forecast automation, export/deletion UI, immutable audit history, optional reminders, broader accessibility/device audit. No paid APIs or bank integrations. Private offline editing needs a separate encryption, device trust and conflict-resolution design.
 
 The owner additionally authorized reviewed statement EMI classification with a linked standalone loan and exact principal/interest split. PR #16, hosted migration 20261121160204 and private v0.3.5-rc.1 publication are complete after owner approval. See STATEMENT_EMIS_RELEASE.md. Existing debt-payment summaries are reused, with no living-expense double counting.
+
+Owner-requested December tracking release: reporting cutoff, saved recurring deduction calendar/actual dates, and interactive cash-flow/category/asset charts implemented together. Preserve all financial history and the public demo. See DECEMBER_TRACKING.md.

@@ -68,3 +68,5 @@ No analytics, external fonts, bank credentials, full card numbers, push notifica
 ## Phase 3 · available in the private app
 
 Private saved comparisons and CSV import are integrated in this release branch. Save/reopen comparisons with original assumptions or switch explicitly to the current plan; preview a canonical UTF-8 CSV and confirm selected rows for atomic duplicate-safe posting. See [PHASE3_SETUP.md](PHASE3_SETUP.md), [CSV_IMPORT.md](CSV_IMPORT.md) and [PHASE3_RELEASE.md](PHASE3_RELEASE.md). The approved release is published at https://folio-review.sid-17061999.workers.dev/ as v0.3.0-rc.3. The additive migrations and hosted acceptance checks passed. Reopen the installed app and use Update app when offered. The original synthetic demo is preserved.
+
+The December tracking update adds a configurable transaction reporting start, a recurring deduction calendar with actual payment history, and interactive cash-flow/spending/asset charts. See [DECEMBER_TRACKING.md](DECEMBER_TRACKING.md) for accounting semantics, use and release status.
