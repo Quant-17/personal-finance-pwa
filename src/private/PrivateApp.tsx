@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
+import { DebtSimulator } from "./DebtSimulator";
 import { SavedSimulations } from "./SavedSimulations";
 import type { SimulatorInputs } from "../components/Simulator";
 import { formatExactMoney as money } from "../lib/finance";
@@ -44,6 +45,7 @@ const pages = [
   ["budgets", "Budgets & goals", Target],
   ["commitments", "Loans & subscriptions", CalendarClock],
   ["simulator", "Buy simulator", Sparkles],
+  ["debt-plan", "Debt repayment simulator", CalendarClock],
   ["settings", "Monthly plan", SlidersHorizontal],
 ] as const;
 type Page = (typeof pages)[number][0];
@@ -893,6 +895,9 @@ function Workspace({
                     financialContext={plan}
                   />
                 </>
+              )}
+              {page === "debt-plan" && (
+                <DebtSimulator snapshot={s} onRefresh={refresh} />
               )}
               {page === "investments" && (
                 <Investments snapshot={s} onRefresh={refresh} />
