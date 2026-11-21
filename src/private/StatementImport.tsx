@@ -99,7 +99,10 @@ export function StatementImport({
         .from("statement_rules")
         .upsert(
           { ...rule, enabled: true },
-          { onConflict: "account_id,direction,recipient_key,amount_paise" },
+          {
+            onConflict:
+              "account_id,direction,recipient_key,amount_paise,match_day",
+          },
         )
         .select("*")
         .single();

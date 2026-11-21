@@ -12,6 +12,7 @@ create table public.statement_rules (
  category_kind text generated always as (case when kind in ('income','expense') then kind else null end) stored,
  loan_id uuid,
  subscription_id uuid,
+ match_day integer check(match_day between 1 and 31),
  amount_paise bigint check(amount_paise between 1 and 1000000000000),
  enabled boolean not null default true,
  foreign key(account_id,user_id) references public.accounts(id,user_id) on delete cascade,
@@ -23,7 +24,7 @@ create table public.statement_rules (
   or (kind='loan_payment' and loan_id is not null and category_id is null and subscription_id is null and amount_paise is not null)),
  check(kind='exclude' or (kind='income' and direction='credit') or (kind in ('expense','loan_payment') and direction='debit')),
  check(subscription_id is null or amount_paise is not null),
- unique nulls not distinct (account_id,direction,recipient_key,amount_paise)
+ unique nulls not distinct (account_id,direction,recipient_key,amount_paise,match_day)
 );
 create index statement_rules_owner_idx on public.statement_rules(user_id);
 create index statement_rules_category_idx on public.statement_rules(category_id,user_id,category_kind);

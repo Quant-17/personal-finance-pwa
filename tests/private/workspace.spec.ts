@@ -2391,6 +2391,7 @@ test("recipient rules can be saved without importing, suggest next PDF and be di
   await expect(category).toHaveValue("");
   await category.selectOption(categoryId);
   await page.getByText("Remember TEST CAFE", { exact: true }).click();
+  await page.getByLabel("Remember deduction day 1:3").check();
   await page
     .getByRole("button", { name: "Save rule only", exact: true })
     .click();
@@ -2402,6 +2403,7 @@ test("recipient rules can be saved without importing, suggest next PDF and be di
     recipient_key: "kotak-upi:ABCD:TEST CAFE",
     category_id: categoryId,
     amount_paise: null,
+    match_day: 3,
     direction: "debit",
   });
   expect(

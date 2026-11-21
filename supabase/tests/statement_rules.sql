@@ -24,8 +24,13 @@ select pg_temp.expect((select balance_paise='500000' from jsonb_array_elements(p
 update public.statement_rules set enabled=false where id=current_setting('folio.rules_rule')::uuid;
 select pg_temp.expect((select not enabled from public.statement_rules where id=current_setting('folio.rules_rule')::uuid),'owner can disable');
 insert into public.statement_rules(account_id,recipient_key,recipient_name,direction,kind,category_id)values(current_setting('folio.rules_bank')::uuid,'kotak-upi:ABCD:SYNTHETIC CAFE','Synthetic cafe','debit','expense',current_setting('folio.rules_cat')::uuid)
-on conflict(account_id,direction,recipient_key,amount_paise) do update set enabled=true;
+on conflict(account_id,direction,recipient_key,amount_paise,match_day) do update set enabled=true;
 select pg_temp.expect((select count(*)=1 and bool_and(enabled) from public.statement_rules),'nullable amount upsert is deterministic');
+select pg_temp.deny(format('update public.statement_rules set match_day=32 where id=%L',current_setting('folio.rules_rule')),'invalid deduction day rejected');
+select pg_temp.deny(format('update public.statement_rules set match_day=0 where id=%L',current_setting('folio.rules_rule')),'zero deduction day rejected');
+update public.statement_rules set match_day=17 where id=current_setting('folio.rules_rule')::uuid;
+select pg_temp.expect((select match_day=17 from public.statement_rules where id=current_setting('folio.rules_rule')::uuid),'deduction day persists');
+update public.statement_rules set match_day=null where id=current_setting('folio.rules_rule')::uuid;
 select pg_temp.deny(format('update public.statement_rules set user_id=%L where id=%L',current_setting('folio.rules_b'),current_setting('folio.rules_rule')),'rule cannot be reassigned to another owner');
 select pg_temp.deny(format('update public.statement_rules set direction=''credit'' where id=%L',current_setting('folio.rules_rule')),'expense rule cannot match credits');
 select pg_temp.deny(format('update public.statement_rules set subscription_id=%L where id=%L',current_setting('folio.rules_sub'),current_setting('folio.rules_rule')),'subscription requires exact amount');

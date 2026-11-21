@@ -18,6 +18,7 @@ export function RememberStatementRow({
   onSave: (rule: RuleInput) => Promise<void>;
 }) {
   const [ruleNote, setRuleNote] = useState("");
+  const [matchDay, setMatchDay] = useState(false);
   const [exact, setExact] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -29,7 +30,7 @@ export function RememberStatementRow({
     setMessage("");
     try {
       await onSave(
-        ruleFromRow({ ...row, rule_note: ruleNote }, account, exact),
+        ruleFromRow({ ...row, rule_note: ruleNote }, account, exact, matchDay),
       );
       setMessage("Rule saved. No transaction was added.");
     } catch (e) {
@@ -70,6 +71,17 @@ export function RememberStatementRow({
           onChange={(e) => setExact(e.target.checked)}
         />{" "}
         Match this amount too (always required for EMI/subscription rules)
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          aria-label={`Remember deduction day ${row.source_row}`}
+          checked={matchDay}
+          disabled={pending || saving}
+          onChange={(e) => setMatchDay(e.target.checked)}
+        />{" "}
+        Match the statement’s day of month too (currently{" "}
+        {row.date.slice(8) || "unknown"})
       </label>
       <label>
         Rule note (optional)
@@ -131,6 +143,7 @@ export function RememberedStatementRules({
           <strong>{r.recipient_name}</strong>
           <p>
             {r.direction} ·{" "}
+            {r.match_day ? `Day ${r.match_day} · ` : "Any day · "}{" "}
             {r.amount_paise === null
               ? "Any amount"
               : formatExactMoney(r.amount_paise)}{" "}

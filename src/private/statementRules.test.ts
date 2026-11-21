@@ -240,6 +240,44 @@ describe("remembered suggestions", () => {
     };
     expect(suggestStatementRule(credit, [income], "bank", s)).toBe(credit);
   });
+  it("can distinguish recurring charges by their valid calendar day", () => {
+    const learned = {
+      id: "dated",
+      ...ruleFromRow({ ...row, date: "2026-10-17" }, "bank", true, true),
+      enabled: true,
+    };
+    expect(learned.match_day).toBe(17);
+    expect(
+      suggestStatementRule(
+        { ...row, date: "2026-11-17", category_id: "" },
+        [learned],
+        "bank",
+        s,
+      ).category_id,
+    ).toBe("food");
+    expect(
+      suggestStatementRule(
+        { ...row, date: "2026-11-18", category_id: "" },
+        [learned],
+        "bank",
+        s,
+      ).category_id,
+    ).toBe("");
+    expect(
+      suggestStatementRule(
+        { ...row, date: "2026-02-31", category_id: "" },
+        [{ ...learned, match_day: 31 }],
+        "bank",
+        s,
+      ).category_id,
+    ).toBe("");
+  });
+  it("refuses to learn a deduction day from an invalid date", () => {
+    for (const date of ["", "2026-02-29", "2026-11-31", "2026-13-01"])
+      expect(() => ruleFromRow({ ...row, date }, "bank", true, true)).toThrow(
+        /valid statement date/,
+      );
+  });
   it("rejects ambiguous or incomplete learning", () => {
     expect(() =>
       ruleFromRow({ ...row, direction: "unknown" }, "bank", false),

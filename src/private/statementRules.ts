@@ -17,6 +17,7 @@ export const statementRuleSchema = z.object({
   category_id: z.uuid().nullable(),
   loan_id: z.uuid().nullable(),
   subscription_id: z.uuid().nullable(),
+  match_day: z.number().int().min(1).max(31).nullable().default(null),
   amount_paise: z.number().int().positive().max(1e12).nullable(),
   enabled: z.boolean(),
 });
@@ -26,6 +27,7 @@ export function ruleFromRow(
   row: StatementDraft,
   account: string,
   exactAmount: boolean,
+  matchDay = false,
 ): RuleInput {
   const recipient = statementRecipient(row.narration ?? row.description);
   if (!recipient || recipient.key.length > 240)
@@ -60,7 +62,21 @@ export function ruleFromRow(
     (row.kind && row.kind !== "income" && row.direction !== "debit")
   )
     throw new Error("Classification does not match the statement direction.");
+  let day: number | null = null;
+  if (matchDay) {
+    const date = new Date(row.date + "T00:00:00Z");
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(row.date) ||
+      !Number.isFinite(date.valueOf()) ||
+      date.toISOString().slice(0, 10) !== row.date
+    )
+      throw new Error(
+        "Review a valid statement date before remembering its deduction day.",
+      );
+    day = Number(row.date.slice(8));
+  }
   return {
+    match_day: day,
     account_id: account,
     recipient_key: recipient.key,
     recipient_name: recipient.name,
@@ -122,7 +138,13 @@ export function suggestStatementRule(
       r.account_id === account &&
       r.direction === row.direction &&
       r.recipient_key === recipient.key &&
-      (r.amount_paise === null || r.amount_paise === amount),
+      (r.amount_paise === null || r.amount_paise === amount) &&
+      (r.match_day === null ||
+        (/^\d{4}-\d{2}-\d{2}$/.test(row.date) &&
+          Number(row.date.slice(8)) === r.match_day &&
+          Number.isFinite(new Date(row.date + "T00:00:00Z").valueOf()) &&
+          new Date(row.date + "T00:00:00Z").toISOString().slice(0, 10) ===
+            row.date)),
   );
   if (!matches.length) return row;
   if (
