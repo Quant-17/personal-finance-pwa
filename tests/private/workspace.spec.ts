@@ -1878,6 +1878,7 @@ test("December tracking, calendar dates and interactive chart controls preserve 
   await expect(
     page.getByText("Transaction tracking from 1 Dec 2026", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Cash flow", exact: true }).click();
   await expect(page.getByText("Your tracking is ready to begin")).toBeVisible();
   await page.getByRole("button", { name: "Asset mix", exact: true }).click();
   await page.getByRole("button", { name: /Fixture checking/ }).click();

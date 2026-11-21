@@ -25,7 +25,7 @@ const colors = [
   "#84904e",
 ];
 export function FinancialInsights({ snapshot: s }: { snapshot: Snapshot }) {
-  const [view, setView] = useState("flow"),
+  const [view, setView] = useState(s.cashflow.length ? "flow" : "assets"),
     [range, setRange] = useState("6"),
     [month, setMonth] = useState(
       s.cashflow.at(-1)?.month.slice(0, 7) ?? indiaMonth().slice(0, 7),

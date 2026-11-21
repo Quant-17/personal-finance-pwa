@@ -1209,3 +1209,13 @@ progress {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Private theme tokens also apply to shared outline/ghost buttons. */
+.private-shell .text-foreground {
+  color: var(--text);
+}
+.private-shell .border-border {
+  border-color: var(--border);
+}
+.private-panel .panel-heading {
+  flex-wrap: wrap;
+}
