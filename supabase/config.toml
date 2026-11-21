@@ -1,0 +1,6 @@
+project_id = "folio"
+# Google callback and the scheduler cannot supply a Supabase user JWT.
+# handler.ts verifies every client action with Auth.getUser(), callback state/PKCE,
+# and the scheduled action with a separate server-only secret.
+[functions.gmail-receipts]
+verify_jwt = false

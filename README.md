@@ -6,6 +6,8 @@ The public https://folio.sid-17061999.workers.dev/ remains the synthetic demo. P
 
 The **Savings & investments** section for NPS, PPF, EPF and other manual holdings is merged from PR #10 and published as v0.3.2-rc.1 at the private origin. See [INVESTMENTS.md](INVESTMENTS.md).
 
+The Gmail receipt inbox and Monthly Plan/subscription links are implemented on a **review branch**, not the live release. See [GMAIL_IMPORT.md](GMAIL_IMPORT.md) for behavior, Google consent, server-only secrets, scheduling, testing and deployment prerequisites. No actual mailbox was read during development.
+
 ## Preview
 
 Requires Node 24 and npm.
