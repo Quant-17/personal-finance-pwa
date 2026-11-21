@@ -40,7 +40,7 @@ Hosted versions are retained as filenames without reapplying their SQL:
 - `20261121193723_remembered_statement_recipients.sql`, SHA-256 `773f664be046be0da31bafd18656eeb1253eeccf3312ba809699a19f17cb461f`.
 - `20261121195741_private_data_controls.sql`, SHA-256 `c3b0c72f6acdc5f2ebe86ba8a9445c2862d711fd5cf9ab95cbdb13b19b91c466`.
 
-A follow-up covering-index migration addresses the advisor's three composite-owner FK index findings (statement source markers, structured loan documents and remembered rules). It changes no records, policies or accounting. The already published frontend source stays unchanged by this schema/documentation follow-up.
+Hosted migration `20261121200425_cover_financial_owner_foreign_keys.sql` addresses the advisor's three composite-owner FK index findings (statement source markers, structured loan documents and remembered rules). Catalog verification confirmed all three indexes, and the advisor no longer reports uncovered foreign keys. It changes no records, policies or accounting. The already published frontend source stays unchanged by this schema/documentation follow-up.
 
 Security advisors showed no new warnings: four intentional private receipt/source-marker tables have RLS and no browser policies ([advisor](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)), and the existing Auth leaked-password-protection setting remains disabled ([guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)); no paid Auth setting was enabled. Newly created indexes may be reported unused until their access paths are exercised; do not remove FK-covering indexes solely for that informational finding.
 
