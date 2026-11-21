@@ -1,6 +1,6 @@
 # Gmail receipt import — review implementation
 
-This branch implements Gmail/Google Workspace receipts and their Monthly Plan links. **It is not connected or enabled on the live app yet.** It needs review, a database migration, an Edge Function deployment, owner-controlled Google OAuth configuration and a server schedule. The ChatGPT Gmail connector does not authorize Folio. No real inbox was read to develop or test this change.
+Gmail/Google Workspace receipt review and Monthly Plan links are published as **v0.3.3-rc.1** at the private origin after the owner approved PR #12. The migration and Edge Function are deployed. The owner reported creating the Google OAuth client and saving all five server secrets; live Google consent, a real receipt review and the server schedule remain pending. See [GMAIL_RELEASE.md](GMAIL_RELEASE.md). The ChatGPT Gmail connector does not authorize Folio. No real inbox was read to develop or test this change.
 
 ## What the owner sees
 
@@ -47,9 +47,9 @@ Official references checked for this implementation:
 - [Restricted scope verification and exceptions](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
 - [Supabase scheduling with Cron, pg_net and Vault](https://supabase.com/docs/guides/functions/schedule-functions)
 
-## Server configuration and deployment — after release approval
+## Server configuration and deployment
 
-Replay migration `supabase/migrations/20261121102424_gmail_receipts.sql` in the approved Supabase project. Apply through the migration workflow; never run `supabase/tests/bootstrap.sql` on managed Supabase. If the migration tool assigns a different version timestamp, align the repository filename with the actual migration record without changing SQL bytes, as in previous releases.
+Replay migration `supabase/migrations/20261121112759_gmail_receipts.sql` in the approved Supabase project. Apply through the migration workflow; never run `supabase/tests/bootstrap.sql` on managed Supabase. If the migration tool assigns a different version timestamp, align the repository filename with the actual migration record without changing SQL bytes, as in previous releases.
 
 Deploy `supabase/functions/gmail-receipts/index.ts` with its shared `.ts` files and the `verify_jwt=false` setting in `supabase/config.toml`. The entrypoint pins supabase-js 2.119.0. Configure these **server-only** secrets in the Supabase dashboard:
 
@@ -101,4 +101,4 @@ Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build:demo`, `npm 
 - 132 Vitest tests and 2 release-verification tests passed; 23 private-browser tests passed against fake intercepted Supabase endpoints.
 - All sorted migrations replayed on disposable Postgres 17. Existing accounting/security, saved comparisons, CSV, loan document, investment and hosted-compatible rollback suites passed. The new Gmail suite passed 47 assertions; investment, CSV and Gmail concurrent-write harnesses passed. Local catalog checks confirmed RLS on all five new tables and denied backend RPC execution to browser roles.
 - Demo/private production builds completed during implementation; final clean-source build/preflight and CI results are reported on the review PR. Existing PDF bundle-size and dependency annotation warnings remain non-blocking.
-- No managed database migration, Edge Function deployment, server secret, cron job or actual Gmail consent/sync was performed. The current live private release remains v0.3.2-rc.1.
+- At code review time, no managed changes or Gmail access had occurred. The owner subsequently approved PR #12; its migration, function and v0.3.3-rc.1 frontend are now deployed. Live Google consent/real-receipt acceptance and scheduling remain pending. See GMAIL_RELEASE.md.

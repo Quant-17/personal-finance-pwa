@@ -58,7 +58,7 @@ Original principal/tenure and disclosure APR live in reviewed details. The exist
 
 The latest valuation by date/creation/id supplies reported value. Contributions/withdrawals supply separate history and FY totals; they never post transactions or mutate that valuation. All mutations go through retry-safe owner-checking functions, with holding revisions and per-owner serialization. Removing the last valuation is rejected. `investment_portfolio()` is an owner-scoped invoker read; `workspace_snapshot()` adds unlinked reported values to assets/net worth only, including archived holdings. Linked account balances remain authoritative for net worth. Liquid cash and simulator spendable funds are unchanged. No ROI is inferred from incomplete history.
 
-## Gmail receipts and plan links · unapplied review migration
+## Gmail receipts and plan links · applied migration
 
 `gmail_connections` holds owner-readable mailbox/status, complete-sync cursor and lease metadata. `gmail_receipts` holds extracted merchant/paise/date/reference/message ID, event kind, pending/posted/dismissed status, conflict flag and an optional owner-composite transaction link. `(user_id,dedupe_key)` prevents re-ingesting the same event; deleting a posted transaction nulls its receipt link without making it pending again. No email body, subject or attachment is retained. `subscription_charges` uniquely links an existing expense to an owner-composite subscription; deletion cascades remove links. These tables expose SELECT only behind non-anonymous owner RLS.
 
