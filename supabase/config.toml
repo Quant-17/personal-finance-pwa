@@ -1,6 +1,4 @@
 project_id = "folio"
-# Google callback and the scheduler cannot supply a Supabase user JWT.
-# handler.ts verifies every client action with Auth.getUser(), callback state/PKCE,
-# and the scheduled action with a separate server-only secret.
+# Retired endpoint responds 410 and never accesses secrets or user data.
 [functions.gmail-receipts]
 verify_jwt = false

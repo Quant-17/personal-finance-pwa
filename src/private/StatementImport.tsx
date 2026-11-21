@@ -1,0 +1,531 @@
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
+import { Button } from "../components/ui/button";
+import { formatExactMoney as money } from "../lib/finance";
+import { indiaDate } from "./domain";
+import type { Snapshot } from "./domain";
+import { readPdfText } from "./readPdfText";
+import { extractStatement, reviewedStatementEntry } from "./statements";
+import type { StatementDraft, StatementEntry } from "./statements";
+import { check, db } from "./workspace";
+const countsSchema = z.object({
+  inserted: z.number().int().min(0).max(500),
+  skipped: z.number().int().min(0).max(500),
+});
+export function StatementImport({
+  snapshot: s,
+  onImported,
+}: {
+  snapshot: Snapshot;
+  onImported: (counts: { inserted: number; skipped: number }) => void;
+}) {
+  const accounts = s.accounts.filter(
+    (a) =>
+      !a.archived_at && ["bank", "savings", "credit_card"].includes(a.type),
+  );
+  const [account, setAccount] = useState(accounts[0]?.id ?? "");
+  const [month, setMonth] = useState(indiaDate().slice(0, 7));
+  const [password, setPassword] = useState("");
+  const [hash, setHash] = useState("");
+  const [rows, setRows] = useState<StatementDraft[]>([]);
+  const [pageCount, setPageCount] = useState(0);
+  const [duplicates, setDuplicates] = useState<string[]>([]);
+  const [checked, setChecked] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [fileKey, setFileKey] = useState(0);
+  const busy = useRef(false),
+    mounted = useRef(true);
+  const controller = useRef<AbortController | null>(null);
+  const request = useRef({ signature: "", id: crypto.randomUUID() });
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      controller.current?.abort();
+    };
+  }, []);
+  const invalidate = () => {
+    setChecked(false);
+    setConfirmed(false);
+    setDuplicates([]);
+  };
+  const clear = () => {
+    controller.current?.abort();
+    setRows([]);
+    setHash("");
+    setPageCount(0);
+    setError("");
+    setPassword("");
+    setBulkCategory("");
+    setFileKey((k) => k + 1);
+    invalidate();
+    request.current = { signature: "", id: crypto.randomUUID() };
+  };
+  const update = (id: string, patch: Partial<StatementDraft>) => {
+    setRows((current) =>
+      current.map((r) => (r.source_row === id ? { ...r, ...patch } : r)),
+    );
+    invalidate();
+  };
+  const parsed = rows.map((row) => {
+    try {
+      return { row, entry: reviewedStatementEntry(row, s, account), error: "" };
+    } catch (e) {
+      return {
+        row,
+        entry: null,
+        error: e instanceof Error ? e.message : "Review this row.",
+      };
+    }
+  });
+  const selected = parsed.filter(
+    (p): p is typeof p & { entry: StatementEntry } =>
+      p.row.selected && !!p.entry && !duplicates.includes(p.row.source_row),
+  );
+  const valid = parsed.filter(
+    (p): p is typeof p & { entry: StatementEntry } => !!p.entry,
+  );
+  // <=500 integer-paise rows, each <=10^12: sums stay within JS's safe integer range.
+  const total = (kind: "expense" | "income") =>
+    selected.reduce(
+      (sum, p) =>
+        sum + (p.entry.entry.kind === kind ? p.entry.entry.amount_paise : 0),
+      0,
+    );
+  const read = async (file: File | undefined) => {
+    if (!file || busy.current) return;
+    busy.current = true;
+    setPending(true);
+    const localPassword = password;
+    clear();
+    const c = new AbortController();
+    controller.current = c;
+    try {
+      if (
+        !/^\d{4}-\d{2}$/.test(month) ||
+        Number(month.slice(5)) < 1 ||
+        Number(month.slice(5)) > 12
+      )
+        throw new Error("Choose the statement ending month.");
+      const doc = await readPdfText(file, c.signal, localPassword || undefined);
+      const drafts = extractStatement(
+        doc.lines,
+        month,
+        s.accounts.find((a) => a.id === account)?.type === "credit_card",
+      );
+      if (mounted.current && !c.signal.aborted) {
+        setRows(drafts);
+        setHash(doc.source_sha256);
+        setPageCount(doc.pages.length);
+      }
+    } catch (e) {
+      if (mounted.current && !c.signal.aborted)
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Could not read this PDF. Nothing was imported.",
+        );
+    } finally {
+      busy.current = false;
+      if (mounted.current) setPending(false);
+    }
+  };
+  const preview = async () => {
+    if (busy.current || !selected.length) return;
+    busy.current = true;
+    setPending(true);
+    setError("");
+    setConfirmed(false);
+    const c = new AbortController();
+    controller.current = c;
+    try {
+      const result = await db()
+        .rpc("preview_statement_import", {
+          p_account: account,
+          p_source_sha256: hash,
+          p_rows: selected.map((p) => p.entry),
+        })
+        .abortSignal(c.signal);
+      check(result);
+      const found = z
+        .object({ duplicates: z.array(z.boolean()).length(selected.length) })
+        .parse(result.data).duplicates;
+      if (mounted.current && !c.signal.aborted) {
+        const ids = selected
+          .filter((_, i) => found[i])
+          .map((p) => p.row.source_row);
+        setDuplicates(ids);
+        setRows((current) =>
+          current.map((r) =>
+            ids.includes(r.source_row) ? { ...r, selected: false } : r,
+          ),
+        );
+        setChecked(true);
+      }
+    } catch {
+      if (mounted.current && !c.signal.aborted)
+        setError(
+          "Could not check existing entries. No statement rows were imported. Retry when connected.",
+        );
+    } finally {
+      busy.current = false;
+      if (mounted.current) setPending(false);
+    }
+  };
+  const commit = async () => {
+    if (busy.current || !confirmed || !checked || !selected.length) return;
+    busy.current = true;
+    setPending(true);
+    setError("");
+    const payload = {
+      p_account: account,
+      p_source_sha256: hash,
+      p_rows: selected.map((p) => p.entry),
+    };
+    const signature = JSON.stringify(payload);
+    if (request.current.signature !== signature)
+      request.current = { signature, id: crypto.randomUUID() };
+    try {
+      const result = await db().rpc("import_statement_entries", {
+        ...payload,
+        p_request_id: request.current.id,
+      });
+      if (result.error?.code === "22003") {
+        if (mounted.current)
+          setError(
+            "The selected rows exceed supported financial totals. Nothing was imported. Review amounts or select fewer rows.",
+          );
+        return;
+      }
+      check(result);
+      const counts = countsSchema.parse(result.data);
+      if (counts.inserted + counts.skipped !== selected.length)
+        throw new Error("Unexpected import result.");
+      if (mounted.current) {
+        clear();
+        onImported(counts);
+      }
+    } catch {
+      if (mounted.current)
+        setError(
+          "The import could not be confirmed. Retry the unchanged selection safely, or refresh the ledger before starting again.",
+        );
+    } finally {
+      busy.current = false;
+      if (mounted.current) setPending(false);
+    }
+  };
+  return (
+    <section
+      className="card private-panel"
+      aria-labelledby="statement-import-title"
+    >
+      <h2 id="statement-import-title">Import monthly PDF statement</h2>
+      <p>
+        Read your Kotak Mahindra or SBI bank/card statement on this device.
+        Review and import the month’s settled transactions together. The
+        original PDF and password are never uploaded or stored.
+      </p>
+      <p className="small-note">
+        Text-based tables with dates and debit/credit columns, or card amounts
+        with CR/DR markers, can be detected. Layouts vary; compare every
+        selected row and total with the PDF. Scanned images need manual entry;
+        OCR is not included.
+      </p>
+      <div className="statement-controls">
+        <label>
+          Statement account
+          <select
+            disabled={pending || !accounts.length}
+            value={account}
+            onChange={(e) => {
+              setAccount(e.target.value);
+              clear();
+            }}
+          >
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} ·{" "}
+                {a.type === "credit_card" ? "Credit card" : "Bank account"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Statement ending month
+          <input
+            disabled={pending}
+            type="month"
+            value={month}
+            onChange={(e) => {
+              setMonth(e.target.value);
+              clear();
+            }}
+          />
+        </label>
+        <label>
+          PDF password (optional)
+          <input
+            disabled={pending}
+            type="password"
+            autoComplete="off"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        <label>
+          Choose statement PDF
+          <input
+            key={fileKey}
+            disabled={pending || !account}
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={(e) => void read(e.target.files?.[0])}
+          />
+        </label>
+      </div>
+      <p className="small-note">
+        For a protected PDF, enter its password before choosing the file.
+        Limits: 10 MiB, 60 pages, 500 detected rows. Missing years use the
+        ending month; verify inferred dates. Credits, transfers, loan EMIs and
+        card repayments need explicit classification or their dedicated forms.
+      </p>
+      {!accounts.length && (
+        <p>Add an active bank or credit-card account before importing.</p>
+      )}
+      {pending && <p role="status">Working on your statement…</p>}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!!rows.length && (
+        <>
+          <p>
+            {rows.length} dated rows detected across {pageCount} pages ·{" "}
+            {valid.length} ready for selection · {duplicates.length} matched
+            entries · {selected.length} selected
+          </p>
+          <div className="page-actions">
+            <label>
+              Default expense category
+              <select
+                disabled={pending}
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value)}
+              >
+                <option value="">Choose a category</option>
+                {s.categories
+                  .filter((c) => c.kind === "expense")
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <Button
+              variant="outline"
+              disabled={pending || !bulkCategory}
+              onClick={() => {
+                setRows((current) =>
+                  current.map((r) =>
+                    r.kind === "expense"
+                      ? { ...r, category_id: bulkCategory }
+                      : r,
+                  ),
+                );
+                invalidate();
+              }}
+            >
+              Apply category to expense rows
+            </Button>
+            <Button
+              variant="outline"
+              disabled={pending || !valid.length}
+              onClick={() => {
+                const ids = new Set(valid.map((p) => p.row.source_row));
+                setRows((current) =>
+                  current.map((r) => ({
+                    ...r,
+                    selected: ids.has(r.source_row),
+                  })),
+                );
+                invalidate();
+              }}
+            >
+              Select reviewed valid rows
+            </Button>
+            <Button variant="ghost" disabled={pending} onClick={clear}>
+              Clear statement preview
+            </Button>
+          </div>
+          <div
+            className="csv-preview-scroll"
+            tabIndex={0}
+            aria-label="Statement transaction review"
+          >
+            <table className="csv-preview statement-preview">
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Source</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th>Amount ₹</th>
+                  <th>Category</th>
+                  <th>Review</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parsed.map(({ row: r, entry, error: issue }) => (
+                  <tr key={r.source_row}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select statement row ${r.source_row}`}
+                        checked={r.selected}
+                        disabled={
+                          pending || !entry || duplicates.includes(r.source_row)
+                        }
+                        onChange={(e) =>
+                          update(r.source_row, { selected: e.target.checked })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <details>
+                        <summary>
+                          Page {r.page}, row {r.source_row}
+                        </summary>
+                        <p>{r.source}</p>
+                      </details>
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Date ${r.source_row}`}
+                        disabled={pending}
+                        type="date"
+                        value={r.date}
+                        onChange={(e) =>
+                          update(r.source_row, { date: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Description ${r.source_row}`}
+                        disabled={pending}
+                        maxLength={240}
+                        value={r.description}
+                        onChange={(e) =>
+                          update(r.source_row, { description: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        aria-label={`Type ${r.source_row}`}
+                        disabled={pending}
+                        value={r.kind}
+                        onChange={(e) =>
+                          update(r.source_row, {
+                            kind: e.target.value as StatementDraft["kind"],
+                            category_id: "",
+                            selected: false,
+                          })
+                        }
+                      >
+                        <option value="">Exclude / needs review</option>
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Amount ${r.source_row}`}
+                        disabled={pending}
+                        inputMode="decimal"
+                        value={r.amount}
+                        onChange={(e) =>
+                          update(r.source_row, { amount: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        aria-label={`Category ${r.source_row}`}
+                        disabled={pending || !r.kind}
+                        value={r.category_id}
+                        onChange={(e) =>
+                          update(r.source_row, { category_id: e.target.value })
+                        }
+                      >
+                        <option value="">Choose category</option>
+                        {s.categories
+                          .filter((c) => c.kind === r.kind)
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                      </select>
+                    </td>
+                    <td>
+                      {duplicates.includes(r.source_row)
+                        ? "Already imported / ledger match"
+                        : issue || r.note}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Selected expenses {money(total("expense"))} · Selected income{" "}
+            {money(total("income"))}
+          </p>
+          <Button
+            variant="outline"
+            disabled={pending || !selected.length}
+            onClick={() => void preview()}
+          >
+            Check statement duplicates
+          </Button>
+          <p className="small-note">
+            Only selected reviewed row details and a document fingerprint are
+            sent for duplicate checking/posting. Same-file rows cannot repost
+            after category edits; exact ledger matches are also checked.
+            Missing/unreadable rows are not imported. Genuine identical payments
+            require manual reconciliation.
+          </p>
+          {checked && (
+            <>
+              <label className="csv-confirm">
+                <input
+                  type="checkbox"
+                  disabled={pending || !selected.length}
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                />
+                I compared the selected rows, dates, categories and totals with
+                the original statement and excluded transfers, repayments and
+                unclassified credits.
+              </label>
+              <Button
+                disabled={pending || !confirmed || !selected.length}
+                onClick={() => void commit()}
+              >
+                Import {selected.length} statement transactions
+              </Button>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

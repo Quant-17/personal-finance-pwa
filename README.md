@@ -6,7 +6,7 @@ The public https://folio.sid-17061999.workers.dev/ remains the synthetic demo. P
 
 The **Savings & investments** section for NPS, PPF, EPF and other manual holdings is merged from PR #10 and published as v0.3.2-rc.1 at the private origin. See [INVESTMENTS.md](INVESTMENTS.md).
 
-The Gmail receipt inbox and Monthly Plan/subscription links are merged from PR #12 and published as **v0.3.3-rc.1** at the private origin. Owner Google consent, first real receipt acceptance and server scheduling remain pending. See [GMAIL_RELEASE.md](GMAIL_RELEASE.md). See [GMAIL_IMPORT.md](GMAIL_IMPORT.md) for behavior, Google consent, server-only secrets, scheduling, testing and deployment prerequisites. No actual mailbox was read during development.
+The owner retired Gmail/Google receipt syncing. Email access and its metadata have been removed, and the live app is back on pre-email v0.3.2-rc.1. A **monthly PDF statement review/import** for Kotak Mahindra and SBI-style digital statements is prepared as v0.3.4-rc.1, awaiting release approval. See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md) for supported layouts, password handling, duplicate safeguards, remaining limits and release status.
 
 ## Preview
 
@@ -23,7 +23,7 @@ npm run preview
 
 For the private workspace, copy `.env.example` to `.env.local`, set `VITE_APP_MODE=private`, your Supabase HTTPS project URL and modern **publishable** client key, then `npm run dev`. For a production preview: `npm run build` followed by `npm run preview`. Environment values are read at build time, so rebuild after changing them. Never put a secret or service-role key into any `VITE_*` variable.
 
-The existing connected free Supabase project was initially empty. The six Phase 2–3 migrations have been applied there. The loan-document and savings/investments migrations are also applied; the Gmail receipt migration is now applied too (nine total); their filenames match the assigned hosted history versions. No financial seed data or persistent test users were added. This workspace has an ignored `.env.local` using that project's publishable key; fresh checkouts must configure their own local file.
+The existing connected free Supabase project was initially empty. The six Phase 2–3 migrations have been applied there. Loan-document, savings/investment and historical Gmail migrations were applied; a forward removal migration now retires the email integration. The new monthly-statement migration is not applied yet. Migration history is preserved rather than rewriting the previously applied SQL. No financial seed data or persistent test users were added. This workspace has an ignored `.env.local` using that project's publishable key; fresh checkouts must configure their own local file.
 
 ## Phase 2 features
 

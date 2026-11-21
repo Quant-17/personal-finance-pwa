@@ -38,7 +38,7 @@ import { displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
 import { Investments } from "./Investments";
-import { EmailReceipts } from "./EmailReceipts";
+import { StatementImport } from "./StatementImport";
 import { MonthlySummary } from "./MonthlySummary";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
@@ -198,8 +198,9 @@ function Workspace({
         {add("subscription", "Add subscription")}
       </div>
       <p>
-        Planned recurring charges stay inside your living budget. Link a
-        reviewed email receipt to record its actual expense once.
+        Planned recurring charges stay inside your living budget. Statement
+        imports record actual expenses once; review recurring charges in your
+        monthly plan.
       </p>
       {s.subscriptions.map((sub) => (
         <article className="ledger-row" key={sub.id}>
@@ -537,13 +538,17 @@ function Workspace({
               {page === "activity" && (
                 <>
                   {importNotice && <p role="status">{importNotice}</p>}
-                  <EmailReceipts
+                  <StatementImport
                     snapshot={s}
-                    onPosted={refresh}
-                    onSubscription={() => open("subscription")}
+                    onImported={({ inserted, skipped }) => {
+                      setImportNotice(
+                        `Statement import complete: ${inserted} added, ${skipped} matched existing entries.`,
+                      );
+                      refresh();
+                    }}
                   />
-                  <details className="legacy-import">
-                    <summary>Advanced: legacy CSV import</summary>
+                  <details className="other-import">
+                    <summary>Other: CSV import</summary>
                     <CsvImport
                       snapshot={s}
                       onImported={({ inserted, skipped, excluded }) => {
