@@ -1478,13 +1478,11 @@ test("PDF statement stays local; reviewed rows require duplicate checking and in
   );
   await page.getByLabel("Statement ending month").fill("2026-11");
   await page.getByLabel("PDF password (optional)").fill("synthetic-local-only");
-  await page
-    .getByLabel("Choose statement PDF")
-    .setInputFiles({
-      name: "synthetic-statement.pdf",
-      mimeType: "application/pdf",
-      buffer: statementPdf(),
-    });
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
   await expect(page.getByLabel("Description 1:3")).toHaveValue(
     "SYNTHETIC LUNCH",
   );
@@ -1552,13 +1550,11 @@ test("PDF statement duplicate matches are excluded and edits reset confirmation"
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
   await page.getByLabel("Statement ending month").fill("2026-11");
-  await page
-    .getByLabel("Choose statement PDF")
-    .setInputFiles({
-      name: "synthetic-statement.pdf",
-      mimeType: "application/pdf",
-      buffer: statementPdf(),
-    });
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
   await expect(page.getByLabel("Description 1:3")).toBeVisible();
   for (const row of ["1:3", "1:4"]) {
     await page
@@ -1592,22 +1588,18 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
   await mock(page, true);
   await login(page);
   await page.getByRole("link", { name: "Transactions", exact: true }).click();
-  await page
-    .getByLabel("Choose statement PDF")
-    .setInputFiles({
-      name: "bad.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("not a pdf"),
-    });
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "bad.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("not a pdf"),
+  });
   await expect(page.getByRole("alert")).toContainText("valid PDF");
   await page.getByLabel("Statement ending month").fill("2026-11");
-  await page
-    .getByLabel("Choose statement PDF")
-    .setInputFiles({
-      name: "synthetic-statement.pdf",
-      mimeType: "application/pdf",
-      buffer: statementPdf(),
-    });
+  await page.getByLabel("Choose statement PDF").setInputFiles({
+    name: "synthetic-statement.pdf",
+    mimeType: "application/pdf",
+    buffer: statementPdf(),
+  });
   await expect(page.getByLabel("Description 1:3")).toBeVisible();
   expect(
     await page.evaluate(
@@ -1642,3 +1634,110 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
     cached.some((url) => /supabase\.co|googleapis|mail\.google/.test(url)),
   ).toBe(false);
 });
+
+function positionedStatementPdf(kind: "sbi" | "kotak") {
+  const cells: [string, number, number][] =
+    kind === "sbi"
+      ? [
+          ["SYNTHETIC SBI GRID - TEST DATA ONLY", 20, 800],
+          ["Balance", 515, 750],
+          ["SYNTHETIC FIRST LINE", 138, 707],
+          ["01/05/2026", 28, 700],
+          ["03/05/2026", 85, 700],
+          ["-", 305, 700],
+          ["132.47", 355, 700],
+          ["8867.53", 525, 700],
+          ["WRAPPED NARRATION", 138, 690],
+          ["SYNTHETIC DEPOSIT", 138, 657],
+          ["02/05/2026", 28, 650],
+          ["04/05/2026", 85, 650],
+          ["-", 305, 650],
+          ["200.29", 440, 650],
+          ["9067.82", 525, 650],
+        ]
+      : [
+          ["SYNTHETIC KOTAK GRID - TEST DATA ONLY", 20, 800],
+          ["Date", 75, 750],
+          ["Description", 124, 750],
+          ["Ref No.", 280, 750],
+          ["Withdrawal (Dr.)", 355, 750],
+          ["Deposit (Cr.)", 429, 750],
+          ["Balance", 498, 750],
+          ["7", 39, 700],
+          ["03 May 2026", 73, 700],
+          ["SYNTHETIC SERVICE", 119, 700],
+          ["REF-ALPHA", 275, 700],
+          ["10.37", 401, 700],
+          ["8001.29", 529, 700],
+          ["WRAPPED DESCRIPTION", 119, 690],
+          ["8", 39, 660],
+          ["04 May 2026", 73, 660],
+          ["SYNTHETIC CREDIT", 119, 660],
+          ["REF-BETA", 275, 660],
+          ["500.00", 465, 660],
+          ["8501.29", 529, 660],
+        ];
+  const stream = cells
+    .map(
+      ([t, x, y]) =>
+        `BT /F1 9 Tf 1 0 0 1 ${x} ${y} Tm (${t.replace(/[()\\]/g, "\\$&")}) Tj ET`,
+    )
+    .join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [i, obj] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${obj}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((o) => String(o).padStart(10, "0") + " 00000 n \n")
+    .join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
+for (const bank of ["sbi", "kotak"] as const)
+  test(`${bank} table adapter reads synthetic positioned PDF columns and wrapped descriptions locally`, async ({
+    page,
+  }) => {
+    const calls = await mock(page, true);
+    await login(page);
+    await page.getByRole("link", { name: "Transactions", exact: true }).click();
+    await page.getByLabel("Statement ending month").fill("2026-05");
+    await page
+      .getByLabel("Choose statement PDF")
+      .setInputFiles({
+        name: `synthetic-${bank}.pdf`,
+        mimeType: "application/pdf",
+        buffer: positionedStatementPdf(bank),
+      });
+    const descriptions = page.locator('input[aria-label^="Description "]'),
+      dates = page.locator('input[aria-label^="Date "]'),
+      amounts = page.locator('input[aria-label^="Amount "]'),
+      types = page.locator('select[aria-label^="Type "]');
+    await expect(descriptions).toHaveCount(2);
+    await expect(dates.nth(0)).toHaveValue("2026-05-03");
+    await expect(dates.nth(1)).toHaveValue("2026-05-04");
+    await expect(amounts.first()).toHaveValue(
+      bank === "sbi" ? "132.47" : "10.37",
+    );
+    await expect(types.first()).toHaveValue("expense");
+    await expect(types.nth(1)).toHaveValue("");
+    await expect(descriptions.first()).toHaveValue(
+      bank === "sbi"
+        ? "SYNTHETIC FIRST LINE WRAPPED NARRATION"
+        : "SYNTHETIC SERVICE WRAPPED DESCRIPTION · REF-ALPHA",
+    );
+    expect(
+      calls.some((c) =>
+        /statement_import|statement_entries|record_entry/.test(c.path),
+      ),
+    ).toBe(false);
+  });

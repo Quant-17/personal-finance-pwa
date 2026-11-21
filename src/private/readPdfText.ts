@@ -3,6 +3,10 @@ export type PdfLine = {
   page: number;
   line: number;
   text: string;
+  y?: number;
+  page_width?: number;
+  narration?: string;
+  source_context?: string;
   spans: { text: string; x: number; width: number }[];
 };
 export type PdfPageText = { number: number; text: string };
@@ -83,6 +87,8 @@ export async function readPdfText(
         sourceLines.push({
           page: n,
           line: index + 1,
+          y: l.y,
+          page_width: page.getViewport({ scale: 1 }).width,
           text: l.items
             .sort((a, b) => a.x - b.x)
             .map((i) => i.text)

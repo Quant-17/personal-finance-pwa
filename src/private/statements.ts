@@ -2,6 +2,11 @@ import { indiaDate, moneyInput } from "./domain";
 import type { CsvEntry } from "./csv";
 import type { Snapshot } from "./domain";
 import type { PdfLine } from "./readPdfText";
+import {
+  positionedWords,
+  prepareStatementLayout,
+  statementDatePrefix,
+} from "./statementLayouts";
 export type StatementDraft = {
   source_row: string;
   page: number;
@@ -62,8 +67,7 @@ export function statementDate(raw: string, endingMonth: string) {
     ? iso
     : "";
 }
-const dateAtStart =
-  /^\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/. ](?:\d{1,2}|[A-Za-z]{3,9})(?:[-/. ]\d{2,4})?)(?=\s|$)/;
+const dateAtStart = statementDatePrefix;
 const numberPattern =
   /(?:₹|INR\s*|Rs\.?\s*)?(-?\(?\d[\d,]*\.\d{2}\)?)(?![\d.])(?:\s*(CR|DR))?/gi;
 export function statementMoney(raw: string) {
@@ -86,18 +90,6 @@ export function statementMoney(raw: string) {
     return "";
   }
 }
-function positions(line: PdfLine) {
-  // Approximate within a text span only to locate printed column headings/amounts.
-  return line.spans.flatMap((span) =>
-    [...span.text.matchAll(/\S+/g)].map((m) => ({
-      text: m[0],
-      x:
-        span.x +
-        (((m.index ?? 0) + m[0].length / 2) * span.width) /
-          Math.max(1, span.text.length),
-    })),
-  );
-}
 export function extractStatement(
   lines: PdfLine[],
   endingMonth: string,
@@ -106,22 +98,22 @@ export function extractStatement(
   const rows: StatementDraft[] = [];
   let columns: { label: "expense" | "credit" | "balance"; x: number }[] = [];
   let lastPage = 0;
-  for (const line of lines) {
+  for (const line of prepareStatementLayout(lines, card)) {
     if (line.page !== lastPage) {
       lastPage = line.page;
       columns = [];
     }
-    const words = positions(line);
+    const words = positionedWords(line);
     const headings = words.flatMap<{
       label: "expense" | "credit" | "balance";
       x: number;
     }>((w) =>
       /^(debit|withdrawals?|withdrawn)(?:\b|\()/i.test(w.text)
-        ? [{ label: "expense" as const, x: w.x }]
+        ? [{ label: "expense" as const, x: w.left }]
         : /^(credit|deposits?)(?:\b|\()/i.test(w.text)
-          ? [{ label: "credit" as const, x: w.x }]
+          ? [{ label: "credit" as const, x: w.left }]
           : /^balance(?:\b|\()/i.test(w.text)
-            ? [{ label: "balance" as const, x: w.x }]
+            ? [{ label: "balance" as const, x: w.left }]
             : [],
     );
     if (headings.length >= 2 && !dateAtStart.test(line.text)) {
@@ -184,12 +176,12 @@ export function extractStatement(
       );
       const classified = amounts.map((w) => ({
         amount: statementMoney(w.text.replace(/(?:CR|DR)$/i, "")),
-        column: [...columns].sort(
-          (a, b) => Math.abs(a.x - w.x) - Math.abs(b.x - w.x),
-        )[0],
+        column: [...columns]
+          .filter((c) => w.right >= c.x - 1)
+          .sort((a, b) => b.x - a.x)[0],
       }));
-      const debits = classified.filter((v) => v.column.label === "expense"),
-        credits = classified.filter((v) => v.column.label === "credit");
+      const debits = classified.filter((v) => v.column?.label === "expense"),
+        credits = classified.filter((v) => v.column?.label === "credit");
       if (debits.length === 1 && credits.length === 0) {
         amount = debits[0].amount;
         kind = "expense";
@@ -206,9 +198,13 @@ export function extractStatement(
     }
     const risky =
       /\b(NEFT|IMPS|transfer|EMI|loan|payment received|autopay|card payment|payment thank|pending|failed|declined|cancelled)\b/i.test(
-        rest,
+        line.narration ?? rest,
       );
-    if (/\b(refund|reversal|cashback|CR)\b/i.test(rest)) {
+    const semanticText = line.narration ?? rest;
+    if (
+      /\b(refund|reversal|cashback)\b/i.test(semanticText) ||
+      (card && /\bCR\b/i.test(rest))
+    ) {
       kind = "";
       note =
         "Credit/refund: reconcile against the original payment; do not import it as salary.";
@@ -218,16 +214,15 @@ export function extractStatement(
       note =
         "Possible transfer, repayment, credit or unsettled transaction. Use its dedicated ledger form unless you verify it is a normal expense/income.";
     }
-    const description = rest
-      .replace(numberPattern, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 240);
+    const description = (
+      line.narration ??
+      rest.replace(numberPattern, " ").replace(/\s+/g, " ").trim()
+    ).slice(0, 240);
     const date = statementDate(dateMatch[1], endingMonth);
     rows.push({
       source_row: `${line.page}:${line.line}`,
       page: line.page,
-      source: line.text.slice(0, 1200),
+      source: (line.source_context ?? line.text).slice(0, 1200),
       date,
       description,
       amount,

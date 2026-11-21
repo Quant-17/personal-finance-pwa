@@ -293,6 +293,11 @@ export function StatementImport({
         ending month; verify inferred dates. Credits, transfers, loan EMIs and
         card repayments need explicit classification or their dedicated forms.
       </p>
+      <p className="small-note">
+        SBI’s two-date grid uses Post Date, with Value Date kept in the source
+        details. Kotak row numbers are skipped and wrapped descriptions are
+        joined. Verify the detected dates before posting.
+      </p>
       {!accounts.length && (
         <p>Add an active bank or credit-card account before importing.</p>
       )}
