@@ -8,7 +8,7 @@ The **Savings & investments** section for NPS, PPF, EPF and other manual holding
 
 The owner retired Gmail/Google receipt syncing. Email access and its metadata have been removed, and the pre-email UI was temporarily restored before the new PDF release. The owner-approved **monthly PDF statement review/import** is published as **v0.3.4-rc.1**, with adapters validated against the supplied SBI/Kotak styles. The attached statement rows were not imported; the owner must review/confirm entries in-app. See [STATEMENT_RELEASE.md](STATEMENT_RELEASE.md). See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md) for supported layouts, password handling, duplicate safeguards, remaining limits and release status.
 
-A review-branch extension adds **EMI / loan repayment** to statement row types, with a linked loan and exact reviewed principal/interest split. It is not yet published. See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md#reviewed-statement-emis--review-branch).
+Private **v0.3.5-rc.1** adds **EMI / loan repayment** to statement row types, with a linked loan and exact reviewed principal/interest split. The owner-approved release is live; see [STATEMENT_EMIS_RELEASE.md](STATEMENT_EMIS_RELEASE.md). See [STATEMENT_IMPORT.md](STATEMENT_IMPORT.md#reviewed-statement-emis--review-branch).
 
 ## Preview
 
