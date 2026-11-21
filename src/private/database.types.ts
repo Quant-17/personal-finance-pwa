@@ -14,6 +14,40 @@ export type Database = {
   };
   public: {
     Tables: {
+      investment_holdings: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          scheme: string;
+          provider: string;
+          funding_source: string;
+          locked_until: string | null;
+          account_id: string | null;
+          archived: boolean;
+          revision: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      investment_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          holding_id: string;
+          kind: string;
+          amount_paise: number;
+          occurred_on: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       loan_document_details: {
         Row: {
           loan_id: string;
@@ -459,6 +493,32 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      investment_portfolio: { Args: never; Returns: Json };
+      save_investment_holding: {
+        Args: {
+          p_holding: string | null;
+          p_expected_revision: number;
+          p_terms: Json;
+          p_initial_value_paise: number | null;
+          p_valued_on: string | null;
+          p_request_id: string;
+        };
+        Returns: string;
+      };
+      record_investment_entry: {
+        Args: {
+          p_holding: string;
+          p_expected_revision: number;
+          p_entry: string | null;
+          p_kind: string;
+          p_amount_paise: number;
+          p_occurred_on: string;
+          p_note: string;
+          p_delete: boolean;
+          p_request_id: string;
+        };
+        Returns: string;
+      };
       save_loan_document: {
         Args: {
           p_loan: string | null;

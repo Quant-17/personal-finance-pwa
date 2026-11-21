@@ -1,0 +1,41 @@
+-- DDL-free hosted smoke: run after approved migration; generated fixtures all roll back.
+begin;
+do $$
+declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); holding uuid; request uuid:=gen_random_uuid(); entry uuid; account uuid; terms jsonb; report jsonb;
+begin
+ insert into auth.users(id,email) values(a,'invest-acceptance-'||a::text||'@example.invalid'),(b,'invest-acceptance-'||b::text||'@example.invalid');
+ perform set_config('request.jwt.claim.sub',a::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','is_anonymous',false)::text,true);execute 'set local role authenticated';
+ perform public.initialize_workspace();
+ terms:='{"name":"Disposable PPF","scheme":"ppf","provider":"Fixture bank","funding_source":"self","locked_until":null,"account_id":null,"archived":false}'::jsonb;
+ holding:=public.save_investment_holding(null,0,terms,2000029,folio_private.today()-1,request);
+ if public.save_investment_holding(null,0,terms,2000029,folio_private.today()-1,request)<>holding or (select count(*) from public.investment_holdings)<>1 then raise exception 'Holding retry duplicated'; end if;
+ if (public.workspace_snapshot()->'summary'->>'net_worth_paise')::bigint<>2000029 or (public.workspace_snapshot()->'summary'->>'liquid_cash_paise')::bigint<>0 then raise exception 'Investment/cash boundary failed'; end if;
+ request:=gen_random_uuid();entry:=public.record_investment_entry(holding,1,null,'self',10029,folio_private.today(),'Disposable contribution',false,request);
+ if public.record_investment_entry(holding,1,null,'self',10029,folio_private.today(),'Disposable contribution',false,request)<>entry or (select count(*) from public.investment_entries)<>2 then raise exception 'Contribution retry duplicated'; end if;
+ report:=public.investment_portfolio()->0;
+ if (report->>'value_paise')::bigint<>2000029 or (report->>'self_paise')::bigint<>10029 or (report->>'fy_self_paise')::bigint<>10029 or (report->>'activity_after_valuation')::int<>1 then raise exception 'Reported balance or FY history failed'; end if;
+ if (select count(*) from public.transactions)<>0 then raise exception 'History posted a bank entry'; end if;
+ begin perform public.record_investment_entry(holding,1,null,'valuation',1,folio_private.today(),'',false,gen_random_uuid());raise exception 'Stale history accepted';exception when serialization_failure then null;end;
+ perform public.record_investment_entry(holding,2,null,'valuation',2200057,folio_private.today(),'Disposable new statement',false,gen_random_uuid());
+ if (public.workspace_snapshot()->'summary'->>'net_worth_paise')::bigint<>2200057 then raise exception 'Statement update failed'; end if;
+ begin perform public.save_investment_holding(null,0,terms,1000000000000,folio_private.today(),gen_random_uuid());raise exception 'Portfolio range accepted';exception when numeric_value_out_of_range then null;end;
+ if (select count(*) from public.investment_holdings)<>1 then raise exception 'Range rejection left a partial holding'; end if;
+ insert into public.accounts(name,type,opening_balance_paise) values('Disposable linked investment','investment',2000000) returning id into account;
+ terms:=terms||jsonb_build_object('account_id',account);
+ perform public.save_investment_holding(holding,3,terms,null,null,gen_random_uuid());
+ if (public.workspace_snapshot()->'summary'->>'net_worth_paise')::bigint<>2000000 then raise exception 'Linked account was counted twice'; end if;
+ begin update public.investment_holdings set name='Forbidden';raise exception 'Direct metadata update accepted';exception when insufficient_privilege then null;end;
+ begin delete from public.investment_entries;raise exception 'Direct history delete accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',b::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',b,'role','authenticated','is_anonymous',false)::text,true);
+ if exists(select 1 from public.investment_holdings) or exists(select 1 from public.investment_entries) then raise exception 'Cross-owner read accepted';end if;
+ begin perform public.record_investment_entry(holding,4,null,'self',1,folio_private.today(),'',false,gen_random_uuid());raise exception 'Cross-owner history accepted';exception when insufficient_privilege then null;end;
+ begin perform public.save_investment_holding(null,0,terms,1,folio_private.today(),gen_random_uuid());raise exception 'Cross-owner account link accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',a::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','is_anonymous',true)::text,true);
+ if exists(select 1 from public.investment_holdings) then raise exception 'Anonymous-auth read accepted';end if;
+ begin perform public.investment_portfolio();raise exception 'Anonymous-auth portfolio accepted';exception when insufficient_privilege then null;end;
+ execute 'reset role';execute 'set local role anon';
+ begin perform public.investment_portfolio();raise exception 'Signed-out portfolio accepted';exception when insufficient_privilege then null;end;
+ execute 'reset role';
+end $$;
+rollback;
+select 'PASS: investment paise precision, dated valuations, FY history, cash separation, retry/stale/range rollback, account linking and owner/anonymous isolation; fixtures rolled back' as acceptance;

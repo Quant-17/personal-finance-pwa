@@ -4,6 +4,8 @@ An INR finance manager for iPhone Safari PWA and Windows browsers, built with Re
 
 The public https://folio.sid-17061999.workers.dev/ remains the synthetic demo. Phases 2–3 are merged and published at https://folio-review.sid-17061999.workers.dev/. The local loan-document review feature is merged from PR #8 and published as v0.3.1-rc.1 at the private origin, ahead of Stage 4. See [LOAN_DOCUMENT_IMPORT.md](LOAN_DOCUMENT_IMPORT.md).
 
+A new **Savings & investments** section for NPS, PPF, EPF and other manual holdings is in review on `feat/savings-investments`, targeting v0.3.2-rc.1. It is not deployed. See [INVESTMENTS.md](INVESTMENTS.md).
+
 ## Preview
 
 Requires Node 24 and npm.

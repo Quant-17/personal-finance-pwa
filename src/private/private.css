@@ -749,3 +749,216 @@ progress {
 .document-import td input {
   min-width: 110px;
 }
+
+.investment-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 30px;
+  margin-bottom: 20px;
+  background: linear-gradient(120deg, var(--surface), var(--primary-light));
+}
+.investment-hero-copy {
+  max-width: 560px;
+}
+.investment-hero h2 {
+  margin: 14px 0;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -1px;
+}
+.investment-hero p,
+.investment-hero small,
+.investment-allocation p,
+.investment-holding p,
+.investment-form p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.investment-hero .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.investment-hero-total {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 280px;
+  gap: 12px;
+}
+.investment-hero-total strong {
+  font-size: clamp(26px, 4vw, 36px);
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+.investment-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.investment-stat {
+  padding: 22px;
+  display: grid;
+  gap: 12px;
+}
+.investment-stat strong {
+  font-size: 25px;
+  overflow-wrap: anywhere;
+}
+.investment-stat small,
+.investment-stat > span {
+  color: var(--muted);
+}
+.investment-policy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+.investment-policy svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.investment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.investment-holding {
+  border-top: 1px solid var(--border);
+  padding: 24px 0;
+}
+.investment-holding:last-child {
+  padding-bottom: 0;
+}
+.investment-holding-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.investment-holding h3 {
+  margin: 10px 0 6px;
+  font-size: 19px;
+}
+.investment-tag {
+  display: inline-block;
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.investment-value {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+.investment-value strong {
+  font-size: 23px;
+  overflow-wrap: anywhere;
+}
+.investment-value small,
+.investment-holding-meta,
+.investment-hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+.investment-holding-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.investment-holding-meta span {
+  display: grid;
+  gap: 6px;
+}
+.investment-attention {
+  border-left: 3px solid var(--primary);
+  padding-left: 12px;
+  font-size: 13px;
+}
+.investment-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 36px 12px;
+  color: var(--muted);
+}
+.investment-empty p {
+  max-width: 420px;
+  line-height: 1.7;
+}
+.investment-empty h3 {
+  color: var(--text);
+}
+.investment-allocation-row {
+  margin: 22px 0;
+}
+.investment-allocation-row > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.investment-allocation progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--primary);
+}
+.investment-allocation hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 26px 0;
+}
+.investment-form {
+  margin-bottom: 22px;
+}
+.investment-form fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.investment-form input:not([type="checkbox"]),
+.investment-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.investment-history {
+  margin-top: 20px;
+}
+@media (max-width: 1000px) {
+  .investment-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .investment-hero {
+    flex-direction: column;
+    padding: 22px;
+  }
+  .investment-stats {
+    grid-template-columns: 1fr;
+  }
+  .investment-hero-total {
+    max-width: none;
+  }
+}

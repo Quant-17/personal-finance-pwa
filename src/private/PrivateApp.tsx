@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Plus,
   ShieldCheck,
+  Landmark,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
@@ -36,12 +37,14 @@ import { useWorkspace, db, check } from "./workspace";
 import { displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
+import { Investments } from "./Investments";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
 const pages = [
   ["overview", "Overview", LayoutDashboard],
   ["accounts", "Accounts", Wallet],
   ["activity", "Transactions", ReceiptText],
+  ["investments", "Savings & investments", Landmark],
   ["budgets", "Budgets & goals", Target],
   ["commitments", "Loans & subscriptions", CalendarClock],
   ["simulator", "Buy simulator", Sparkles],
@@ -264,7 +267,7 @@ function Workspace({
                       [
                         "Net worth",
                         s.summary.net_worth_paise,
-                        "Accounts less remaining loan principal",
+                        "Accounts and separate investments, less debt",
                       ],
                       [
                         "Available liquid cash",
@@ -292,7 +295,7 @@ function Workspace({
                       </section>
                     ))}
                   </div>
-                  {!s.accounts.length && (
+                  {!s.accounts.length && !s.investments.length && (
                     <section className="card welcome-card">
                       <ShieldCheck size={28} />
                       <h2>A fresh start for your finances.</h2>
@@ -892,6 +895,9 @@ function Workspace({
                     financialContext={plan}
                   />
                 </>
+              )}
+              {page === "investments" && (
+                <Investments snapshot={s} onRefresh={refresh} />
               )}
               {page === "settings" && (
                 <>
