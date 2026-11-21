@@ -32,4 +32,19 @@ Forward migration: `december_tracking_deductions`. Public mutation wrappers use 
 
 Run lint, typecheck, Vitest, release tests, private/demo browser suites, production builds, sorted migration replay and database accounting/isolation tests. New tests cover cutoff accounting, preserved history, subscription retry/linking/ownership, card-plan restrictions, actual EMI dates, recurrence boundaries and chart/calendar interactions. Hosted acceptance uses disposable synthetic records inside a rollback transaction; never run bootstrap.sql on Supabase.
 
-Prepared v0.3.6-rc.1. Local lint/typecheck, 134 Vitest + 2 release tests, the 27-test private browser suite, sorted PostgreSQL migration replay, accounting/security suites and four concurrency harnesses passed. New SQL coverage includes 29 tracking/deduction assertions. Existing PDF bundle-size warnings remain non-blocking. The final migration and merged-source deployment will receive hosted rollback and exact asset verification. Release identifiers will be recorded after publication.
+Validation for v0.3.6-rc.1. Local lint/typecheck, 134 Vitest + 2 release tests, the 27-test private browser suite, sorted PostgreSQL migration replay, accounting/security suites and four concurrency harnesses passed. New SQL coverage includes 29 tracking/deduction assertions. Existing PDF bundle-size warnings remain non-blocking. Hosted rollback and exact asset verification are complete; identifiers follow below.
+
+## Published · 21 November 2026
+
+The owner requested the combined update released immediately. PR #18 is merged as `a2edb5da92d7717e6cbbf7ef33cdc94bea087416`; branch/PR CI and merged-main run `44924988894` passed. The previous release-record PR #17 was included and closed as superseded.
+
+- Private **v0.3.6-rc.1** is live at https://folio-review.sid-17061999.workers.dev/.
+- Hosted migration **20261121163128** (`december_tracking_deductions`) applied; the repository filename is aligned without changing SQL bytes.
+- **29 hosted rollback assertions passed**. The existing owner’s transaction start and four supplied EMI dates were configured and read back; a transaction-level comparison verified all other loan financial fields remained unchanged. No owner transactions or repayments were posted.
+- Worker version `f3e56870-424f-4d9f-88fa-f9278e77f498`, deployment `7e2b69e4-4973-4ce8-96fa-b63b27c8631d`, 100% traffic, published **21 November 2026 at 22:02:50 IST**.
+- Hosted source/version, root, manifest, shell, service worker, exact-origin CSP, JavaScript/PDF-worker MIME and **all 20 deployed asset byte comparisons passed**. Metadata was checked again after edge propagation and identifies source `a2edb5d`.
+- Public demo deployment `92d02c4b-850d-46ae-81ea-3b51d7ed58a6` / version `5e0cb7ff-e84b-4095-9d17-cff53db0d267` is unchanged. Previous private v0.3.5-rc.1 version `b645433d-4959-4475-866c-151579ca3f2f` is the frontend rollback reference; do not remove historical ledger records to roll back a frontend.
+
+Refresh or use **Update app**, then open Monthly plan → Deduction calendar. Income/expense charts populate from confirmed transactions dated 1 December onward. Current asset mix is available immediately. Actual deductions still require a confirmed transaction/import; planned dates do not initiate bank deductions. Physical-device acceptance and actual financial imports remain the owner’s review.
+
+Supabase advisors reported no new categories of findings. Existing private receipt tables intentionally deny browser access with RLS/no policies ([explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); existing informational foreign-key/unused-index notices remain ([index guidance](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys)). The existing disabled leaked-password-protection Auth advisory remains ([Auth guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)). Auth configuration and the no-paid-services requirement were preserved.
