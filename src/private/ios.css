@@ -1,0 +1,789 @@
+/* iPhone-first presentation layer; the public demo keeps its own design. */
+:root[data-folio-private] {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: light;
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --soft: #f7f7fa;
+  --text: #20212b;
+  --muted: #636473;
+  --border: #e3e3ea;
+  --primary: #5843b5;
+  --primary-light: #eeebf8;
+  --green: #237457;
+  --teal: #4d8c92;
+  --danger: #b5273a;
+  --on-primary: #ffffff;
+  --bar-bg: #ffffffed;
+  --shadow: 0 2px 8px #20212b04;
+}
+:root.dark[data-folio-private] {
+  color-scheme: dark;
+  --bg: #090a0f;
+  --surface: #191a21;
+  --soft: #23242d;
+  --text: #f4f4fa;
+  --muted: #afb0bd;
+  --border: #30313b;
+  --primary: #c1b2ff;
+  --primary-light: #302943;
+  --green: #7ed5af;
+  --teal: #77adbd;
+  --danger: #ff9caa;
+  --on-primary: #211738;
+  --bar-bg: #191a21f2;
+  --shadow: none;
+}
+.private-shell,
+.auth-page,
+.finance-dialog {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.private-shell h1,
+.private-shell h2,
+.private-shell h3,
+.auth-card h1 {
+  text-wrap: balance;
+}
+.private-shell h1 {
+  font-size: 2.125rem;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+.private-shell .eyebrow {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+}
+.private-shell .card {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+.private-shell .private-panel,
+.private-shell .welcome-card {
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.private-shell .private-panel h2 {
+  font-size: 1.25rem;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+.private-shell .private-panel p,
+.private-shell .welcome-card p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+.private-shell .small-note,
+.private-shell p.small-note {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.private-shell button,
+.auth-page button,
+.finance-dialog button {
+  min-height: 44px;
+  height: auto;
+  font-size: 0.9375rem;
+  border-radius: 13px;
+}
+:root[data-folio-private] .bg-primary {
+  color: var(--on-primary);
+}
+.private-shell label,
+.finance-dialog label,
+.auth-page label {
+  font-size: 0.9375rem;
+}
+.private-shell input:not([type="checkbox"]):not([type="range"]),
+.private-shell select,
+.private-shell textarea,
+.auth-page input,
+.auth-page select,
+.finance-dialog input,
+.finance-dialog select {
+  font-size: 1rem;
+  min-height: 48px;
+  max-width: 100%;
+  border-radius: 12px;
+  scroll-margin-block: 100px;
+}
+.private-shell input[type="checkbox"],
+.finance-dialog input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--primary);
+}
+.private-shell label:has(input[type="checkbox"]) {
+  min-height: 44px;
+  align-items: center;
+}
+.private-shell .form-error,
+.auth-page .form-error,
+.finance-dialog .form-error {
+  color: var(--danger);
+}
+.private-shell .private-content {
+  max-width: 1200px;
+  padding: 32px 40px 40px;
+}
+.private-shell .private-heading {
+  align-items: flex-end;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.private-heading > div:first-child {
+  min-width: 0;
+}
+.private-shell .private-heading p {
+  font-size: 0.9375rem;
+  margin-top: 8px;
+  max-width: 40em;
+}
+.private-navigationbar {
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-bottom: 12px;
+  background: var(--bar-bg);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+}
+.private-navigationbar .brand {
+  font-size: 1.75rem;
+  letter-spacing: -0.065em;
+}
+.private-section-picker summary {
+  border-radius: 999px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+.private-navigationbar .private-section-picker nav {
+  border-radius: 22px;
+  padding: 8px;
+  background: var(--surface);
+  box-shadow: 0 16px 60px #15112426;
+}
+.private-navigationbar .private-section-picker nav a {
+  min-height: 48px;
+  font-size: 0.9375rem;
+  gap: 12px;
+  border-radius: 12px;
+}
+.private-navigationbar .private-section-picker nav a[aria-current] {
+  font-weight: 650;
+}
+.private-navigationbar .private-section-picker nav svg {
+  flex-shrink: 0;
+}
+.private-action-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.private-action-dock > button:last-child {
+  width: 48px;
+  padding: 0;
+  flex: 0 0 48px;
+}
+.private-shell .tracking-banner {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  margin-bottom: 16px;
+}
+.tracking-banner summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.tracking-banner summary::-webkit-details-marker {
+  display: none;
+}
+.tracking-banner summary strong {
+  font-weight: 500;
+  flex: 1;
+}
+.tracking-banner summary > svg {
+  flex-shrink: 0;
+}
+.tracking-banner[open] summary > svg:last-child {
+  transform: rotate(180deg);
+}
+.tracking-banner > div {
+  padding: 8px 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.tracking-banner > div a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9375rem;
+}
+.balance-card {
+  padding: 28px;
+  margin-bottom: 16px;
+  border-radius: 26px;
+  color: #fff;
+  background: linear-gradient(125deg, #282235, #44365e);
+}
+.balance-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  color: #e6dff3;
+}
+.balance-card-heading > svg {
+  flex-shrink: 0;
+}
+.balance-currency {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid #ffffff40;
+  border-radius: 7px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+}
+.balance-value {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 2.75rem;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow-x: auto;
+  font-variant-numeric: tabular-nums;
+}
+.balance-value[data-long="true"] {
+  font-size: 1.65rem;
+}
+.balance-card p,
+.balance-card small {
+  color: #e6dff3;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.balance-net-worth {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding-top: 18px;
+  margin-top: 22px;
+  border-top: 1px solid #ffffff30;
+}
+.balance-net-worth > span {
+  font-size: 0.9375rem;
+  color: #e6dff3;
+}
+.balance-net-worth strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  font-variant-numeric: tabular-nums;
+}
+.balance-card small {
+  display: block;
+  margin-top: 6px;
+}
+.monthly-pulse {
+  padding: 4px 20px;
+  margin-bottom: 20px;
+}
+.monthly-pulse > div {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+}
+.monthly-pulse > div + div {
+  border-top: 1px solid var(--border);
+}
+.monthly-pulse > div > span:nth-child(2) {
+  font-size: 0.9375rem;
+}
+.monthly-pulse small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.monthly-pulse strong {
+  font-size: 1.125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pulse-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--soft);
+  color: var(--text);
+}
+.pulse-icon.income {
+  color: var(--green);
+}
+.overview-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.overview-shortcuts > a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  min-height: 76px;
+}
+.overview-shortcuts > a > svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.overview-shortcuts > a > svg:last-child {
+  width: 16px;
+  margin-left: auto;
+}
+.overview-shortcuts span {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.overview-shortcuts small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.private-shell .page-actions {
+  gap: 10px;
+  margin-top: 0;
+}
+.private-shell .ledger-row {
+  gap: 12px;
+  font-size: 0.9375rem;
+  padding: 18px 0;
+}
+.private-shell .ledger-row span {
+  font-size: 0.8125rem;
+  margin-top: 4px;
+}
+.private-shell .row-actions {
+  gap: 4px;
+}
+.private-shell .large-amount,
+.investment-value strong,
+.investment-stat strong,
+.investment-hero-total strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+.private-shell .insight-chip {
+  display: none;
+}
+.private-shell .insight-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  gap: 4px;
+  border-radius: 14px;
+  background: var(--soft);
+}
+.private-shell .insight-tabs button {
+  min-width: 0;
+  padding: 8px 4px;
+  border: 0;
+  font-size: 0.8125rem;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  white-space: normal;
+}
+.private-shell .insight-tabs button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px #00000012;
+}
+.private-shell .insight-controls {
+  gap: 8px;
+}
+.private-shell .insight-controls button {
+  font-size: 0.8125rem;
+}
+.private-shell .insight-chart,
+.private-shell .private-chart {
+  font-size: 0.8125rem;
+}
+.private-shell .table-scroll {
+  border-radius: 14px;
+}
+.private-shell table {
+  font-size: 0.875rem;
+}
+.private-shell .plan-breakdown {
+  font-size: 0.9375rem;
+}
+.private-shell .plan-breakdown dd {
+  font-variant-numeric: tabular-nums;
+}
+.private-shell .investment-hero {
+  background: var(--surface);
+}
+.private-shell .investment-hero h2 {
+  font-size: 1.75rem;
+}
+.private-shell .investment-hero-total {
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--primary-light);
+  max-width: 100%;
+}
+.private-shell .debt-input,
+.private-shell .insight-detail,
+.private-shell .deduction-total {
+  background: var(--soft);
+  border-radius: 16px;
+}
+.private-shell .private-footer {
+  font-size: 0.75rem;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+.auth-page {
+  padding: max(24px, env(safe-area-inset-top, 0px)) 20px
+    max(24px, env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+}
+.auth-card {
+  padding: 30px 24px;
+  border-radius: 26px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.auth-card h1 {
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+}
+.auth-card p {
+  font-size: 0.9375rem;
+}
+.auth-links button {
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+.finance-dialog {
+  padding: 24px;
+  width: min(560px, calc(100% - 32px));
+  max-height: min(90dvh, calc(var(--sheet-viewport-height, 100dvh) - 24px));
+  border-radius: 26px;
+  overscroll-behavior: contain;
+  scroll-padding-block: 80px;
+}
+.finance-dialog::backdrop {
+  background: #090a0f66;
+  backdrop-filter: blur(6px);
+}
+.finance-dialog .dialog-heading {
+  position: sticky;
+  top: -24px;
+  z-index: 2;
+  padding: 16px 0;
+  background: var(--surface);
+}
+.finance-dialog .dialog-heading h2 {
+  font-size: 1.375rem;
+  letter-spacing: -0.025em;
+}
+.finance-dialog .dialog-heading button {
+  min-width: 44px;
+  flex-shrink: 0;
+}
+.finance-dialog .auth-form {
+  gap: 20px;
+}
+.finance-dialog .auth-form label {
+  gap: 8px;
+}
+.editor-actions {
+  position: sticky;
+  bottom: -24px;
+  background: var(--surface);
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--border);
+}
+.editor-actions > button {
+  width: 100%;
+  min-height: 50px;
+}
+@media (max-width: 760px) {
+  .private-navigationbar {
+    padding-inline: max(16px, env(safe-area-inset-left, 0px))
+      max(16px, env(safe-area-inset-right, 0px));
+    gap: 8px;
+  }
+  .private-navigation-actions {
+    gap: 4px;
+  }
+  .private-navigationbar .private-section-picker {
+    position: static;
+  }
+  .private-navigationbar .private-section-picker nav {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: max(16px, env(safe-area-inset-left, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    width: auto;
+    max-height: min(
+      65dvh,
+      calc(
+        100dvh - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 180px
+      )
+    );
+  }
+  .private-shell .private-content {
+    padding: 26px max(16px, env(safe-area-inset-right, 0px))
+      calc(108px + env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+  .private-shell .private-heading {
+    margin-bottom: 20px;
+  }
+  .private-shell .private-heading p {
+    max-width: 32em;
+  }
+  .private-action-dock {
+    position: fixed;
+    z-index: 25;
+    left: max(16px, env(safe-area-inset-left, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: var(--bar-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 6px 28px #00000014;
+  }
+  .private-action-dock > button:first-child {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+  }
+  .private-shell .private-footer {
+    padding: 0 20px calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+  .private-shell .private-panel,
+  .private-shell .welcome-card {
+    padding: 20px;
+    border-radius: 22px;
+  }
+  .balance-card {
+    padding: 24px;
+  }
+  .balance-value {
+    font-size: 2.375rem;
+  }
+  .balance-value[data-long="true"] {
+    font-size: 1.4rem;
+  }
+  .balance-card-heading {
+    font-size: 0.875rem;
+  }
+  .monthly-pulse {
+    padding: 0 16px;
+  }
+  .monthly-pulse > div {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+  .monthly-pulse .pulse-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    grid-row: span 2;
+  }
+  .monthly-pulse strong {
+    grid-column: 2;
+    font-size: 1.125rem;
+  }
+  .overview-shortcuts {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .overview-shortcuts > a {
+    min-height: 70px;
+    padding: 14px 16px;
+  }
+  .private-shell .investment-stats {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .private-shell .investment-stat {
+    gap: 6px;
+    padding: 18px 20px;
+  }
+  .private-shell .investment-stat strong {
+    font-size: 1.375rem;
+  }
+  .private-shell .investment-hero {
+    padding: 22px;
+  }
+  .private-shell .panel-heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .private-shell .ledger-row > div:first-child {
+    flex-basis: 100%;
+  }
+  .private-shell .ledger-row > strong {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.0625rem;
+  }
+  .private-shell .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .private-shell .large-amount {
+    font-size: 1.5rem;
+  }
+  .finance-dialog {
+    position: fixed;
+    inset: auto 0 var(--sheet-keyboard-inset, 0px);
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    padding: 8px 20px max(12px, env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 28px 28px 0 0;
+    max-height: min(94dvh, calc(var(--sheet-viewport-height, 100dvh) - 12px));
+  }
+  .finance-dialog .dialog-heading {
+    top: -8px;
+    padding: 12px 0;
+  }
+  .editor-actions {
+    bottom: 0;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-width: 380px) {
+  .private-navigationbar {
+    padding-inline: 12px;
+  }
+  .private-section-picker summary {
+    font-size: 0.8125rem;
+    padding-inline: 10px;
+    gap: 6px;
+  }
+  .balance-card {
+    padding: 20px;
+  }
+  .balance-value {
+    font-size: 2.125rem;
+  }
+  .balance-net-worth {
+    display: grid;
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-folio-private] *,
+  :root[data-folio-private] *::before,
+  :root[data-folio-private] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .private-navigationbar,
+  .private-action-dock {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.monthly-pulse strong,
+.private-shell .large-amount,
+.investment-value strong,
+.investment-stat strong,
+.investment-hero-total strong {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.private-action-dock > button:first-child {
+  white-space: normal;
+}
+.private-shell .private-main {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .private-shell .private-heading {
+    align-items: flex-start;
+  }
+}
+.private-shell .recharts-cartesian-axis-tick-value {
+  fill: var(--muted);
+  font-size: 0.75rem;
+}
+.private-shell .recharts-default-tooltip {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text);
+  border-radius: 12px;
+}
+.private-navigationbar .brand {
+  min-height: 44px;
+}
+.private-shell details > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  padding-block: 10px;
+}
+.private-shell .text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.private-shell input[type="range"] {
+  min-height: 44px;
+}

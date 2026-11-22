@@ -1,7 +1,7 @@
 {
   "name": "folio-finance",
   "private": true,
-  "version": "0.4.1-rc.1",
+  "version": "0.5.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -13,7 +13,8 @@
     "build:demo": "tsc -b && vite build --mode demo",
     "build:private-test": "tsc -b && vite build --mode private-test --outDir dist-private",
     "test:private": "playwright test --config playwright.private.config.ts",
-    "verify:release": "node --use-env-proxy scripts/verify-release.mjs"
+    "verify:release": "node --use-env-proxy scripts/verify-release.mjs",
+    "test:ios": "playwright test --config playwright.ios.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.0",

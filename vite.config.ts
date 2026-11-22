@@ -31,6 +31,16 @@ export default defineConfig(({ mode, command }) => {
       react(),
       {
         name: "private-workspace-headers",
+        transformIndexHtml(html) {
+          return appMode === "private"
+            ? html
+                .replace('content="#7460d4"', 'content="#f2f2f7"')
+                .replace(
+                  "Folio: a thoughtful personal finance dashboard and buy decision simulator. Synthetic demo data only.",
+                  "Folio: your private personal finance workspace.",
+                )
+            : html;
+        },
         writeBundle(options) {
           writeFileSync(
             resolve(options.dir ?? "dist", "folio-build.json"),
@@ -62,8 +72,8 @@ export default defineConfig(({ mode, command }) => {
             appMode === "private"
               ? "Your private personal finance workspace."
               : "Your money, thoughtfully managed. A synthetic finance prototype.",
-          theme_color: "#7460d4",
-          background_color: "#f6f7fb",
+          theme_color: appMode === "private" ? "#f2f2f7" : "#7460d4",
+          background_color: appMode === "private" ? "#f2f2f7" : "#f6f7fb",
           display: "standalone",
           start_url: "/",
           scope: "/",

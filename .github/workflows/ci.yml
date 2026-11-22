@@ -17,11 +17,12 @@ jobs:
       - run: npm test
       - run: npm run build:demo
       - run: npm run verify:release -- dist demo
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test
       - run: npm run build:private-test
       - run: npm run verify:release -- dist-private private https://fixture.supabase.co
       - run: npm run test:private
+      - run: npm run test:ios
       - name: Upload tested Cloudflare Pages build
         uses: actions/upload-artifact@v4
         with:

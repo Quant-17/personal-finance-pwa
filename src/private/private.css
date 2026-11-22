@@ -24,7 +24,7 @@
   margin: auto;
 }
 .auth-card h1 {
-  font-size: 29px;
+  font-size: 1.8125rem;
   line-height: 1.25;
   letter-spacing: -1px;
   margin: 20px 0 12px;
@@ -48,7 +48,7 @@
   display: flex;
   gap: 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .auth-form {
   display: grid;
@@ -58,7 +58,7 @@
 .auth-form label {
   display: grid;
   gap: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text);
 }
@@ -72,7 +72,7 @@
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: 1rem;
 }
 .auth-form input:focus,
 .auth-form select:focus {
@@ -93,12 +93,12 @@
   border: 0;
   color: var(--primary);
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   cursor: pointer;
   min-height: 40px;
 }
 .small-note {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
   color: var(--muted);
   line-height: 1.7;
@@ -137,7 +137,7 @@
   justify-content: space-between;
   padding: 0 40px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .private-content {
   padding: 36px 40px;
@@ -152,12 +152,12 @@
   margin-bottom: 32px;
 }
 .private-heading h1 {
-  font-size: 30px;
+  font-size: 1.875rem;
   letter-spacing: -1px;
   margin: 8px 0;
 }
 .private-heading p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -173,16 +173,16 @@
   gap: 14px;
 }
 .private-stat > span {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 .private-stat strong {
-  font-size: 25px;
+  font-size: 1.5625rem;
   letter-spacing: -0.7px;
   overflow-wrap: anywhere;
 }
 .private-stat small {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -193,14 +193,14 @@
 }
 .private-panel h2,
 .welcome-card h2 {
-  font-size: 18px;
+  font-size: 1.125rem;
   margin: 0 0 12px;
 }
 .private-panel p,
 .welcome-card p {
   color: var(--muted);
   line-height: 1.7;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .welcome-card {
   background: var(--primary-light);
@@ -211,10 +211,10 @@
 .private-chart {
   height: 280px;
   margin-top: 25px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .large-amount {
-  font-size: 28px;
+  font-size: 1.75rem;
   letter-spacing: -0.8px;
   display: block;
   margin: 15px 0;
@@ -222,7 +222,7 @@
 .text-link {
   display: inline-block;
   color: var(--primary);
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin: 18px;
 }
 .page-actions {
@@ -246,7 +246,7 @@
   gap: 20px;
   padding: 20px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .ledger-row > div:first-child {
   flex: 1;
@@ -259,7 +259,7 @@
 .ledger-row span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
   margin-top: 8px;
   line-height: 1.6;
 }
@@ -272,7 +272,7 @@
 .empty-message {
   padding: 30px 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .panel-heading {
   display: flex;
@@ -291,12 +291,12 @@
 .budget-record strong,
 .budget-record span {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.8;
 }
 .budget-record span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 progress {
   width: 100%;
@@ -308,7 +308,7 @@ progress {
   border-bottom: 1px solid var(--border);
 }
 .goal-record h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 .goal-record progress {
   display: block;
@@ -319,11 +319,11 @@ progress {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 0.8125rem;
   gap: 20px;
 }
 .private-notice {
-  font-size: 13px;
+  font-size: 0.8125rem;
   background: var(--primary-light);
   padding: 18px;
   border-radius: 12px;
@@ -336,7 +336,7 @@ progress {
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .finance-dialog {
   width: min(500px, calc(100% - 32px));
@@ -360,7 +360,7 @@ progress {
   gap: 14px;
 }
 .dialog-heading h2 {
-  font-size: 20px;
+  font-size: 1.25rem;
   margin: 0;
 }
 .private-update {
@@ -369,7 +369,7 @@ progress {
   background: var(--primary-light);
   padding: 12px 20px;
   z-index: 50;
-  font-size: 13px;
+  font-size: 0.8125rem;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -407,7 +407,7 @@ progress {
     gap: 8px;
   }
   .private-heading h1 {
-    font-size: 26px;
+    font-size: 1.625rem;
   }
   .private-stats {
     gap: 12px;
@@ -416,7 +416,7 @@ progress {
     padding: 18px 14px;
   }
   .private-stat strong {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
   .private-panel,
   .welcome-card {
@@ -465,7 +465,7 @@ progress {
   flex-basis: 100%;
   max-width: 100%;
   overflow: auto;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .ledger-row:has(.loan-schedule) {
   flex-wrap: wrap;
@@ -491,7 +491,7 @@ progress {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .auth-page footer,
 .private-footer {
@@ -566,7 +566,7 @@ progress {
 .csv-preview {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .csv-preview td,
 .csv-preview th {
@@ -618,7 +618,7 @@ progress {
 .document-import small {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .document-import fieldset {
   min-width: 0;
@@ -632,7 +632,7 @@ progress {
 .document-warnings {
   padding-left: 20px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .document-warnings li {
   margin: 8px 0;
@@ -662,7 +662,7 @@ progress {
 }
 .investment-hero h2 {
   margin: 14px 0;
-  font-size: clamp(24px, 4vw, 34px);
+  font-size: clamp(1.5rem, 4vw, 2.125rem);
   letter-spacing: -1px;
 }
 .investment-hero p,
@@ -686,7 +686,7 @@ progress {
   gap: 12px;
 }
 .investment-hero-total strong {
-  font-size: clamp(26px, 4vw, 36px);
+  font-size: clamp(1.625rem, 4vw, 2.25rem);
   letter-spacing: -1px;
   overflow-wrap: anywhere;
 }
@@ -702,7 +702,7 @@ progress {
   gap: 12px;
 }
 .investment-stat strong {
-  font-size: 25px;
+  font-size: 1.5625rem;
   overflow-wrap: anywhere;
 }
 .investment-stat small,
@@ -714,7 +714,7 @@ progress {
   align-items: flex-start;
   gap: 10px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.7;
   margin-bottom: 24px;
 }
@@ -743,7 +743,7 @@ progress {
 }
 .investment-holding h3 {
   margin: 10px 0 6px;
-  font-size: 19px;
+  font-size: 1.1875rem;
 }
 .investment-tag {
   display: inline-block;
@@ -751,7 +751,7 @@ progress {
   background: var(--primary-light);
   border-radius: 7px;
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 .investment-value {
@@ -760,14 +760,14 @@ progress {
   align-content: center;
 }
 .investment-value strong {
-  font-size: 23px;
+  font-size: 1.4375rem;
   overflow-wrap: anywhere;
 }
 .investment-value small,
 .investment-holding-meta,
 .investment-hint {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .investment-holding-meta {
   display: flex;
@@ -782,7 +782,7 @@ progress {
 .investment-attention {
   border-left: 3px solid var(--primary);
   padding-left: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .investment-empty {
   display: grid;
@@ -806,7 +806,7 @@ progress {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: 10px;
   flex-wrap: wrap;
 }
@@ -839,7 +839,7 @@ progress {
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: 1rem;
 }
 .investment-history {
   margin-top: 20px;
@@ -1346,7 +1346,7 @@ progress {
   border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   list-style: none;
 }
@@ -1386,7 +1386,7 @@ progress {
   min-height: 44px;
   padding: 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text);
   text-decoration: none;
 }
