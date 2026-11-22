@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   LayoutDashboard,
@@ -15,6 +16,8 @@ import {
   Plus,
   ShieldCheck,
   Landmark,
+  ChevronDown,
+  Menu,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
@@ -58,7 +61,19 @@ const pages = [
 type Page = (typeof pages)[number][0];
 const currentPage = (): Page =>
   pages.find(([id]) => "#" + id === window.location.hash)?.[0] ?? "overview";
+const Navigation = createContext<{
+  page: Page;
+  setPage: Dispatch<SetStateAction<Page>>;
+} | null>(null);
 export default function PrivateApp() {
+  const [page, setPage] = useState<Page>("overview");
+  useEffect(() => {
+    const reopen = () => {
+      if (document.visibilityState === "visible") setPage("overview");
+    };
+    document.addEventListener("visibilitychange", reopen);
+    return () => document.removeEventListener("visibilitychange", reopen);
+  }, []);
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("folio-theme") ?? "light";
@@ -90,7 +105,13 @@ export default function PrivateApp() {
           </Button>
         </div>
       )}
-      <AuthGate theme={theme} toggleTheme={toggleTheme} component={Workspace} />
+      <Navigation.Provider value={{ page, setPage }}>
+        <AuthGate
+          theme={theme}
+          toggleTheme={toggleTheme}
+          component={Workspace}
+        />
+      </Navigation.Provider>
     </>
   );
 }
@@ -117,7 +138,9 @@ function Workspace({
     includeEarlier,
     setIncludeEarlier,
   } = useWorkspace();
-  const [page, setPage] = useState<Page>(currentPage);
+  const { page, setPage } = useContext(Navigation)!;
+  const openingPage = useRef(page);
+  const sectionMenu = useRef<HTMLDetailsElement>(null);
   const [editor, setEditor] = useState<EditIntent | null>(null);
   const [documentReview, setDocumentReview] = useState<{
     id: string | null;
@@ -135,14 +158,45 @@ function Workspace({
     method: "cash",
   });
   useEffect(() => {
+    window.history.replaceState(
+      window.history.state,
+      "",
+      window.location.pathname +
+        window.location.search +
+        "#" +
+        openingPage.current,
+    );
+    const close = () => {
+      if (sectionMenu.current) sectionMenu.current.open = false;
+    };
+    const outside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !sectionMenu.current?.contains(event.target)
+      )
+        close();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && sectionMenu.current?.open) {
+        close();
+        sectionMenu.current.querySelector("summary")?.focus();
+      }
+    };
     const change = () => {
+      close();
       setPage(currentPage());
       setEditor(null);
       setDocumentReview(null);
     };
     window.addEventListener("hashchange", change);
-    return () => window.removeEventListener("hashchange", change);
-  }, []);
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("hashchange", change);
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [setPage]);
   const open = (kind: EditorKind) => setEditor({ kind });
   const action = async (
     perform: () => Promise<unknown>,
@@ -268,38 +322,47 @@ function Workspace({
   );
   return (
     <div className="private-shell">
-      <aside className="private-sidebar">
-        <a href="#overview" className="brand">
+      <header className="private-navigationbar">
+        <a href="#overview" className="brand" aria-label="Folio overview">
           folio<span className="brand-dot">.</span>
         </a>
-        <span className="workspace-badge">
-          <ShieldCheck size={14} />
-          Private workspace
-        </span>
-        <nav aria-label="Main navigation">
-          {pages.map(([id, label, Icon]) => (
-            <a
-              key={id}
-              href={"#" + id}
-              aria-current={page === id ? "page" : undefined}
-            >
-              <Icon size={19} />
-              {label}
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span>INR · Asia/Kolkata</span>
-          <Button variant="ghost" onClick={toggleTheme}>
+        <div className="private-navigation-actions">
+          <details className="private-section-picker" ref={sectionMenu}>
+            <summary>
+              <Menu size={18} aria-hidden="true" /> Sections{" "}
+              <ChevronDown size={16} aria-hidden="true" />
+            </summary>
+            <nav aria-label="Main navigation">
+              {pages.map(([id, label, Icon]) => (
+                <a
+                  key={id}
+                  href={"#" + id}
+                  aria-current={page === id ? "page" : undefined}
+                  onClick={() => {
+                    if (sectionMenu.current) {
+                      sectionMenu.current.open = false;
+                      sectionMenu.current.querySelector("summary")?.focus();
+                    }
+                  }}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </details>
+          <Button variant="ghost" onClick={toggleTheme} aria-label="Appearance">
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-            Appearance
           </Button>
-          <Button variant="ghost" onClick={() => void signOut()}>
+          <Button
+            variant="ghost"
+            onClick={() => void signOut()}
+            aria-label="Sign out"
+          >
             <LogOut size={17} />
-            Sign out
           </Button>
         </div>
-      </aside>
+      </header>
       <main className="private-main">
         <header className="private-topbar">
           <span>Your money, thoughtfully managed.</span>
