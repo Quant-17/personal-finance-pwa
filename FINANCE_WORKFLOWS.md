@@ -44,7 +44,7 @@ The owner-readable change history is populated by database triggers from deploym
 
 ## Development and deployment
 
-Apply `supabase/migrations/20261122092855_finance_workflows.sql` after all preceding migrations and before publishing this frontend. Applied migrations remain immutable. No new environment variables, services, paid APIs or secrets are needed. Use existing public Supabase URL/anon key configuration described in `.env.example` and PHASE2_SETUP.md. Never use a service-role key in Vite.
+Apply `supabase/migrations/20261122102230_finance_workflows.sql` after all preceding migrations and before publishing this frontend. Applied migrations remain immutable. No new environment variables, services, paid APIs or secrets are needed. Use existing public Supabase URL/anon key configuration described in `.env.example` and PHASE2_SETUP.md. Never use a service-role key in Vite.
 
 Preview with `npm ci`, existing private `.env.local` configuration and `npm run dev`. Demo mode remains separate. Run lint, typecheck, unit tests, private browser tests and production build; replay migrations and SQL acceptance against disposable PostgreSQL. Never run the test bootstrap on hosted Supabase. The CI database job includes the new workflow suite. All fixtures are synthetic; actual monthly statement acceptance and actual iPhone/Windows device checks remain owner tasks.
 
@@ -52,4 +52,4 @@ Preview with `npm ci`, existing private `.env.local` configuration and `npm run 
 
 Local verification: lint and TypeScript checks passed; 187 Vitest tests and two release-verification tests passed. Private Chromium checks passed all 40 flows in the full run plus the additional lender-term-save flow separately (41 distinct tests now in CI). Six demo browser checks passed; its optional hosted-response check was skipped locally. Fresh PostgreSQL 17 replay passed the complete accounting/isolation suites, including 49 new workflow assertions and five concurrency suites. Demo and private production builds succeeded. Build tooling reports existing bundle-size and upstream comment-annotation warnings; these are not test failures. Browser emulation is not physical-device acceptance.
 
-Deployment status: the additive migration and new frontend are prepared for review; this development record does not itself establish a live deployment. Apply the tested migration before publishing the private frontend, then run the documented hosted release preflight and exact-asset checks. Preserve the existing public demo deployment.
+Deployment status: PR #27 is merged and private v0.4.0-rc.1 is live. Hosted migrations 20261122102230 and 20261122102340 are applied; the original workflow migration was renamed byte-for-byte to its managed version. All 49 hosted workflow assertions rolled back successfully; exact checks of all 20 deployed assets and hosted security/PWA preflight passed. The public demo is unchanged. See FINANCE_WORKFLOWS_RELEASE.md.
