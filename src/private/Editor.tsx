@@ -367,7 +367,35 @@ export function Editor({
   const submitting = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    dialog.current?.showModal();
+    const sheet = dialog.current;
+    sheet?.showModal();
+    const viewport = window.visualViewport;
+    const resize = () => {
+      const unzoomed = !viewport || !viewport.scale || viewport.scale <= 1.01;
+      const height = unzoomed
+        ? (viewport?.height ?? window.innerHeight)
+        : window.innerHeight;
+      sheet?.style.setProperty("--sheet-viewport-height", height + "px");
+      sheet?.style.setProperty(
+        "--sheet-keyboard-inset",
+        Math.max(
+          0,
+          window.innerHeight -
+            height -
+            (unzoomed ? (viewport?.offsetTop ?? 0) : 0),
+        ) + "px",
+      );
+    };
+    resize();
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", resize);
+      document.body.style.overflow = previous;
+    };
   }, []);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -651,19 +679,21 @@ export function Editor({
             {field.hint && <span className="small-note">{field.hint}</span>}
           </label>
         ))}
-        <Button
-          type="submit"
-          disabled={
-            pending ||
-            (!!s.profile.tracking_start_date &&
-              s.profile.tracking_start_date > indiaDate() &&
-              ["entry", "transfer", "payment", "subscriptionCharge"].includes(
-                kind,
-              ))
-          }
-        >
-          {pending ? "Saving…" : "Save"}
-        </Button>
+        <div className="editor-actions">
+          <Button
+            type="submit"
+            disabled={
+              pending ||
+              (!!s.profile.tracking_start_date &&
+                s.profile.tracking_start_date > indiaDate() &&
+                ["entry", "transfer", "payment", "subscriptionCharge"].includes(
+                  kind,
+                ))
+            }
+          >
+            {pending ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </form>
     </dialog>
   );

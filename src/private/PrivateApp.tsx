@@ -18,6 +18,9 @@ import {
   Landmark,
   ChevronDown,
   Menu,
+  Upload,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
@@ -44,6 +47,7 @@ import { FinancialInsights } from "./FinancialInsights";
 import { MonthlySummary } from "./MonthlySummary";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
+import "./ios.css";
 const pages = [
   ["overview", "Overview", LayoutDashboard],
   ["accounts", "Accounts", Wallet],
@@ -68,6 +72,12 @@ const Navigation = createContext<{
 export default function PrivateApp() {
   const [page, setPage] = useState<Page>("overview");
   useEffect(() => {
+    document.documentElement.dataset.folioPrivate = "true";
+    return () => {
+      delete document.documentElement.dataset.folioPrivate;
+    };
+  }, []);
+  useEffect(() => {
     const reopen = () => {
       if (document.visibilityState === "visible") setPage("overview");
     };
@@ -83,6 +93,9 @@ export default function PrivateApp() {
   });
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#090a0f" : "#f2f2f7");
     try {
       localStorage.setItem("folio-theme", theme);
     } catch {
@@ -321,7 +334,7 @@ function Workspace({
     </section>
   );
   return (
-    <div className="private-shell">
+    <div className="private-shell" data-section={page}>
       <header className="private-navigationbar">
         <a href="#overview" className="brand" aria-label="Folio overview">
           folio<span className="brand-dot">.</span>
@@ -364,30 +377,41 @@ function Workspace({
         </div>
       </header>
       <main className="private-main">
-        <header className="private-topbar">
-          <span>Your money, thoughtfully managed.</span>
-          <Button
-            variant="ghost"
-            disabled={loading}
-            onClick={refresh}
-            aria-label="Refresh records"
-          >
-            <RefreshCw size={17} />
-          </Button>
-        </header>
         <div className="private-content">
           <div className="private-heading">
             <div>
-              <span className="eyebrow">YOUR PERSONAL FINANCE SPACE</span>
+              <span className="eyebrow">
+                {page === "overview"
+                  ? "YOUR MONEY, AT A GLANCE"
+                  : "YOUR PRIVATE WORKSPACE"}
+              </span>
               <h1>{pages.find(([id]) => id === page)?.[1]}</h1>
               <p>
                 {s?.profile.display_name
                   ? `Welcome, ${s.profile.display_name}. `
                   : ""}
-                A clear view of what you have, owe and plan.
+                {page === "overview"
+                  ? "A little clarity for the month ahead."
+                  : "Your records, plans and next steps."}
               </p>
             </div>
-            {s && add("entry", "Add transaction")}
+            <div
+              className="private-action-dock"
+              aria-label="Quick financial actions"
+            >
+              <Button disabled={!s} onClick={() => open("entry")}>
+                <Plus size={19} aria-hidden="true" />
+                Add transaction
+              </Button>
+              <Button
+                variant="outline"
+                disabled={loading}
+                onClick={refresh}
+                aria-label="Refresh records"
+              >
+                <RefreshCw size={19} />
+              </Button>
+            </div>
           </div>
           {(error || actionError) && (
             <div className="form-error" role="alert">
@@ -401,56 +425,100 @@ function Workspace({
           {s && (
             <>
               {s.profile.tracking_start_date && (
-                <div className="tracking-banner">
-                  <CalendarClock size={20} />
-                  <div>
+                <details className="tracking-banner">
+                  <summary>
+                    <CalendarClock size={18} aria-hidden="true" />
                     <strong>
                       Transaction tracking from{" "}
                       {displayDate(s.profile.tracking_start_date)}
                     </strong>
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </summary>
+                  <div>
                     <p>
                       Earlier history and balances are preserved. Planned
                       deductions are separate from actual payments.
                     </p>
+                    <a href="#settings">Manage dates →</a>
                   </div>
-                  <a href="#settings">Manage dates →</a>
-                </div>
+                </details>
               )}
               {page === "overview" && (
                 <>
-                  <div className="private-stats">
-                    {[
-                      [
-                        "Net worth",
-                        s.summary.net_worth_paise,
-                        "Accounts and separate investments, less debt",
-                      ],
-                      [
-                        "Available liquid cash",
-                        s.summary.liquid_cash_paise,
-                        "Active cash accounts less goal earmarks",
-                      ],
-                      [
-                        "Income this month",
-                        s.summary.income_paise,
-                        "Settled income only",
-                      ],
-                      [
-                        "Outflow this month",
-                        safeTotal([
-                          s.summary.expense_paise,
-                          s.summary.loan_payments_paise,
-                        ]),
-                        "Expenses plus loan principal and interest",
-                      ],
-                    ].map(([label, value, note]) => (
-                      <section className="card private-stat" key={label}>
-                        <span>{label}</span>
-                        <strong>{money(Number(value))}</strong>
-                        <small>{note}</small>
-                      </section>
-                    ))}
-                  </div>
+                  <section
+                    className="balance-card"
+                    aria-label="Your financial position"
+                  >
+                    <div className="balance-card-heading">
+                      <Wallet size={20} aria-hidden="true" />
+                      <span>Available liquid cash</span>
+                      <span className="balance-currency">INR</span>
+                    </div>
+                    <strong
+                      className="balance-value"
+                      data-long={money(s.summary.liquid_cash_paise).length > 13}
+                    >
+                      {money(s.summary.liquid_cash_paise)}
+                    </strong>
+                    <p>Active cash accounts less goal earmarks</p>
+                    <div className="balance-net-worth">
+                      <span>Net worth</span>
+                      <strong>{money(s.summary.net_worth_paise)}</strong>
+                    </div>
+                    <small>Accounts and separate investments, less debt</small>
+                  </section>
+                  <section
+                    className="card monthly-pulse"
+                    aria-label="Actual activity this month"
+                  >
+                    <div>
+                      <span className="pulse-icon income">
+                        <ArrowDownLeft size={19} aria-hidden="true" />
+                      </span>
+                      <span>
+                        Income this month<small>Settled income only</small>
+                      </span>
+                      <strong>{money(s.summary.income_paise)}</strong>
+                    </div>
+                    <div>
+                      <span className="pulse-icon outflow">
+                        <ArrowUpRight size={19} aria-hidden="true" />
+                      </span>
+                      <span>
+                        Outflow this month
+                        <small>Expenses plus loan principal and interest</small>
+                      </span>
+                      <strong>
+                        {money(
+                          safeTotal([
+                            s.summary.expense_paise,
+                            s.summary.loan_payments_paise,
+                          ]),
+                        )}
+                      </strong>
+                    </div>
+                  </section>
+                  <nav
+                    className="overview-shortcuts"
+                    aria-label="Monthly shortcuts"
+                  >
+                    <a href="#activity">
+                      <Upload size={21} aria-hidden="true" />
+                      <span>
+                        Import a statement
+                        <small>Review your monthly activity</small>
+                      </span>
+                      <ArrowUpRight size={16} aria-hidden="true" />
+                    </a>
+                    <a href="#settings">
+                      <SlidersHorizontal size={21} aria-hidden="true" />
+                      <span>
+                        Plan this month
+                        <small>Income, EMIs and subscriptions</small>
+                      </span>
+                      <ArrowUpRight size={16} aria-hidden="true" />
+                    </a>
+                  </nav>
                   {!s.accounts.length && !s.investments.length && (
                     <section className="card welcome-card">
                       <ShieldCheck size={28} />

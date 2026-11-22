@@ -78,3 +78,5 @@ Published private **v0.3.8-rc.1**: the adaptive **Debt repayment simulator** com
 ## Private app navigation
 
 The private app opens and returns from the background on **Overview**. Open **Sections** in the compact header to choose another page from a vertical dropdown. Selection, Escape or a click outside closes the menu. Appearance and sign-out remain in the header.
+
+The iPhone design benchmark, comparison and accessibility/testing limits are documented in [IOS_DESIGN.md](IOS_DESIGN.md). `npm run test:ios` runs selected private flows in WebKit with an iPhone-sized touch viewport; install WebKit through Playwright first.

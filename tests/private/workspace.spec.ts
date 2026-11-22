@@ -174,6 +174,7 @@ test("new workspace is empty; account and paise-safe transaction forms use the A
 test("offline and background locks remove private views; reconnect verifies again", async ({
   page,
   context,
+  browserName,
 }) => {
   const calls = await mock(page, true);
   await login(page);
@@ -181,17 +182,20 @@ test("offline and background locks remove private views; reconnect verifies agai
   await expect(
     page.getByRole("heading", { name: "Fixture checking" }),
   ).toBeVisible();
-  // Finish initial static-shell installation before deliberately interrupting the network.
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          async () =>
-            !!(await navigator.serviceWorker.getRegistration())?.active,
-        ),
-      { timeout: 15000 },
-    )
-    .toBe(true);
+  // WebKit uses blocked service workers for deterministic fake API routing.
+  if (browserName === "chromium") {
+    // Finish initial static-shell installation before deliberately interrupting the network.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            async () =>
+              !!(await navigator.serviceWorker.getRegistration())?.active,
+          ),
+        { timeout: 15000 },
+      )
+      .toBe(true);
+  }
   await context.setOffline(true);
   await expect(
     page.getByRole("heading", { name: "Workspace locked" }),
@@ -225,13 +229,16 @@ test("offline and background locks remove private views; reconnect verifies agai
   expect(
     calls.filter((c) => c.path === "/auth/v1/user").length,
   ).toBeGreaterThan(before);
-  await expect
-    .poll(() =>
-      page.evaluate(
-        async () => !!(await navigator.serviceWorker.getRegistration())?.active,
-      ),
-    )
-    .toBe(true);
+  if (browserName === "chromium") {
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            !!(await navigator.serviceWorker.getRegistration())?.active,
+        ),
+      )
+      .toBe(true);
+  }
   const cached = await page.evaluate(async () =>
     (
       await Promise.all(
@@ -3158,4 +3165,173 @@ test("section menu starts closed on Overview, lists sections vertically and dism
   await expect(nav).not.toBeVisible();
   await expect(page).toHaveURL(/#overview$/);
   await page.screenshot({ path: "/tmp/folio-menu-mobile-closed.png" });
+});
+
+async function expectReadablePrivatePalette(page: Page) {
+  const palette = await page.evaluate(() => {
+    const css = getComputedStyle(document.documentElement);
+    return [
+      "--text",
+      "--bg",
+      "--muted",
+      "--surface",
+      "--on-primary",
+      "--primary",
+    ].map((key) => css.getPropertyValue(key).trim());
+  });
+  const luminance = (hex: string) => {
+    const rgb = [1, 3, 5]
+      .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  };
+  for (let i = 0; i < palette.length; i += 2) {
+    const a = luminance(palette[i]),
+      b = luminance(palette[i + 1]);
+    expect(
+      (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+    ).toBeGreaterThanOrEqual(4.5);
+  }
+}
+test("iPhone design keeps currency intact, provides thumb actions and readable light/dark screens", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await login(page);
+  for (const width of [320, 375, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(
+      page.getByRole("heading", { name: "Overview", exact: true }),
+    ).toBeVisible();
+    const amount = page.locator(".balance-value");
+    await expect(amount).toHaveText("₹20,000.00");
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      )
+      .toBe(true);
+    expect(await amount.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe(
+      "nowrap",
+    );
+    const action = await page
+      .getByRole("button", { name: "Add transaction", exact: true })
+      .boundingBox();
+    expect(action!.height).toBeGreaterThanOrEqual(44);
+    expect(action!.y).toBeGreaterThan(650);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectReadablePrivatePalette(page);
+  await page.screenshot({
+    path: "/tmp/folio-ios-overview-light.png",
+  });
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect
+    .poll(() =>
+      page
+        .getByRole("button", { name: "Add transaction", exact: true })
+        .evaluate((el) => getComputedStyle(el).color),
+    )
+    .toBe("rgb(33, 23, 56)");
+  await expectReadablePrivatePalette(page);
+  await page.screenshot({
+    path: "/tmp/folio-ios-overview-dark.png",
+  });
+  await page.locator(".private-section-picker summary").click();
+  await page.screenshot({ path: "/tmp/folio-ios-menu.png" });
+  await page.keyboard.press("Escape");
+  await navigate(page, "Accounts");
+  await page.screenshot({
+    path: "/tmp/folio-ios-accounts.png",
+    fullPage: true,
+  });
+});
+
+test("iPhone editor is a keyboard-aware sheet with large fields and restores scroll on close", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.evaluate(() => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: Object.assign(new EventTarget(), { height: 844, offsetTop: 0 }),
+    });
+  });
+  await page
+    .getByRole("button", { name: "Add transaction", exact: true })
+    .click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
+  await page.screenshot({ path: "/tmp/folio-ios-editor.png" });
+  await page.evaluate(() => {
+    Object.assign(window.visualViewport!, { height: 430 });
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+  });
+  const box = (await sheet.boundingBox())!;
+  expect(box.width).toBe(390);
+  expect(box.y + box.height).toBeLessThanOrEqual(431);
+  const fonts = await sheet
+    .locator("input,select")
+    .evaluateAll((els) =>
+      els.map((el) => parseFloat(getComputedStyle(el).fontSize)),
+    );
+  expect(fonts.every((n) => n >= 16)).toBe(true);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+    "hidden",
+  );
+  await page.getByRole("button", { name: "Close editor", exact: true }).click();
+  await expect(sheet).not.toBeVisible();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+});
+
+test("enlarged iPhone text and supported large amounts remain accessible without page overflow", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({
+      json: {
+        ...snapshot(true),
+        accounts: [
+          { ...snapshot(true).accounts[0], balance_paise: "1000000000000" },
+        ],
+        summary: {
+          ...snapshot(true).summary,
+          liquid_cash_paise: "1000000000000",
+          assets_paise: "1000000000000",
+          net_worth_paise: "1000000000000",
+        },
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await expect(page.locator(".balance-value")).toHaveText(
+    "₹10,00,00,00,000.00",
+  );
+  await page.evaluate(() => (document.documentElement.style.fontSize = "32px"));
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Add transaction", exact: true }),
+  ).toBeVisible();
+  await page.locator(".private-section-picker summary").click();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
+  await page.screenshot({
+    path: "/tmp/folio-ios-enlarged.png",
+    fullPage: true,
+  });
 });

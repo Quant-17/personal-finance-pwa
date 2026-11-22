@@ -51,3 +51,6 @@ Private v0.4.0-rc.1 is published from merged PR #27/source `2c15cd7`. Hosted fin
 
 ## Compact section navigation · owner request
 On 22 November 2026 IST the owner requested a vertical dropdown for all private sections and Overview when opening the app. Use a closed-by-default Sections disclosure in the compact header, close it after selection/Escape/outside clicks, and keep Overview as the fresh-load and foreground-return page. Preserve in-app hash navigation, authentication/recovery, lock behavior, financial functions and the public demo. No database change is required.
+
+## iPhone design benchmark · owner request
+The owner requested an expert UI/UX comparison with leading iOS benchmarks and an iPhone-first redesign on 22 November 2026 IST. Implement the presentation scope documented in IOS_DESIGN.md, preserving Overview-first launches and the vertical Sections menu, all financial/auth/privacy safeguards and the public demo. Use review PR, responsive and WebKit checks, and private release verification. Never test on real financial records or treat browser emulation as physical-device acceptance. No database migration is needed.

@@ -57,3 +57,7 @@ Add reconciled monthly reports, reviewed paired statement transfers, an interact
 ## Compact navigation
 
 The authenticated app opens/reopens on Overview with a closed Sections menu. The menu lists sections vertically, scrolls on shorter screens and closes after selection, Escape or an outside click. The selected page uses the full available width. Appearance and sign-out stay accessible in the compact header; financial data and auth/recovery behavior are unchanged.
+
+## iPhone-first presentation
+
+Use the iPhone benchmark and acceptance criteria in IOS_DESIGN.md: a clear cash/net-worth hierarchy, grouped actual monthly totals, safe-area-aware navigation, bottom quick actions, accessible light/dark colors, scalable type and keyboard-aware form sheets. Keep exact paise, all existing financial workflows and the Overview-first Sections navigation. The public demo remains independent.
