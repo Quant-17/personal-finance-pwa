@@ -1401,7 +1401,10 @@ progress {
 
 .private-navigation-actions > button {
   min-height: 44px;
+  width: 44px;
   min-width: 44px;
+  padding: 0;
+  flex-shrink: 0;
 }
 @media (max-width: 380px) {
   .private-navigationbar {
