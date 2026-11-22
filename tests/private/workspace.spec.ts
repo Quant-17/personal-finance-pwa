@@ -110,6 +110,10 @@ async function mock(page: Page, populated = false, confirmed = true) {
   });
   return calls;
 }
+async function navigate(page: Page, name: string) {
+  await page.locator(".private-section-picker summary").click();
+  await page.getByRole("link", { name, exact: true }).click();
+}
 async function login(page: Page) {
   await page.goto("/");
   await page.getByLabel("Email address").fill("fixture@example.invalid");
@@ -173,7 +177,7 @@ test("offline and background locks remove private views; reconnect verifies agai
 }) => {
   const calls = await mock(page, true);
   await login(page);
-  await page.getByRole("link", { name: "Accounts", exact: true }).click();
+  await navigate(page, "Accounts");
   await expect(
     page.getByRole("heading", { name: "Fixture checking" }),
   ).toBeVisible();
@@ -216,7 +220,7 @@ test("offline and background locks remove private views; reconnect verifies agai
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect(
-    page.getByRole("heading", { name: "Fixture checking" }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   expect(
     calls.filter((c) => c.path === "/auth/v1/user").length,
@@ -244,7 +248,7 @@ test("signout clears session storage and prevents returning to records", async (
 }) => {
   const calls = await mock(page, true);
   await login(page);
-  await page.getByRole("link", { name: "Accounts", exact: true }).click();
+  await navigate(page, "Accounts");
   await expect(page.getByText("Fixture checking")).toBeVisible();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
@@ -280,7 +284,7 @@ test("mobile workspace fits and simulator uses private plan", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   await mock(page, true);
   await login(page);
-  await page.getByRole("link", { name: "Buy simulator", exact: true }).click();
+  await navigate(page, "Buy simulator");
   await expect(page.getByText(/Planned monthly income/)).toBeVisible();
   await expect(page.getByText(/Fictional monthly income/)).toHaveCount(0);
   expect(
@@ -433,6 +437,10 @@ test("saved comparisons retry safely, survive refresh, restore assumptions and d
   expect(rows[0].income_paise).toBe(5000000);
   currentPlanChanged = true;
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await navigate(page, "Buy simulator");
   await expect(
     page.getByRole("button", { name: "Open Fixture laptop", exact: true }),
   ).toBeVisible();
@@ -875,7 +883,7 @@ test("loan PDF stays local and requires a reviewed current balance before saving
     });
   });
   await login(page);
-  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await navigate(page, "Loans & subscriptions");
   await page.getByRole("button", { name: "Import loan PDF" }).click();
   await page.getByLabel("Loan PDF", { exact: false }).setInputFiles({
     name: "synthetic-fixture.pdf",
@@ -955,7 +963,7 @@ test("invalid PDFs fail safely and document review clears on sign-out", async ({
 }) => {
   await mock(page);
   await login(page);
-  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await navigate(page, "Loans & subscriptions");
   await page.getByRole("button", { name: "Import loan PDF" }).click();
   await page.getByLabel("Loan PDF", { exact: false }).setInputFiles({
     name: "not-a-pdf.pdf",
@@ -1055,7 +1063,7 @@ test("saved document terms can be edited without the PDF and failed saves reuse 
     );
   });
   await login(page);
-  await page.getByRole("link", { name: "Loans & subscriptions" }).click();
+  await navigate(page, "Loans & subscriptions");
   await page.getByRole("button", { name: "Edit loan", exact: true }).click();
   await expect(
     page.getByLabel("Quoted monthly EMI", { exact: false }),
@@ -1295,9 +1303,7 @@ test("savings section creates self-funded and payroll holdings without posting b
 }) => {
   const mock = await mockInvestments(page);
   await login(page);
-  await page
-    .getByRole("link", { name: "Savings & investments", exact: true })
-    .click();
+  await navigate(page, "Savings & investments");
   await expect(
     page.getByText("A clearer view of your savings", { exact: true }),
   ).toBeVisible();
@@ -1350,7 +1356,7 @@ test("savings section creates self-funded and payroll holdings without posting b
       /record_entry|record_transfer|record_loan_payment/.test(c.path),
     ),
   ).toBe(false);
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await navigate(page, "Overview");
   await expect(page.getByText("₹45,000.29", { exact: true })).toBeVisible();
 });
 test("contribution history retries safely and does not invent a valuation or cash transaction", async ({
@@ -1359,9 +1365,7 @@ test("contribution history retries safely and does not invent a valuation or cas
   const mock = await mockInvestments(page, true);
   mock.failNextActivity();
   await login(page);
-  await page
-    .getByRole("link", { name: "Savings & investments", exact: true })
-    .click();
+  await navigate(page, "Savings & investments");
   await page
     .getByRole("button", { name: "Record contribution", exact: true })
     .click();
@@ -1410,9 +1414,7 @@ test("investment history is editable and clears when the workspace locks", async
   const mock = await mockInvestments(page, true);
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
-  await page
-    .getByRole("link", { name: "Savings & investments", exact: true })
-    .click();
+  await navigate(page, "Savings & investments");
   await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(
     page.getByText("Opening statement", { exact: true }),
@@ -1474,7 +1476,7 @@ test("PDF statement stays local; reviewed rows require duplicate checking and in
     else await route.fulfill({ json: { inserted: 2, skipped: 0 } });
   });
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await expect(
     page.getByRole("heading", { name: "Import monthly PDF statement" }),
   ).toBeVisible();
@@ -1553,7 +1555,7 @@ test("PDF statement duplicate matches are excluded and edits reset confirmation"
     await route.fulfill({ json: { inserted: 1, skipped: 0 } });
   });
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page.getByLabel("Statement ending month").fill("2026-11");
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "synthetic-statement.pdf",
@@ -1592,7 +1594,7 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
   await page.setViewportSize({ width: 390, height: 844 });
   await mock(page, true);
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "bad.pdf",
     mimeType: "application/pdf",
@@ -1722,7 +1724,7 @@ for (const bank of ["sbi", "kotak"] as const)
   }) => {
     const calls = await mock(page, true);
     await login(page);
-    await page.getByRole("link", { name: "Transactions", exact: true }).click();
+    await navigate(page, "Transactions");
     await page.getByLabel("Statement ending month").fill("2026-05");
     await page.getByLabel("Choose statement PDF").setInputFiles({
       name: `synthetic-${bank}.pdf`,
@@ -1790,7 +1792,7 @@ test("PDF EMI review requires exact principal/interest and posts a linked repaym
     return route.fulfill({ json: { inserted: 1, skipped: 0 } });
   });
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page.getByLabel("Statement ending month").fill("2026-11");
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "synthetic.pdf",
@@ -1896,7 +1898,7 @@ test("December tracking, calendar dates and interactive chart controls preserve 
   await page.getByRole("button", { name: "Asset mix", exact: true }).click();
   await page.getByRole("button", { name: /Fixture checking/ }).click();
   await expect(page.getByText(/of positive assets/)).toBeVisible();
-  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
+  await navigate(page, "Monthly plan");
   await expect(page.getByLabel("Deduction month")).toHaveValue("2026-12");
   await expect(page.locator(".deduction-timeline")).toContainText(
     "Synthetic dated EMI",
@@ -1940,7 +1942,7 @@ test("December tracking, calendar dates and interactive chart controls preserve 
     path: test.info().outputPath("deduction-calendar-mobile-dark.png"),
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await expect(
     page.getByLabel("Show earlier records for reference", { exact: false }),
   ).not.toBeChecked();
@@ -2047,7 +2049,7 @@ test("chart filters and subscription expense links do not create extra transacti
     path: test.info().outputPath("financial-insights.png"),
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Monthly plan", exact: true }).click();
+  await navigate(page, "Monthly plan");
   await page
     .getByText("Link an already-recorded subscription or card EMI expense", {
       exact: true,
@@ -2140,9 +2142,7 @@ test("loan progress separates reported instalments, recorded debt and schedule e
     return route.fulfill({ json: [] });
   });
   await login(page);
-  await page
-    .getByRole("link", { name: "Loans & subscriptions", exact: true })
-    .click();
+  await navigate(page, "Loans & subscriptions");
   await expect(
     page.getByRole("heading", { name: "Loan payment progress", exact: true }),
   ).toBeVisible();
@@ -2228,9 +2228,7 @@ test("debt simulator follows saved finances, protects reserve and never posts pa
     }),
   );
   await login(page);
-  await page
-    .getByRole("link", { name: "Debt repayment simulator", exact: true })
-    .click();
+  await navigate(page, "Debt repayment simulator");
   await expect(
     page.getByRole("heading", {
       name: "Your adaptive repayment plan",
@@ -2332,9 +2330,7 @@ test("debt simulator requires revolving card terms and reacts to protected savin
     }),
   );
   await login(page);
-  await page
-    .getByRole("link", { name: "Debt repayment simulator", exact: true })
-    .click();
+  await navigate(page, "Debt repayment simulator");
   await expect(page.getByRole("alert")).toContainText(
     "annual rate and monthly minimum",
   );
@@ -2387,7 +2383,7 @@ test("recipient rules can be saved without importing, suggest next PDF and be di
     });
   });
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page.getByLabel("Statement ending month").fill("2026-05");
   const read = () =>
     page.getByLabel("Choose statement PDF").setInputFiles({
@@ -2504,7 +2500,7 @@ test("data export downloads complete owned history and readiness changes no reco
     route.fulfill({ json: financialArchiveFixture() }),
   );
   await login(page);
-  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await navigate(page, "Data & privacy");
   await page.getByLabel("Month to reconcile").fill("2025-12");
   await expect(
     page.getByText(/Review the opening date and statement opening balance/),
@@ -2553,7 +2549,7 @@ test("an invalid export never produces a partial download", async ({
   let downloads = 0;
   page.on("download", () => downloads++);
   await login(page);
-  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await navigate(page, "Data & privacy");
   await page
     .getByRole("button", { name: "Download financial data", exact: true })
     .click();
@@ -2570,7 +2566,7 @@ test("account deletion requires confirmation, current password and a deliberate 
   await mock(page, true);
   let deletes = 0;
   await login(page);
-  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await navigate(page, "Data & privacy");
   await page
     .getByText("Open account deletion controls", { exact: true })
     .click();
@@ -2684,7 +2680,7 @@ test("monthly reconciliation enforces exact balances and separate month confirma
     return r.fulfill({ json: null });
   });
   await login(page);
-  await page.getByRole("link", { name: "Monthly review", exact: true }).click();
+  await navigate(page, "Monthly review");
   await expect(
     page.getByText("Not reconciled yet.", { exact: true }),
   ).toBeVisible();
@@ -2751,9 +2747,7 @@ test("90-day forecast persists assumptions without posting and fits mobile", asy
   );
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .getByRole("link", { name: "Cash-flow forecast", exact: true })
-    .click();
+  await navigate(page, "Cash-flow forecast");
   await expect(page.getByLabel("Projected cash balance chart")).toBeVisible();
   await page.getByLabel("Inspect forecast day", { exact: true }).fill("45");
   await expect(
@@ -2817,7 +2811,7 @@ test("restore refuses a nonempty workspace and audit changes are read-only", asy
     }),
   );
   await login(page);
-  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await navigate(page, "Data & privacy");
   await page
     .getByLabel("Financial archive JSON", { exact: true })
     .setInputFiles({
@@ -2881,7 +2875,7 @@ test("paired statement transfer reads PDFs locally and links an existing payment
     return r.fulfill({ json: transfer });
   });
   await login(page);
-  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await navigate(page, "Transactions");
   await page
     .getByText("Match transfers and card repayments from statements", {
       exact: true,
@@ -2962,9 +2956,7 @@ test("investment XIRR requires complete-history review and includes employer cap
     }),
   );
   await login(page);
-  await page
-    .getByRole("link", { name: "Savings & investments", exact: true })
-    .click();
+  await navigate(page, "Savings & investments");
   await page
     .getByRole("button", { name: "Investment returns for", exact: false })
     .click();
@@ -3008,7 +3000,7 @@ test("validated restore needs the exact phrase and retries an interrupted confir
       : r.fulfill({ json: { restored: true } });
   });
   await login(page);
-  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await navigate(page, "Data & privacy");
   await page
     .getByLabel("Financial archive JSON", { exact: true })
     .setInputFiles({
@@ -3057,9 +3049,7 @@ test("debt simulator saves fees and promotion metadata without recording a repay
     return r.fulfill({ json: crypto.randomUUID() });
   });
   await login(page);
-  await page
-    .getByRole("link", { name: "Debt repayment simulator", exact: true })
-    .click();
+  await navigate(page, "Debt repayment simulator");
   await page
     .getByLabel("Annual rate Synthetic card · revolving balance", {
       exact: true,
@@ -3107,4 +3097,65 @@ test("debt simulator saves fees and promotion metadata without recording a repay
       /record_entry|record_transfer|record_loan_payment/.test(c.path),
     ),
   ).toBe(false);
+});
+
+test("section menu starts closed on Overview, lists sections vertically and dismisses accessibly", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await login(page);
+  const toggle = page.locator(".private-section-picker summary");
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  for (const width of [1280, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(
+      page.getByRole("heading", { name: "Overview", exact: true }),
+    ).toBeVisible();
+    await expect(nav).not.toBeVisible();
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(nav).toBeVisible();
+    const positions = await nav.getByRole("link").evaluateAll((links) =>
+      links.map((a) => ({
+        x: a.getBoundingClientRect().x,
+        y: a.getBoundingClientRect().y,
+      })),
+    );
+    expect(positions).toHaveLength(12);
+    expect(
+      positions.every(
+        (p, i) =>
+          i === 0 || (p.x === positions[0].x && p.y > positions[i - 1].y),
+      ),
+    ).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      )
+      .toBe(true);
+    if (width === 390)
+      await page.screenshot({ path: "/tmp/folio-menu-mobile-open.png" });
+    await page.keyboard.press("Escape");
+    await expect(nav).not.toBeVisible();
+    await expect(toggle).toBeFocused();
+    await toggle.click();
+    await page
+      .locator(".private-navigationbar")
+      .click({ position: { x: 1, y: 1 } });
+    await expect(nav).not.toBeVisible();
+  }
+  await navigate(page, "Accounts");
+  await expect(
+    page.getByRole("heading", { name: "Accounts", exact: true }),
+  ).toBeVisible();
+  await expect(nav).not.toBeVisible();
+  await expect(toggle).toBeFocused();
+  await page.goto("/#accounts");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await expect(nav).not.toBeVisible();
+  await expect(page).toHaveURL(/#overview$/);
+  await page.screenshot({ path: "/tmp/folio-menu-mobile-closed.png" });
 });

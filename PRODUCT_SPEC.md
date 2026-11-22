@@ -53,3 +53,7 @@ Provide Data & privacy navigation with a full-history private JSON download, cle
 ## Owner-requested finance workflows
 
 Add reconciled monthly reports, reviewed paired statement transfers, an interactive 90-day cash forecast, saved lender fee/promotion assumptions, complete-history investment return estimates, safe empty-workspace backup restore and owner-readable immutable change history. These preserve explicit owner confirmation for financial writes; forecasted payments are never actual payments. See FINANCE_WORKFLOWS.md for calculation assumptions and supported limits.
+
+## Compact navigation
+
+The authenticated app opens/reopens on Overview with a closed Sections menu. The menu lists sections vertically, scrolls on shorter screens and closes after selection, Escape or an outside click. The selected page uses the full available width. Appearance and sign-out stay accessible in the compact header; financial data and auth/recovery behavior are unchanged.

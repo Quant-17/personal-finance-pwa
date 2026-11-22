@@ -74,3 +74,7 @@ Published private **v0.3.6-rc.1** adds a configurable transaction reporting star
 Published private **v0.3.7-rc.1** loan payment-progress charts add principal reduction, reported on-time instalments and a reviewed/estimated repayment curve. See [LOAN_PROGRESS.md](LOAN_PROGRESS.md).
 
 Published private **v0.3.8-rc.1**: the adaptive **Debt repayment simulator** compares minimum-only, highest-interest-first and smallest-balance-first plans using current debt/cash balances and monthly assumptions. It supports protected savings/reserve and optional spare-cash repayment. See [DEBT_REPAYMENT_SIMULATOR.md](DEBT_REPAYMENT_SIMULATOR.md).
+
+## Private app navigation
+
+The private app opens and returns from the background on **Overview**. Open **Sections** in the compact header to choose another page from a vertical dropdown. Selection, Escape or a click outside closes the menu. Appearance and sign-out remain in the header.
