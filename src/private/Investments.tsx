@@ -1,3 +1,4 @@
+import { InvestmentPerformance } from "./InvestmentPerformance";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -43,6 +44,7 @@ export function Investments({
 }) {
   const [intent, setIntent] = useState<Intent | null>(null);
   const [history, setHistory] = useState<string | null>(null);
+  const [returns, setReturns] = useState<string | null>(null);
   const [archived, setArchived] = useState(false);
   const [notice, setNotice] = useState("");
   const open = (next: Intent) => {
@@ -261,6 +263,13 @@ export function Investments({
                     History
                   </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setReturns(returns === h.id ? null : h.id)}
+                >
+                  Investment returns for {h.name}
+                </Button>
+                {returns === h.id && <InvestmentPerformance holding={h} />}
                 {history === h.id && (
                   <InvestmentHistory
                     holding={h}

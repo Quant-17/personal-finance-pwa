@@ -1376,3 +1376,51 @@ progress {
 .data-controls details {
   overflow-wrap: anywhere;
 }
+
+.workflow-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-page label {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+}
+.workflow-page input:not([type="checkbox"]):not([type="range"]),
+.workflow-page select {
+  width: 100%;
+  min-width: 0;
+  max-width: 34rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--text);
+}
+.workflow-page input[type="range"] {
+  width: 100%;
+}
+.workflow-page label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+}
+.workflow-page input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+}
+.workflow-chart {
+  height: 300px;
+  width: 100%;
+  min-width: 0;
+  margin: 1rem 0;
+}
+.audit-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+}
+.data-controls details {
+  margin: 0.7rem 0;
+}

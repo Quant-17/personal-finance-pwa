@@ -10,6 +10,10 @@ export type Debt = {
   minimum: number;
   allowExtra: boolean;
   feePercent: number;
+  closureFee?: number;
+  feeTaxPercent?: number;
+  promoApr?: number | null;
+  promoMonths?: number;
   anchor?: string | null;
 };
 export type DebtSource = Omit<
@@ -145,18 +149,30 @@ function rate(v: number, label: string) {
   if (!Number.isFinite(v) || v < 0 || v > 120)
     throw new Error(`${label} must be between 0 and 120%.`);
 }
-function fee(payment: number, percent: number) {
-  return new D(payment).times(percent).div(100).toDecimalPlaces(0).toNumber();
+function fee(payment: number, percent: number, fixed = 0, tax = 0) {
+  const base = new D(payment)
+    .times(percent)
+    .div(100)
+    .toDecimalPlaces(0)
+    .plus(fixed);
+  return base.plus(base.times(tax).div(100).toDecimalPlaces(0)).toNumber();
 }
-function affordablePayment(balance: number, wallet: number, percent: number) {
+function affordablePayment(balance: number, wallet: number, debt: Debt) {
+  const charge = (payment: number) =>
+    fee(
+      payment,
+      debt.feePercent,
+      payment === balance && payment > 0 ? (debt.closureFee ?? 0) : 0,
+      debt.feeTaxPercent ?? 0,
+    );
   let low = 0,
     high = Math.min(balance, wallet);
   while (low < high) {
     const mid = Math.floor((low + high + 1) / 2);
-    if (mid + fee(mid, percent) <= wallet) low = mid;
+    if (mid + charge(mid) <= wallet) low = mid;
     else high = mid - 1;
   }
-  return { payment: low, fee: fee(low, percent) };
+  return { payment: low, fee: charge(low) };
 }
 export function simulateDebtPlan(
   input: Debt[],
@@ -179,10 +195,27 @@ export function simulateDebtPlan(
     money(d.minimum, "Minimum");
     rate(d.apr, "Annual rate");
     rate(d.feePercent, "Extra-payment charge");
+    money(d.closureFee ?? 0, "Accelerated settlement charge");
+    if (
+      !Number.isFinite(d.feeTaxPercent ?? 0) ||
+      (d.feeTaxPercent ?? 0) < 0 ||
+      (d.feeTaxPercent ?? 0) > 30
+    )
+      throw new Error("Tax on fees must be between 0 and 30%.");
+    if (d.promoApr !== undefined && d.promoApr !== null)
+      rate(d.promoApr, "Promotional rate");
+    if (
+      !Number.isInteger(d.promoMonths ?? 0) ||
+      (d.promoMonths ?? 0) < 0 ||
+      (d.promoMonths ?? 0) > 360
+    )
+      throw new Error("Promotional period must be 0–360 whole model months.");
     if (d.balance > 0 && d.minimum === 0)
       throw new Error("Every debt needs a positive minimum payment.");
   }
-  const debts = input.filter((d) => d.balance > 0).map((d) => ({ ...d }));
+  const debts = input
+    .filter((d) => d.balance > 0)
+    .map((d) => ({ ...d, accelerated: false }));
   const initial = safeTotal(debts.map((d) => d.balance));
   const result: PlanResult = {
     strategy,
@@ -201,19 +234,30 @@ export function simulateDebtPlan(
     payoffs: [],
     lumpPayments: [],
   };
-  const order = () =>
+  const effectiveRate = (d: Debt, month: number) =>
+    d.promoApr !== null &&
+    d.promoApr !== undefined &&
+    month <= (d.promoMonths ?? 0)
+      ? d.promoApr
+      : d.apr;
+  const order = (month = 1) =>
     debts
       .filter((d) => d.balance > 0 && d.allowExtra)
       .sort((a, b) =>
         strategy === "snowball"
-          ? a.balance - b.balance || b.apr - a.apr || a.id.localeCompare(b.id)
-          : b.apr - a.apr || a.balance - b.balance || a.id.localeCompare(b.id),
+          ? a.balance - b.balance ||
+            effectiveRate(b, month) - effectiveRate(a, month) ||
+            a.id.localeCompare(b.id)
+          : effectiveRate(b, month) - effectiveRate(a, month) ||
+            a.balance - b.balance ||
+            a.id.localeCompare(b.id),
       );
   // No surplus/lump is used by the minimum-only comparison.
   if (strategy !== "minimum")
     for (const d of order()) {
-      const p = affordablePayment(d.balance, result.unusedLump, d.feePercent);
+      const p = affordablePayment(d.balance, result.unusedLump, d);
       d.balance -= p.payment;
+      if (p.payment) d.accelerated = true;
       result.unusedLump -= p.payment + p.fee;
       result.lumpPaid += p.payment;
       result.lumpFees += p.fee;
@@ -242,7 +286,7 @@ export function simulateDebtPlan(
           d.minimum,
           d.balance +
             new D(d.balance)
-              .times(d.apr)
+              .times(effectiveRate(d, 1))
               .div(1200)
               .toDecimalPlaces(0)
               .toNumber(),
@@ -264,7 +308,7 @@ export function simulateDebtPlan(
       fees = 0;
     for (const d of debts.filter((d) => d.balance > 0)) {
       const accrued = new D(d.balance)
-        .times(d.apr)
+        .times(effectiveRate(d, month))
         .div(1200)
         .toDecimalPlaces(0)
         .toNumber();
@@ -275,8 +319,13 @@ export function simulateDebtPlan(
       }
       d.balance += accrued;
       const minimum = Math.min(d.minimum, d.balance);
+      const settlement =
+        minimum === d.balance && d.accelerated
+          ? fee(0, 0, d.closureFee ?? 0, d.feeTaxPercent ?? 0)
+          : 0;
       d.balance -= minimum;
-      wallet -= minimum;
+      wallet -= minimum + settlement;
+      fees += settlement;
       paid += minimum;
       interest += accrued;
       payments.push({
@@ -284,21 +333,28 @@ export function simulateDebtPlan(
         interest: accrued,
         minimum,
         extra: 0,
-        fee: 0,
+        fee: settlement,
         closing: d.balance,
       });
       if (!d.balance) result.payoffs.push({ id: d.id, month });
     }
+    if (wallet < 0) {
+      result.payoffs.length = payoffCount;
+      result.status = "unaffordable";
+      result.shortfall = -wallet;
+      return result;
+    }
     if (strategy !== "minimum")
-      for (const d of order()) {
-        const p = affordablePayment(d.balance, wallet, d.feePercent);
+      for (const d of order(month)) {
+        const p = affordablePayment(d.balance, wallet, d);
         d.balance -= p.payment;
+        if (p.payment) d.accelerated = true;
         wallet -= p.payment + p.fee;
         paid += p.payment;
         fees += p.fee;
         const row = payments.find((p) => p.id === d.id)!;
         row.extra = p.payment;
-        row.fee = p.fee;
+        row.fee += p.fee;
         row.closing = d.balance;
         if (!d.balance) result.payoffs.push({ id: d.id, month });
       }

@@ -87,7 +87,12 @@ async function mock(page: Page, populated = false, confirmed = true) {
     else if (path === "/auth/v1/user")
       response = confirmed ? user : { ...user, email_confirmed_at: null };
     else if (path === "/rest/v1/rpc/workspace_snapshot") response = data;
-    else if (path === "/rest/v1/transactions") response = [];
+    else if (
+      path === "/rest/v1/transactions" ||
+      path === "/rest/v1/debt_terms" ||
+      path === "/rest/v1/audit_events"
+    )
+      response = [];
     else if (
       path === "/rest/v1/accounts" &&
       route.request().method() === "POST"
@@ -1635,7 +1640,11 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
   ).toBe(false);
 });
 
-function positionedStatementPdf(kind: "sbi" | "kotak", recipient = false) {
+function positionedStatementPdf(
+  kind: "sbi" | "kotak",
+  recipient = false,
+  transferCredit = false,
+) {
   const cells: [string, number, number][] =
     kind === "sbi"
       ? [
@@ -1678,7 +1687,7 @@ function positionedStatementPdf(kind: "sbi" | "kotak", recipient = false) {
           ["04 May 2026", 73, 660],
           ["SYNTHETIC CREDIT", 119, 660],
           ["REF-BETA", 275, 660],
-          ["500.00", 465, 660],
+          [transferCredit ? "132.47" : "500.00", 465, 660],
           ["8501.29", 529, 660],
         ];
   const stream = cells
@@ -2602,11 +2611,9 @@ test("account deletion requires confirmation, current password and a deliberate 
   });
   await erase.click();
   await expect(
-    page
-      .getByRole("status")
-      .filter({
-        hasText: "Password confirmation failed. Nothing was deleted.",
-      }),
+    page.getByRole("status").filter({
+      hasText: "Password confirmation failed. Nothing was deleted.",
+    }),
   ).toBeVisible();
   expect(deletes).toBe(0);
   await expect(page.getByLabel("Current password for deletion")).toHaveValue(
@@ -2625,4 +2632,479 @@ test("account deletion requires confirmation, current password and a deliberate 
       Object.keys(localStorage).filter((k) => k.startsWith("folio-auth-")),
     ),
   ).toEqual([]);
+});
+
+test("monthly reconciliation enforces exact balances and separate month confirmation", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  let reviewed = false;
+  const account = {
+    account_id: accountId,
+    month: "2026-10-01",
+    baseline_covers_month: true,
+    complete_month: true,
+    opening_paise: "2000000",
+    closing_paise: "1990000",
+    credits_paise: "0",
+    debits_paise: "10000",
+    row_count: 1,
+    ledger_hash: "synthetic-ledger",
+    review: null as null | { current: boolean; reviewed_at: string },
+  };
+  await page.route("**/rest/v1/rpc/monthly_review_report", (r) =>
+    r.fulfill({
+      json: {
+        month: "2026-10-01",
+        complete_month: true,
+        income_paise: "0",
+        expenses_paise: "10000",
+        loan_cash_paise: "0",
+        principal_paise: "0",
+        interest_paise: "0",
+        self_invested_paise: "0",
+        employer_invested_paise: "0",
+        withdrawn_paise: "0",
+        subscription_paid_paise: "0",
+        categories: [],
+        accounts: [account],
+        report_hash: "synthetic-month",
+        review: reviewed
+          ? { current: true, reviewed_at: "2026-11-01", saved_report: {} }
+          : null,
+      },
+    }),
+  );
+  await page.route("**/rest/v1/rpc/reconcile_account", (r) => {
+    account.review = { current: true, reviewed_at: "2026-11-01" };
+    return r.fulfill({ json: null });
+  });
+  await page.route("**/rest/v1/rpc/review_month", (r) => {
+    reviewed = true;
+    return r.fulfill({ json: null });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Monthly review", exact: true }).click();
+  await expect(
+    page.getByText("Not reconciled yet.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Statement opening balance", { exact: true })
+    .fill("20000");
+  await page
+    .getByLabel("Statement closing balance", { exact: true })
+    .fill("19899.99");
+  await page
+    .getByLabel("I compared statement balances", { exact: false })
+    .check();
+  await expect(
+    page.getByRole("button", { name: "Confirm account reconciliation" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Statement closing balance", { exact: true })
+    .fill("19900");
+  await page
+    .getByLabel("I compared statement balances", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Confirm account reconciliation" })
+    .click();
+  await expect(
+    page.getByText("All listed accounts have current reconciliations.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  const close = page.getByRole("button", { name: "Mark month reviewed" });
+  await expect(close).toBeDisabled();
+  await page.getByLabel("I have reviewed this month’s report.").check();
+  await close.click();
+  await expect(
+    page.getByText("This month is reviewed and current."),
+  ).toBeVisible();
+  expect(
+    calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+});
+
+test("90-day forecast persists assumptions without posting and fits mobile", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const settings = {
+    salary_day: 1,
+    salary_account_id: accountId,
+    spending_account_id: accountId,
+    loan_funding: {},
+  };
+  await page.route("**/rest/v1/planning_settings?*", (r) =>
+    r.fulfill({ json: [settings] }),
+  );
+  await page.route("**/rest/v1/planned_cash_events?*", (r) =>
+    r.fulfill({ json: [] }),
+  );
+  await page.route("**/rest/v1/rpc/forecast_context", (r) =>
+    r.fulfill({
+      json: { as_of: "2026-11-22", non_subscription_spent_paise: "0" },
+    }),
+  );
+  await login(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("link", { name: "Cash-flow forecast", exact: true })
+    .click();
+  await expect(page.getByLabel("Projected cash balance chart")).toBeVisible();
+  await page.getByLabel("Inspect forecast day", { exact: true }).fill("45");
+  await expect(
+    page.getByLabel("Inspect forecast day", { exact: true }),
+  ).toHaveValue("45");
+  await page
+    .getByText("Forecast dates and funding accounts", { exact: true })
+    .click();
+  await page.getByRole("button", { name: "Save forecast settings" }).click();
+  await expect(
+    page.getByText("Forecast settings saved. No money was posted."),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  expect(
+    calls.find((c) => c.path.endsWith("/save_planning"))?.body?.p_settings,
+  ).toEqual(settings);
+  expect(
+    calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+});
+
+test("restore refuses a nonempty workspace and audit changes are read-only", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  await page.route("**/rest/v1/rpc/preview_financial_restore", (r) =>
+    r.fulfill({
+      json: {
+        can_restore: false,
+        archive_hash: "synthetic",
+        rows: 2,
+        schema_version: 1,
+        legacy_source_warning: true,
+        reason:
+          "Existing financial records are present. Restore only into a separate empty workspace.",
+      },
+    }),
+  );
+  await page.route("**/rest/v1/audit_events?*", (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: crypto.randomUUID(),
+          user_id: owner,
+          table_name: "accounts",
+          entity_id: accountId,
+          action: "UPDATE",
+          before_data: { name: "Old synthetic name" },
+          after_data: { name: "Fixture checking" },
+          occurred_at: "2026-11-22T10:00:00Z",
+          provenance: "live",
+          reason: "",
+        },
+      ],
+    }),
+  );
+  await login(page);
+  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await page
+    .getByLabel("Financial archive JSON", { exact: true })
+    .setInputFiles({
+      name: "synthetic.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(financialArchiveFixture())),
+    });
+  await page.getByRole("button", { name: "Validate restore preview" }).click();
+  await expect(
+    page.getByText("Existing financial records are present.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Restore validated archive" }),
+  ).toHaveCount(0);
+  await page
+    .locator("summary")
+    .filter({ hasText: "Account · Changed" })
+    .click();
+  await expect(
+    page.getByText("Old synthetic name", { exact: false }),
+  ).toBeVisible();
+  expect(
+    calls.some((c) =>
+      /confirm_financial_restore|delete_own_account/.test(c.path),
+    ),
+  ).toBe(false);
+  expect(
+    calls
+      .filter((c) => c.path.includes("/audit_events"))
+      .every((c) => c.body === null),
+  ).toBe(true);
+});
+
+test("paired statement transfer reads PDFs locally and links an existing payment only after review", async ({
+  page,
+}) => {
+  const calls = await mock(page, true),
+    other = "2bb04aa9-8910-4e90-89d7-91c4a51bf470",
+    transfer = "3bb04aa9-8910-4e90-89d7-91c4a51bf470";
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({
+      json: {
+        ...snapshot(true),
+        accounts: [
+          ...snapshot(true).accounts,
+          {
+            ...snapshot(true).accounts[0],
+            id: other,
+            name: "Fixture destination",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/rest/v1/rpc/preview_transfer_match", (r) =>
+    r.fulfill({ json: { matches: [transfer], already_linked: false } }),
+  );
+  let posted: Record<string, unknown> | null = null;
+  await page.route("**/rest/v1/rpc/confirm_transfer_match", (r) => {
+    posted = r.request().postDataJSON();
+    return r.fulfill({ json: transfer });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Transactions", exact: true }).click();
+  await page
+    .getByText("Match transfers and card repayments from statements", {
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel("Transfer statement month", { exact: true })
+    .fill("2026-05");
+  await page.getByLabel("Debit statement PDF", { exact: true }).setInputFiles({
+    name: "synthetic-debit.pdf",
+    mimeType: "application/pdf",
+    buffer: positionedStatementPdf("sbi"),
+  });
+  await expect(page.getByText("Debit statement parsed: 2 rows.")).toBeVisible();
+  await page.getByLabel("Credit statement PDF", { exact: true }).setInputFiles({
+    name: "synthetic-credit.pdf",
+    mimeType: "application/pdf",
+    buffer: positionedStatementPdf("kotak", false, true),
+  });
+  await expect(page.getByLabel("Possible transfer pair")).toContainText(
+    "132.47",
+  );
+  await page.getByLabel("Possible transfer pair").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Check transfer duplicates" }).click();
+  const link = page.getByRole("button", {
+    name: "Link statement rows to existing transfer",
+  });
+  await expect(link).toBeDisabled();
+  await page
+    .getByLabel("Existing matching transfer", { exact: true })
+    .selectOption(transfer);
+  await page
+    .getByLabel("I verified these are the same own-account transfer", {
+      exact: false,
+    })
+    .check();
+  await link.click();
+  await expect(
+    page.getByText("Existing transfer linked. No second payment was posted."),
+  ).toBeVisible();
+  expect(posted).toMatchObject({
+    p_spec: {
+      from_account: accountId,
+      to_account: other,
+      amount_paise: 13247,
+      existing_transfer: transfer,
+      debit_on: "2026-05-03",
+      credit_on: "2026-05-04",
+    },
+  });
+  expect(
+    calls.some((c) => /record_entry|import_statement_entries/.test(c.path)),
+  ).toBe(false);
+});
+
+test("investment XIRR requires complete-history review and includes employer capital", async ({
+  page,
+}) => {
+  await mockInvestments(page, true);
+  await page.route("**/rest/v1/rpc/investment_return_history", (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: crypto.randomUUID(),
+          kind: "valuation",
+          amount_paise: "100000",
+          occurred_on: "2025-01-01",
+          created_at: "2025-01-01T00:00:00Z",
+        },
+        {
+          id: crypto.randomUUID(),
+          kind: "valuation",
+          amount_paise: "110000",
+          occurred_on: "2026-01-01",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    }),
+  );
+  await login(page);
+  await page
+    .getByRole("link", { name: "Savings & investments", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Investment returns for", exact: false })
+    .click();
+  await expect(
+    page.getByText("Annualised XIRR:", { exact: false }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("I entered every relevant contribution and withdrawal", {
+      exact: false,
+    })
+    .check();
+  await expect(
+    page.getByText("Annualised XIRR: 10%", { exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await expect(
+    page.getByText("Annualised XIRR:", { exact: false }),
+  ).toHaveCount(0);
+});
+
+test("validated restore needs the exact phrase and retries an interrupted confirmation once", async ({
+  page,
+}) => {
+  await mock(page);
+  await page.route("**/rest/v1/rpc/preview_financial_restore", (r) =>
+    r.fulfill({
+      json: {
+        can_restore: true,
+        archive_hash: "synthetic-archive-hash",
+        rows: 2,
+        schema_version: 1,
+        legacy_source_warning: true,
+      },
+    }),
+  );
+  const commits: Record<string, unknown>[] = [];
+  await page.route("**/rest/v1/rpc/confirm_financial_restore", (r) => {
+    commits.push(r.request().postDataJSON());
+    return commits.length === 1
+      ? r.abort("failed")
+      : r.fulfill({ json: { restored: true } });
+  });
+  await login(page);
+  await page.getByRole("link", { name: "Data & privacy", exact: true }).click();
+  await page
+    .getByLabel("Financial archive JSON", { exact: true })
+    .setInputFiles({
+      name: "synthetic.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(financialArchiveFixture())),
+    });
+  await page.getByRole("button", { name: "Validate restore preview" }).click();
+  const restore = page.getByRole("button", {
+    name: "Restore validated archive",
+  });
+  await page
+    .getByLabel("I own this archive, verified the preview", { exact: false })
+    .check();
+  await expect(restore).toBeDisabled();
+  await page
+    .getByLabel("Restore confirmation", { exact: true })
+    .fill("RESTORE INTO EMPTY WORKSPACE");
+  await restore.click();
+  await expect(
+    page.getByText("Keep this archive selected and retry", { exact: false }),
+  ).toBeVisible();
+  await restore.click();
+  await expect.poll(() => commits.length).toBe(2);
+  expect(commits[0].p_request_id).toBe(commits[1].p_request_id);
+  expect(commits[1].p_expected_hash).toBe("synthetic-archive-hash");
+});
+
+test("debt simulator saves fees and promotion metadata without recording a repayment", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const card = {
+    ...snapshot(true).accounts[0],
+    type: "credit_card",
+    name: "Synthetic card",
+    opening_balance_paise: -100000,
+    balance_paise: "-100000",
+  };
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({ json: { ...snapshot(true), accounts: [card] } }),
+  );
+  let saved: Record<string, unknown> | null = null;
+  await page.route("**/rest/v1/rpc/save_debt_terms", (r) => {
+    saved = r.request().postDataJSON();
+    return r.fulfill({ json: crypto.randomUUID() });
+  });
+  await login(page);
+  await page
+    .getByRole("link", { name: "Debt repayment simulator", exact: true })
+    .click();
+  await page
+    .getByLabel("Annual rate Synthetic card · revolving balance", {
+      exact: true,
+    })
+    .fill("24");
+  await page
+    .getByLabel("Minimum Synthetic card · revolving balance", { exact: true })
+    .fill("100");
+  await page
+    .getByLabel("Closure charge Synthetic card · revolving balance", {
+      exact: true,
+    })
+    .fill("100.29");
+  await page
+    .getByLabel("Fee tax Synthetic card · revolving balance", { exact: true })
+    .fill("18");
+  await page
+    .getByLabel("Promotional rate Synthetic card · revolving balance", {
+      exact: true,
+    })
+    .fill("0");
+  await page
+    .getByLabel("Promotion expiry Synthetic card · revolving balance", {
+      exact: true,
+    })
+    .fill("2027-01-31");
+  await page
+    .getByRole("button", { name: "Save fee and promotion terms" })
+    .click();
+  await expect(
+    page.getByText("Fee and promotion terms saved.", { exact: false }),
+  ).toBeVisible();
+  expect(saved).toMatchObject({
+    p_loan: null,
+    p_account: accountId,
+    p_terms: {
+      closure_fee_paise: 10029,
+      tax_percent: 18,
+      promo_apr: 0,
+      promo_until: "2027-01-31",
+    },
+  });
+  expect(
+    calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
 });

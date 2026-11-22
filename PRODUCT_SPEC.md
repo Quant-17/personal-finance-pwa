@@ -49,3 +49,7 @@ Adaptive debt repayment planning compares monthly strategies against current tra
 ## V1 data controls
 
 Provide Data & privacy navigation with a full-history private JSON download, clear export limits and no automatic-restore claim. Show a month-specific account/loan baseline and reporting-cutoff checklist without changing dates or balances. Permit deliberate permanent self-account deletion only after an exact typed phrase, acknowledgement and current-password confirmation; verify recent password AMR, active session and confirmed owner server-side. Never delete the actual owner in development or acceptance tests. Existing physical-device and first-month reconciliation acceptance remains owner work. See DATA_PRIVACY.md.
+
+## Owner-requested finance workflows
+
+Add reconciled monthly reports, reviewed paired statement transfers, an interactive 90-day cash forecast, saved lender fee/promotion assumptions, complete-history investment return estimates, safe empty-workspace backup restore and owner-readable immutable change history. These preserve explicit owner confirmation for financial writes; forecasted payments are never actual payments. See FINANCE_WORKFLOWS.md for calculation assumptions and supported limits.

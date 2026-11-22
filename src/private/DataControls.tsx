@@ -1,3 +1,5 @@
+import { ArchiveRestore } from "./ArchiveRestore";
+import { AuditHistory } from "./AuditHistory";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
@@ -213,13 +215,15 @@ export function DataControls({
         <p>
           This JSON export contains private financial information. Save it
           somewhere you control. It excludes passwords, sessions and original
-          PDFs. Automatic restore is not available; this is a portable data
-          archive.
+          PDFs. A validated restore is available below for an empty financial
+          workspace.
         </p>
         <Button disabled={busy} onClick={() => void download()}>
           Download financial data
         </Button>
       </section>
+      <ArchiveRestore onRestored={() => window.location.reload()} />
+      <AuditHistory />
       <section className="card private-panel">
         <h2>Delete your account</h2>
         <p>
