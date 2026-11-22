@@ -14,6 +14,51 @@ export type Database = {
   };
   public: {
     Tables: {
+      audit_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          table_name: string;
+          entity_id: string;
+          action: string;
+          before_data: Json;
+          after_data: Json;
+          occurred_at: string;
+          provenance: string;
+          reason: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      planning_settings: {
+        Row: import("./forecast").PlanningSettings & { user_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      planned_cash_events: {
+        Row: import("./forecast").PlannedEvent & { user_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      debt_terms: {
+        Row: {
+          id: string;
+          user_id: string;
+          loan_id: string | null;
+          account_id: string | null;
+          prepayment_percent: number;
+          closure_fee_paise: number;
+          tax_percent: number;
+          promo_apr: number | null;
+          promo_until: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       statement_rules: {
         Row: import("./statementRules").StatementRule & { user_id: string };
         Insert: import("./statementRules").RuleInput & { enabled?: boolean };
@@ -519,6 +564,55 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_statement_report: {
+        Args: { p_account: string; p_month: string };
+        Returns: Json;
+      };
+      reconcile_account: {
+        Args: {
+          p_account: string;
+          p_month: string;
+          p_opening: number;
+          p_closing: number;
+          p_expected_hash: string;
+        };
+        Returns: string;
+      };
+      monthly_review_report: { Args: { p_month: string }; Returns: Json };
+      review_month: {
+        Args: { p_month: string; p_expected_hash: string };
+        Returns: string;
+      };
+      preview_transfer_match: { Args: { p_spec: Json }; Returns: Json };
+      confirm_transfer_match: {
+        Args: { p_spec: Json; p_request_id: string };
+        Returns: string;
+      };
+      save_planning: { Args: { p_settings: Json }; Returns: undefined };
+      save_planned_event: {
+        Args: { p_id: string | null; p_event: Json; p_delete?: boolean };
+        Returns: string;
+      };
+      save_debt_terms: {
+        Args: {
+          p_loan: string | null;
+          p_account: string | null;
+          p_terms: Json;
+        };
+        Returns: string;
+      };
+      forecast_context: { Args: never; Returns: Json };
+      investment_return_history: { Args: { p_holding: string }; Returns: Json };
+      preview_financial_restore: { Args: { p_archive: Json }; Returns: Json };
+      confirm_financial_restore: {
+        Args: {
+          p_archive: Json;
+          p_expected_hash: string;
+          p_confirmation: string;
+          p_request_id: string;
+        };
+        Returns: Json;
+      };
       export_financial_data: { Args: never; Returns: Json };
       delete_own_account: {
         Args: { p_confirmation: string };

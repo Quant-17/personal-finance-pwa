@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
+import { MonthlyReview } from "./MonthlyReview";
+import { CashForecast } from "./CashForecast";
+import { StatementTransfers } from "./StatementTransfers";
 import { DataControls } from "./DataControls";
 import { DebtSimulator } from "./DebtSimulator";
 import { SavedSimulations } from "./SavedSimulations";
@@ -49,6 +52,8 @@ const pages = [
   ["debt-plan", "Debt repayment simulator", CalendarClock],
   ["settings", "Monthly plan", SlidersHorizontal],
   ["data", "Data & privacy", ShieldCheck],
+  ["review", "Monthly review", ReceiptText],
+  ["forecast", "Cash-flow forecast", CalendarClock],
 ] as const;
 type Page = (typeof pages)[number][0];
 const currentPage = (): Page =>
@@ -517,6 +522,7 @@ function Workspace({
                     </label>
                   )}
                   {importNotice && <p role="status">{importNotice}</p>}
+                  <StatementTransfers snapshot={s} onSaved={refresh} />
                   <StatementImport
                     snapshot={s}
                     onImported={({ inserted, skipped }) => {
@@ -903,6 +909,10 @@ function Workspace({
               )}
               {page === "investments" && (
                 <Investments snapshot={s} onRefresh={refresh} />
+              )}
+              {page === "review" && <MonthlyReview snapshot={s} />}
+              {page === "forecast" && (
+                <CashForecast snapshot={s} onRefresh={refresh} />
               )}
               {page === "data" && (
                 <DataControls

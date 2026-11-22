@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { db, check } from "./workspace";
+import { debtTermsSchema, fullPromoMonths } from "./debtTerms";
 import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
@@ -37,6 +40,10 @@ type Patch = {
   minimum?: string;
   allowExtra?: boolean;
   feePercent?: string;
+  closureFee?: string;
+  taxPercent?: string;
+  promoApr?: string;
+  promoUntil?: string;
 };
 type Scenario = {
   income?: string;
@@ -70,9 +77,45 @@ export function DebtSimulator({
     }, 60000);
     return () => clearInterval(timer);
   }, [onRefresh]);
+  const [savedTerms, setSavedTerms] = useState<
+    z.infer<typeof debtTermsSchema>[]
+  >([]);
+  const [termsLoaded, setTermsLoaded] = useState(false);
+  const [termNotice, setTermNotice] = useState("");
+  const [savingTerms, setSavingTerms] = useState(false);
+  useEffect(() => {
+    const c = new AbortController();
+    void (async () => {
+      try {
+        const r = await db()
+          .from("debt_terms")
+          .select("*")
+          .abortSignal(c.signal);
+        check(r);
+        const data = z.array(debtTermsSchema).parse(r.data);
+        if (!c.signal.aborted) {
+          setSavedTerms(data);
+          setTermsLoaded(true);
+        }
+      } catch {
+        if (!c.signal.aborted)
+          setTermNotice(
+            "Saved lender assumptions could not be loaded. Reconnect before comparing plans.",
+          );
+      }
+    })();
+    return () => c.abort();
+  }, []);
   const source = useMemo(() => debtSources(s), [s]);
   const calculation = useMemo(() => {
     try {
+      if (!termsLoaded)
+        return {
+          capacity: null,
+          error:
+            "Loading saved lender assumptions. Reconnect if this does not complete.",
+          plans: null,
+        };
       const income = moneyInput(
           scenario.income ?? moneyToInput(s.profile.monthly_income_paise),
         ),
@@ -87,6 +130,9 @@ export function DebtSimulator({
         s.summary.liquid_cash_paise - s.profile.emergency_reserve_paise,
       );
       const debts: Debt[] = source.debts.map((d) => {
+        const saved = savedTerms.find(
+          (t) => (t.loan_id ?? t.account_id) === d.id,
+        );
         const p = scenario.debts[d.id] ?? {};
         if (
           (p.apr === undefined && d.apr === null) ||
@@ -96,10 +142,16 @@ export function DebtSimulator({
             "Enter the annual rate and monthly minimum for every card/overdraft balance below.",
           );
         const apr = Number(p.apr ?? d.apr),
-          feePercent = Number(p.feePercent ?? 0);
+          feePercent = Number(p.feePercent ?? saved?.prepayment_percent ?? 0);
         if (p.apr === "" || p.feePercent === "")
           throw new Error(
             "Enter an annual rate and extra-payment charge, including 0 if applicable.",
+          );
+        const promotion = p.promoApr ?? saved?.promo_apr ?? "",
+          expiry = p.promoUntil ?? saved?.promo_until ?? "";
+        if ((promotion === "") !== !expiry)
+          throw new Error(
+            "Enter both the promotional rate and expiry, or leave both empty.",
           );
         return {
           ...d,
@@ -107,6 +159,18 @@ export function DebtSimulator({
           minimum: p.minimum !== undefined ? moneyInput(p.minimum) : d.minimum!,
           allowExtra: p.allowExtra ?? true,
           feePercent,
+          closureFee: moneyInput(
+            p.closureFee ?? moneyToInput(saved?.closure_fee_paise ?? 0),
+          ),
+          feeTaxPercent: Number(p.taxPercent ?? saved?.tax_percent ?? 0),
+          promoApr:
+            (p.promoApr ?? saved?.promo_apr ?? "") === ""
+              ? null
+              : Number(p.promoApr ?? saved?.promo_apr),
+          promoMonths: fullPromoMonths(
+            scenario.start,
+            p.promoUntil ?? saved?.promo_until ?? null,
+          ),
         };
       });
       const minimum = safeTotal(debts.map((d) => d.minimum));
@@ -160,7 +224,7 @@ export function DebtSimulator({
         plans: null,
       };
     }
-  }, [s, source, scenario]);
+  }, [s, source, scenario, savedTerms, termsLoaded]);
   const plans = calculation.plans,
     plan = plans?.find((p) => p.strategy === strategy),
     base = plans?.find((p) => p.strategy === "minimum"),
@@ -353,6 +417,7 @@ export function DebtSimulator({
             repayment plan.
           </p>
         )}
+        {termNotice && <p role="status">{termNotice}</p>}
         <p className="small-note">
           Estimates assume monthly reducing interest, 0% extra-payment charges
           and eligible prepayments until you review the assumptions below.
@@ -366,8 +431,10 @@ export function DebtSimulator({
             Rates default to saved nominal rates and this model assumes monthly
             reducing balance. Review flat-rate contracts, card terms, lock-ins
             and eligibility. Extra payments are assumed allowed and charges 0%
-            until you edit them; enter a charge inclusive of applicable taxes.
-            Existing quoted EMIs are minimums, not recalculated EMIs.
+            until you edit them; enter the charge before the separate tax
+            percentage. Fixed settlement charges apply when an accelerated debt
+            closes. Promotional rates apply only to complete months before
+            expiry. Existing quoted EMIs are minimums, not recalculated EMIs.
             Closed/archived records with balances are retained; linked card-EMI
             principal is counted once.
           </p>
@@ -379,6 +446,9 @@ export function DebtSimulator({
           <div className="debt-input-grid">
             {source.debts.map((d) => {
               const p = scenario.debts[d.id] ?? {};
+              const saved = savedTerms.find(
+                (t) => (t.loan_id ?? t.account_id) === d.id,
+              );
               return (
                 <article className="debt-input" key={d.id}>
                   <h3>{d.name}</h3>
@@ -428,12 +498,135 @@ export function DebtSimulator({
                       min={0}
                       max={120}
                       step="0.01"
-                      value={p.feePercent ?? "0"}
+                      value={
+                        p.feePercent ?? String(saved?.prepayment_percent ?? 0)
+                      }
                       onChange={(e) =>
                         patch(d.id, { feePercent: e.target.value })
                       }
                     />
                   </label>
+                  <label>
+                    Fixed charge for accelerated settlement (₹)
+                    <input
+                      aria-label={`Closure charge ${d.name}`}
+                      inputMode="decimal"
+                      value={
+                        p.closureFee ??
+                        moneyToInput(saved?.closure_fee_paise ?? 0)
+                      }
+                      onChange={(e) =>
+                        patch(d.id, { closureFee: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Tax on charges (%)
+                    <input
+                      aria-label={`Fee tax ${d.name}`}
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={p.taxPercent ?? String(saved?.tax_percent ?? 0)}
+                      onChange={(e) =>
+                        patch(d.id, { taxPercent: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Promotional APR (%) · optional
+                    <input
+                      aria-label={`Promotional rate ${d.name}`}
+                      type="number"
+                      min={0}
+                      max={120}
+                      step="0.0001"
+                      value={p.promoApr ?? saved?.promo_apr ?? ""}
+                      onChange={(e) =>
+                        patch(d.id, { promoApr: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Promotion ends
+                    <input
+                      aria-label={`Promotion expiry ${d.name}`}
+                      type="date"
+                      value={p.promoUntil ?? saved?.promo_until ?? ""}
+                      onChange={(e) =>
+                        patch(d.id, { promoUntil: e.target.value })
+                      }
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    disabled={savingTerms}
+                    onClick={() =>
+                      void (async () => {
+                        setSavingTerms(true);
+                        setTermNotice("");
+                        try {
+                          const terms = {
+                            prepayment_percent: Number(
+                              p.feePercent ?? saved?.prepayment_percent ?? 0,
+                            ),
+                            closure_fee_paise: moneyInput(
+                              p.closureFee ??
+                                moneyToInput(saved?.closure_fee_paise ?? 0),
+                            ),
+                            tax_percent: Number(
+                              p.taxPercent ?? saved?.tax_percent ?? 0,
+                            ),
+                            promo_apr:
+                              (p.promoApr ?? saved?.promo_apr ?? "") === ""
+                                ? null
+                                : Number(p.promoApr ?? saved?.promo_apr),
+                            promo_until:
+                              (p.promoUntil ?? saved?.promo_until) || null,
+                          };
+                          if (
+                            (terms.promo_apr === null) !==
+                            (terms.promo_until === null)
+                          )
+                            throw Error(
+                              "Enter both the promotional rate and expiry, or leave both empty.",
+                            );
+                          const r = await db().rpc("save_debt_terms", {
+                            p_loan:
+                              d.kind === "loan" || d.kind === "card_emi"
+                                ? d.id
+                                : null,
+                            p_account:
+                              d.kind === "card" || d.kind === "overdraft"
+                                ? d.id
+                                : null,
+                            p_terms: terms,
+                          });
+                          check(r);
+                          const read = await db()
+                            .from("debt_terms")
+                            .select("*");
+                          check(read);
+                          setSavedTerms(
+                            z.array(debtTermsSchema).parse(read.data),
+                          );
+                          setTermNotice(
+                            "Fee and promotion terms saved. Standard rate/minimum overrides remain scenario inputs; no repayment was posted.",
+                          );
+                        } catch (e) {
+                          setTermNotice(
+                            e instanceof Error
+                              ? e.message
+                              : "Could not save lender assumptions.",
+                          );
+                        } finally {
+                          setSavingTerms(false);
+                        }
+                      })()
+                    }
+                  >
+                    Save fee and promotion terms
+                  </Button>
                 </article>
               );
             })}

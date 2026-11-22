@@ -32,7 +32,7 @@ select pg_temp.expect(jsonb_array_length(current_setting('folio.data_export')::j
 select pg_temp.expect((select count(*)=2 from public.transactions),'export leaves ledger unchanged');
 select pg_temp.expect((select bool_and(jsonb_typeof(r->'amount_paise')='string') from jsonb_array_elements(current_setting('folio.data_export')::jsonb->'data'->'transactions')r),'money exported as exact paise strings');
 select pg_temp.expect(folio_private.portable_json('{"nested":[{"amount_paise":10029,"note":"Synthetic"}]}')->'nested'->0->>'amount_paise'='10029','nested paise preserved');
-select pg_temp.expect((select count(*)=15 from jsonb_object_keys(current_setting('folio.data_export')::jsonb->'data')),'all explicit public financial tables included');
+select pg_temp.expect((select count(*)=21 from jsonb_object_keys(current_setting('folio.data_export')::jsonb->'data')),'all explicit public financial tables included');
 select pg_temp.expect(not(current_setting('folio.data_export')::jsonb->'data' ?| array['auth_users','sessions','mutation_receipts']),'auth/credential/internal tables excluded');
 select set_config('request.jwt.claim.sub',current_setting('folio.data_b'),true);
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('folio.data_b'),'role','authenticated','is_anonymous',false)::text,true);
