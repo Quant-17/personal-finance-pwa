@@ -1324,6 +1324,11 @@ progress {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
+.private-navigationbar .brand {
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
 .private-navigation-actions {
   display: flex;
   align-items: center;
