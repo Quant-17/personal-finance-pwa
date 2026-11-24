@@ -294,6 +294,10 @@ test("mobile workspace fits and simulator uses private plan", async ({
   await navigate(page, "Buy simulator");
   await expect(page.getByText(/Planned monthly income/)).toBeVisible();
   await expect(page.getByText(/Fictional monthly income/)).toHaveCount(0);
+  await page.getByLabel("Purchase price").fill("100");
+  await expect(
+    page.getByRole("region", { name: "Purchase summary" }),
+  ).toContainText("Paying in full fits");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -2255,6 +2259,9 @@ test("debt simulator follows saved finances, protects reserve and never posts pa
     .getByLabel("One-time payment from spare cash (₹)", { exact: true })
     .fill("10000.01");
   await expect(page.getByRole("alert")).toContainText("exceeds spare cash");
+  await expect(
+    page.getByRole("region", { name: "Repayment summary" }),
+  ).toContainText("exceeds spare cash");
   await page
     .getByLabel("One-time payment from spare cash (₹)", { exact: true })
     .fill("1000");
