@@ -283,6 +283,17 @@ export function DebtSimulator({
             Refresh finances
           </Button>
         </div>
+        <section className="decision-brief" aria-label="Repayment summary">
+          <h3>Suggested repayment strategy</h3>
+          <p>
+            {calculation.error ||
+              (!source.debts.length
+                ? "Your records show no outstanding debts to repay."
+                : recommended && cap
+                  ? `${labels[recommended.strategy]}. ${recommended.strategy === "minimum" ? "Make the scheduled minimum payments." : `Cover minimum payments and direct up to ${money(cap.extra)} extra per month toward ${recommended.strategy === "avalanche" ? "the highest-rate eligible debt" : "the smallest eligible balance"}.${cap.lump ? ` Apply ${money(cap.lump)} upfront.` : ""}`} Estimated payoff: ${dateFor(recommended)}. Modelled interest and fees total ${money(recommended.interest + recommended.fees)}.`
+                  : "The current budget and terms do not produce a complete payoff within 360 months. Review your minimums and available surplus below.")}
+          </p>
+        </section>
         <p className="small-note">
           Balances update after saved transactions/imports, when you return to
           the app, and every minute while this page is visible. This is an

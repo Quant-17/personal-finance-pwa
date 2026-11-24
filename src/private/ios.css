@@ -840,3 +840,13 @@
   font-size: 0.8125rem;
   margin: 0;
 }
+
+.decision-brief {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+.decision-brief dl { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-block: .75rem; }
+.decision-brief dd { margin: .2rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
