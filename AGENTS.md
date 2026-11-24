@@ -57,3 +57,6 @@ The owner requested an expert UI/UX comparison with leading iOS benchmarks and a
 
 ## Monthly subscription bucket · owner request
 On 24 November 2026 IST the owner requested a bucket in Subscriptions showing its total monthly cost. Reuse the existing decimal-safe monthlySubscriptions calculation and current owned snapshot; include active plans only, clearly label monthly equivalents and update after subscription changes. Preserve budget/ledger accounting and all existing financial records. No migration or live owner-data read/write is needed for development or release verification.
+
+## Monthly loan bucket · owner request
+On 24 November 2026 IST the owner requested a loan equivalent of the subscription bucket. Use the existing owned snapshot's scheduled EMI summary and count only active loans with outstanding principal. Keep quoted-EMI preference, card-plan inclusion and closed/repaid exclusions consistent with Monthly plan. Reuse the shared bucket presentation and preserve all subscription, balance and payment behavior. No database migration or actual owner-data operation is needed.

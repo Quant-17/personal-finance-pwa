@@ -82,3 +82,5 @@ The private app opens and returns from the background on **Overview**. Open **Se
 The iPhone design benchmark, comparison and accessibility/testing limits are documented in [IOS_DESIGN.md](IOS_DESIGN.md). `npm run test:ios` runs selected private flows in WebKit with an iPhone-sized touch viewport; install WebKit through Playwright first.
 
 Subscriptions includes a monthly subscription bucket in Loans & subscriptions and Monthly plan. It totals active plans using the shared monthly-equivalent calculation (yearly ÷ 12; weekly × 52 ÷ 12), excludes paused plans and rounds the aggregate once to paise. This is an estimated recurring commitment; actual payments remain in Transactions.
+
+Loans & subscriptions and Monthly plan also show a monthly EMI bucket using the existing scheduled-EMI summary, plus the count of active loans with a remaining balance. Quoted EMIs are preferred where saved. Closed and fully repaid loans are excluded; actual repayments and outstanding balances are unchanged.
