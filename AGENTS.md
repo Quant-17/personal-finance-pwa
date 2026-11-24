@@ -54,3 +54,6 @@ On 22 November 2026 IST the owner requested a vertical dropdown for all private 
 
 ## iPhone design benchmark · owner request
 The owner requested an expert UI/UX comparison with leading iOS benchmarks and an iPhone-first redesign on 22 November 2026 IST. Implement the presentation scope documented in IOS_DESIGN.md, preserving Overview-first launches and the vertical Sections menu, all financial/auth/privacy safeguards and the public demo. Use review PR, responsive and WebKit checks, and private release verification. Never test on real financial records or treat browser emulation as physical-device acceptance. No database migration is needed.
+
+## Monthly subscription bucket · owner request
+On 24 November 2026 IST the owner requested a bucket in Subscriptions showing its total monthly cost. Reuse the existing decimal-safe monthlySubscriptions calculation and current owned snapshot; include active plans only, clearly label monthly equivalents and update after subscription changes. Preserve budget/ledger accounting and all existing financial records. No migration or live owner-data read/write is needed for development or release verification.

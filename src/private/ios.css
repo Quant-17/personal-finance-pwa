@@ -787,3 +787,56 @@
 .private-shell input[type="range"] {
   min-height: 44px;
 }
+
+.subscription-bucket {
+  margin: 18px 0;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--primary-light);
+  border: 1px solid var(--border);
+}
+.subscription-bucket-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.subscription-bucket-heading > svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.subscription-bucket-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.subscription-bucket-heading span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.subscription-bucket-value {
+  margin: 16px 0 10px;
+  display: grid;
+  gap: 3px;
+}
+.subscription-bucket-value strong {
+  color: var(--primary);
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.subscription-bucket-value strong[data-long="true"] {
+  font-size: 1.125rem;
+}
+.subscription-bucket-value > span {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.private-shell .subscription-bucket p {
+  font-size: 0.8125rem;
+  margin: 0;
+}
