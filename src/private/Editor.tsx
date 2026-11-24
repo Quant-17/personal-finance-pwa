@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { subscriptionMonthlyCost } from "./monthlyPlan";
+import { formatExactMoney as money } from "../lib/finance";
 import { db, check } from "./workspace";
 import { indiaDate, indiaMonth, moneyInput, moneyToInput } from "./domain";
 import type { Entry, Snapshot } from "./domain";
 export type EditorKind =
+  | "removeLoan"
+  | "removeSubscription"
   | "account"
   | "entry"
   | "transfer"
@@ -33,6 +37,8 @@ type Field = {
   hint?: string;
 };
 const titles: Record<EditorKind, string> = {
+  removeLoan: "Delete loan",
+  removeSubscription: "Delete subscription",
   account: "Add an account",
   entry: "Record a transaction",
   transfer: "Move money",
@@ -58,6 +64,22 @@ export function Editor({
   onSaved: () => void;
 }) {
   const { kind, entry, record } = intent;
+  const removing = kind === "removeLoan" || kind === "removeSubscription";
+  const removedLoan =
+    kind === "removeLoan"
+      ? s.loans.find((l) => l.id === record?.id)
+      : undefined;
+  const removedSubscription =
+    kind === "removeSubscription"
+      ? s.subscriptions.find((sub) => sub.id === record?.id)
+      : undefined;
+  const removedMonthly = removedSubscription
+    ? subscriptionMonthlyCost(removedSubscription)
+    : 0;
+  const budgetReduction = Math.min(
+    s.profile.monthly_living_budget_paise,
+    removedMonthly,
+  );
   const accounts: [string, string][] = s.accounts
     .filter((a) => !a.archived_at || kind === "allocation")
     .map((a) => [
@@ -68,8 +90,27 @@ export function Editor({
     c.id,
     c.name + " · " + c.kind,
   ]);
-  const fields: Field[] =
-    kind === "subscriptionCharge"
+  const fields: Field[] = removing
+    ? [
+        ...(removedSubscription?.active
+          ? [
+              {
+                name: "budget",
+                label: "Living budget after deletion",
+                options: [
+                  ["reduce", `Reduce by ${money(budgetReduction)} per month`],
+                  ["keep", "Keep my current living budget"],
+                ] as [string, string][],
+              },
+            ]
+          : []),
+        {
+          name: "confirmation",
+          label: "Type DELETE to confirm",
+          hint: "Past transactions and repayment history are retained.",
+        },
+      ]
+    : kind === "subscriptionCharge"
       ? [
           {
             name: "subscription",
@@ -406,6 +447,22 @@ export function Editor({
     try {
       const v = values;
       const database = db();
+      if (removing) {
+        if (!record) throw new Error("Choose a commitment to remove.");
+        if (values.confirmation !== "DELETE")
+          throw new Error("Type DELETE to confirm removal.");
+        check(
+          await database.rpc("remove_commitment", {
+            p_kind: kind === "removeLoan" ? "loan" : "subscription",
+            p_id: record.id,
+            p_expected_balance:
+              removedLoan?.outstanding_paise ?? removedMonthly,
+            p_expected_budget: s.profile.monthly_living_budget_paise,
+            p_reduce_budget: values.budget === "reduce",
+            p_confirmation: values.confirmation,
+          }),
+        );
+      }
       const amount = () => moneyInput(v.amount, kind === "account");
       if (
         ["entry", "transfer", "payment", "subscriptionCharge"].includes(kind) &&
@@ -588,7 +645,13 @@ export function Editor({
     >
       <div className="dialog-heading">
         <h2 id="editor-title">
-          {entry ? "Edit transaction" : record ? "Edit " + kind : titles[kind]}
+          {removing
+            ? titles[kind]
+            : entry
+              ? "Edit transaction"
+              : record
+                ? "Edit " + kind
+                : titles[kind]}
         </h2>
         <Button
           variant="ghost"
@@ -600,6 +663,35 @@ export function Editor({
           <X size={20} />
         </Button>
       </div>
+      {removing && (
+        <div className="small-note" role="note">
+          <p>
+            Delete {removedLoan?.name ?? removedSubscription?.name} from your
+            current finances? Monthly totals, upcoming deductions, forecasts and
+            fresh simulations recalculate after removal. Saved comparisons keep
+            their original figures.
+          </p>
+          {removedLoan && (
+            <p>
+              Outstanding tracked principal:{" "}
+              {money(removedLoan.outstanding_paise)}.{" "}
+              {removedLoan.card_account_id
+                ? "The credit-card account balance stays unchanged; its debt remains in simulations."
+                : "This liability will no longer count toward net worth or debt simulations."}{" "}
+              Deleting does not pay off a real debt. Record a final repayment
+              first if it was settled.
+            </p>
+          )}
+          {removedSubscription && (
+            <p>
+              Monthly equivalent: {money(removedMonthly)}. Subscriptions are
+              included in living costs. Reducing that budget frees money for
+              future simulations; keeping it leaves your spending allowance
+              unchanged. Bank balances and past expenses stay unchanged.
+            </p>
+          )}
+        </div>
+      )}
       {kind === "loan" && (
         <p className="small-note">
           Tracks an existing liability without posting loan proceeds.
@@ -691,7 +783,11 @@ export function Editor({
                 ))
             }
           >
-            {pending ? "Saving…" : "Save"}
+            {pending
+              ? "Saving…"
+              : removing
+                ? "Delete from my finances"
+                : "Save"}
           </Button>
         </div>
       </form>

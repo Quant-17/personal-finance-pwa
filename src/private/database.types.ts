@@ -343,6 +343,7 @@ export type Database = {
       };
       loans: {
         Row: {
+          removed_at: string | null;
           progress_first_due_on: string | null;
           payments_reported_through: string | null;
           deduction_anchor_on: string | null;
@@ -360,6 +361,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          removed_at?: string | null;
           progress_first_due_on?: string | null;
           payments_reported_through?: string | null;
           deduction_anchor_on?: string | null;
@@ -377,6 +379,7 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          removed_at?: string | null;
           progress_first_due_on?: string | null;
           payments_reported_through?: string | null;
           deduction_anchor_on?: string | null;
@@ -457,6 +460,7 @@ export type Database = {
       };
       subscriptions: {
         Row: {
+          removed_at: string | null;
           account_id: string | null;
           active: boolean;
           amount_paise: number;
@@ -467,6 +471,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          removed_at?: string | null;
           account_id?: string | null;
           active?: boolean;
           amount_paise: number;
@@ -477,6 +482,7 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          removed_at?: string | null;
           account_id?: string | null;
           active?: boolean;
           amount_paise?: number;
@@ -740,6 +746,17 @@ export type Database = {
           p_amount_paise: number;
           p_goal: string;
           p_request_id?: string;
+        };
+        Returns: undefined;
+      };
+      remove_commitment: {
+        Args: {
+          p_kind: string;
+          p_id: string;
+          p_expected_balance: number;
+          p_expected_budget: number;
+          p_reduce_budget: boolean;
+          p_confirmation: string;
         };
         Returns: undefined;
       };

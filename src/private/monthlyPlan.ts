@@ -17,3 +17,16 @@ export function monthlySubscriptions(snapshot: Snapshot) {
     .toDecimalPlaces(0, D.ROUND_HALF_UP);
   return total.lte(MONEY_LIMIT) ? total.toNumber() : null;
 }
+
+// A single plan can annualise above the display-total limit, yet still fits safe integer paise.
+// Removal needs its exact monthly cost to compare the server preview and cap budget release.
+export function subscriptionMonthlyCost(
+  sub: Snapshot["subscriptions"][number],
+) {
+  if (!sub.active) return 0;
+  return new Decimal(sub.amount_paise)
+    .times(sub.cadence === "weekly" ? 52 : 1)
+    .div(sub.cadence === "monthly" ? 1 : 12)
+    .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+    .toNumber();
+}
