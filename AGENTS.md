@@ -63,3 +63,5 @@ On 24 November 2026 IST the owner requested a loan equivalent of the subscriptio
 
 ## Loan/subscription removal · owner request
 On 24 November 2026 IST the owner requested deletion that adjusts overall finances and simulations. Implement the reviewed, history-preserving removal documented in COMMITMENT_REMOVAL.md, including optional living-budget release for active subscriptions. Preserve posted transactions, card balances, frozen comparisons, audit/export/restore links and all existing owner records during testing. Use only synthetic/rolled-back acceptance fixtures. This authorizes the review branch, migration and private release; public demo stays unchanged.
+
+The removal migration is applied as `20261124160920_delete_commitments`; the file was renamed byte-for-byte to its managed timestamp. All 35 hosted synthetic acceptance assertions rolled back successfully, including history-preserving restore and card-debt preservation. No actual owner records were removed. Preserve canonical migration alignment.
