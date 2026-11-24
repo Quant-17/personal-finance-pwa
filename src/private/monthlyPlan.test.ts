@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { monthlySubscriptions } from "./monthlyPlan";
+import { monthlySubscriptions, subscriptionMonthlyCost } from "./monthlyPlan";
 import type { Snapshot } from "./domain";
 const plan = (
   subscriptions: { amount_paise: number; cadence: string; active?: boolean }[],
@@ -40,4 +40,15 @@ it("handles empty and unsafe totals without silently overflowing", () => {
       ]),
     ),
   ).toBeNull();
+});
+
+it("prices a removed plan in integer paise even above the aggregate display limit", () => {
+  const cost = (amount_paise: number, cadence: string, active = true) =>
+    subscriptionMonthlyCost(
+      plan([{ amount_paise, cadence, active }]).subscriptions[0],
+    );
+  expect(cost(1201, "weekly")).toBe(5204);
+  expect(cost(6, "yearly")).toBe(1);
+  expect(cost(10000, "monthly", false)).toBe(0);
+  expect(cost(1_000_000_000_000, "weekly")).toBe(4_333_333_333_333);
 });

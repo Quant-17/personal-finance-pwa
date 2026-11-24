@@ -60,3 +60,6 @@ On 24 November 2026 IST the owner requested a bucket in Subscriptions showing it
 
 ## Monthly loan bucket · owner request
 On 24 November 2026 IST the owner requested a loan equivalent of the subscription bucket. Use the existing owned snapshot's scheduled EMI summary and count only active loans with outstanding principal. Keep quoted-EMI preference, card-plan inclusion and closed/repaid exclusions consistent with Monthly plan. Reuse the shared bucket presentation and preserve all subscription, balance and payment behavior. No database migration or actual owner-data operation is needed.
+
+## Loan/subscription removal · owner request
+On 24 November 2026 IST the owner requested deletion that adjusts overall finances and simulations. Implement the reviewed, history-preserving removal documented in COMMITMENT_REMOVAL.md, including optional living-budget release for active subscriptions. Preserve posted transactions, card balances, frozen comparisons, audit/export/restore links and all existing owner records during testing. Use only synthetic/rolled-back acceptance fixtures. This authorizes the review branch, migration and private release; public demo stays unchanged.

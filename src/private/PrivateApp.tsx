@@ -236,7 +236,7 @@ function Workspace({
     }
   };
   const remove = (
-    table: "budgets" | "savings_goals" | "subscriptions" | "categories",
+    table: "budgets" | "savings_goals" | "categories",
     id: string,
     label: string,
   ) =>
@@ -357,7 +357,12 @@ function Workspace({
           <Button
             variant="ghost"
             disabled={pending}
-            onClick={() => remove("subscriptions", sub.id, sub.name)}
+            onClick={() =>
+              setEditor({
+                kind: "removeSubscription",
+                record: { id: sub.id, values: {} },
+              })
+            }
           >
             Delete
           </Button>
@@ -980,6 +985,18 @@ function Workspace({
                           }
                         >
                           Edit loan
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() =>
+                            setEditor({
+                              kind: "removeLoan",
+                              record: { id: l.id, values: {} },
+                            })
+                          }
+                        >
+                          Delete loan
                         </Button>
                         <Button
                           variant="outline"

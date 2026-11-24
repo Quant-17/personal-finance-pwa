@@ -100,7 +100,10 @@ do $$ declare t text; n bigint; col text; owner_col text; begin
    get diagnostics n=row_count;
    perform pg_temp.assert_true(n=0,'B cannot update A '||t);
   end if;
-  if t in ('categories','subscriptions','budgets','savings_goals') then
+  if t='subscriptions' then
+   perform pg_temp.expect_error(format('delete from public.subscriptions where user_id=%L',current_setting('folio.user_a')),'42501','subscription deletion requires reviewed RPC');
+  end if;
+  if t in ('categories','budgets','savings_goals') then
    execute format('delete from public.%I where user_id=$1',t) using current_setting('folio.user_a')::uuid;
    get diagnostics n=row_count;
    perform pg_temp.assert_true(n=0,'B cannot delete A '||t);

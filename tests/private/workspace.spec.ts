@@ -3501,3 +3501,185 @@ test("iPhone loan bucket uses scheduled EMI totals, excludes closed/repaid loans
     ),
   ).toBe(false);
 });
+
+test("iPhone deleting commitments preserves transactions and refreshes budgets and both simulations", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const loanId = crypto.randomUUID(),
+    subId = crypto.randomUUID();
+  let removedLoan = false,
+    removedSub = false;
+  const removals: Record<string, unknown>[] = [];
+  const current = () => ({
+    ...snapshot(true),
+    profile: {
+      ...snapshot(true).profile,
+      monthly_living_budget_paise: removedSub ? 1990000 : 2000000,
+    },
+    loans: removedLoan
+      ? []
+      : [
+          {
+            id: loanId,
+            name: "Synthetic removable loan",
+            principal_paise: 100000,
+            apr: 12,
+            tenure_months: 12,
+            start_date: "2026-01-01",
+            status: "active",
+            emi_paise: 10000,
+            outstanding_paise: 80000,
+            card_account_id: null,
+          },
+        ],
+    subscriptions: removedSub
+      ? []
+      : [
+          {
+            id: subId,
+            name: "Synthetic removable plan",
+            amount_paise: 10000,
+            cadence: "monthly",
+            next_due_on: "2026-12-08",
+            active: true,
+            account_id: null,
+          },
+        ],
+    summary: {
+      ...snapshot(true).summary,
+      existing_emi_paise: removedLoan ? "0" : "10000",
+      net_worth_paise: removedLoan ? "2000000" : "1920000",
+    },
+  });
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({ json: current() }),
+  );
+  await page.route("**/rest/v1/rpc/remove_commitment", (r) => {
+    const v = r.request().postDataJSON();
+    removals.push(v);
+    if (v.p_kind === "loan") removedLoan = true;
+    else removedSub = true;
+    return r.fulfill({ json: null });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await navigate(page, "Loans & subscriptions");
+  await page.getByRole("button", { name: "Delete loan", exact: true }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("Outstanding tracked principal: ₹800.00");
+  await expect(sheet).toContainText("Deleting does not pay off a real debt");
+  await sheet.getByLabel("Type DELETE to confirm").fill("delete");
+  await sheet.getByRole("button", { name: "Delete from my finances" }).click();
+  await expect(
+    sheet.getByText("Type DELETE to confirm removal.", { exact: true }),
+  ).toBeVisible();
+  expect(removals).toHaveLength(0);
+  await sheet.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await sheet.getByRole("button", { name: "Delete from my finances" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Monthly EMI bucket" }),
+  ).toContainText("₹0.00");
+  expect(removals[0]).toMatchObject({
+    p_kind: "loan",
+    p_id: loanId,
+    p_expected_balance: 80000,
+    p_confirmation: "DELETE",
+  });
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(sheet).toContainText(
+    "Saved comparisons keep their original figures",
+  );
+  await expect(sheet.getByLabel("Living budget after deletion")).toHaveValue(
+    "reduce",
+  );
+  await sheet.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await sheet.getByRole("button", { name: "Delete from my finances" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Monthly subscription bucket" }),
+  ).toContainText("₹0.00");
+  expect(removals[1]).toMatchObject({
+    p_kind: "subscription",
+    p_id: subId,
+    p_expected_balance: 10000,
+    p_expected_budget: 2000000,
+    p_reduce_budget: true,
+  });
+  await navigate(page, "Monthly plan");
+  await expect(
+    page.getByRole("heading", { name: "Your monthly overview" }).locator(".."),
+  ).toContainText("Living budget ₹19,900.00");
+  await navigate(page, "Debt repayment simulator");
+  await expect(
+    page.getByLabel("Scenario living costs including subscriptions (₹)"),
+  ).toHaveValue("19900.00");
+  await expect(
+    page.getByText("Synthetic removable loan", { exact: true }),
+  ).toHaveCount(0);
+  await navigate(page, "Buy simulator");
+  await expect(
+    page.getByText("₹30,100 available.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Synthetic removable loan", { exact: true }),
+  ).toHaveCount(0);
+  expect(
+    calls.filter(
+      (c) => /record_|delete_entry|saved_simulations/.test(c.path) && c.body,
+    ),
+  ).toHaveLength(0);
+});
+
+test("iPhone deletion can be cancelled and keeps the review open on a stale-data error", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const subId = crypto.randomUUID();
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({
+      json: {
+        ...snapshot(true),
+        subscriptions: [
+          {
+            id: subId,
+            name: "Synthetic cancellable plan",
+            amount_paise: 1000,
+            cadence: "monthly",
+            next_due_on: "2026-12-08",
+            active: true,
+            account_id: null,
+          },
+        ],
+      },
+    }),
+  );
+  let attempts = 0;
+  await page.route("**/rest/v1/rpc/remove_commitment", (r) => {
+    attempts++;
+    expect(r.request().postDataJSON().p_reduce_budget).toBe(false);
+    return r.fulfill({
+      status: 400,
+      json: {
+        message:
+          "Your living budget changed. Close this form, refresh and review again.",
+      },
+    });
+  });
+  await login(page);
+  await navigate(page, "Loans & subscriptions");
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Close editor" }).click();
+  expect(attempts).toBe(0);
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Living budget after deletion").selectOption("keep");
+  await sheet.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await sheet.getByRole("button", { name: "Delete from my finances" }).click();
+  await expect(sheet).toContainText("Your living budget changed");
+  await expect(sheet.getByLabel("Type DELETE to confirm")).toHaveValue(
+    "DELETE",
+  );
+  expect(attempts).toBe(1);
+});

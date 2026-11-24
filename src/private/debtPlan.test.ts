@@ -205,6 +205,16 @@ describe("complete debt source coverage", () => {
     expect(debts.find((d) => d.id === "card")?.apr).toBeNull();
     expect(debts.find((d) => d.id === "bank")?.minimum).toBeNull();
   });
+  it("reclassifies a removed card EMI as card debt without forgiving its account balance", () => {
+    const { debts, issues } = debtSources({ ...snapshot, loans: [] });
+    expect(issues).toEqual([]);
+    expect(debts.map((d) => [d.id, d.balance])).toEqual([
+      ["card", 100000],
+      ["bank", 5000],
+    ]);
+    expect(debts[0].apr).toBeNull();
+    expect(debts[0].minimum).toBeNull();
+  });
   it("blocks inconsistent linked-card balances instead of double counting", () => {
     expect(
       debtSources({

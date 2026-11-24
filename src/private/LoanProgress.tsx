@@ -28,7 +28,7 @@ export function LoanProgress({
   onRefresh: () => void;
 }) {
   const [selected, setSelected] = useState(s.loans[0]?.id ?? "");
-  const loan = s.loans.find((l) => l.id === selected);
+  const loan = s.loans.find((l) => l.id === selected) ?? s.loans[0];
   const [document, setDocument] = useState<LoanDocumentTerms | null>(null),
     [loaded, setLoaded] = useState("");
   const [first, setFirst] = useState(""),
@@ -108,7 +108,7 @@ export function LoanProgress({
         <label>
           Progress loan
           <select
-            value={selected}
+            value={loan.id}
             disabled={pending}
             onChange={(e) => {
               setSelected(e.target.value);
