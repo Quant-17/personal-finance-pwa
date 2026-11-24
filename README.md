@@ -80,3 +80,5 @@ Published private **v0.3.8-rc.1**: the adaptive **Debt repayment simulator** com
 The private app opens and returns from the background on **Overview**. Open **Sections** in the compact header to choose another page from a vertical dropdown. Selection, Escape or a click outside closes the menu. Appearance and sign-out remain in the header.
 
 The iPhone design benchmark, comparison and accessibility/testing limits are documented in [IOS_DESIGN.md](IOS_DESIGN.md). `npm run test:ios` runs selected private flows in WebKit with an iPhone-sized touch viewport; install WebKit through Playwright first.
+
+Subscriptions includes a monthly subscription bucket in Loans & subscriptions and Monthly plan. It totals active plans using the shared monthly-equivalent calculation (yearly ÷ 12; weekly × 52 ÷ 12), excludes paused plans and rounds the aggregate once to paise. This is an estimated recurring commitment; actual payments remain in Transactions.

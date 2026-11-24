@@ -3335,3 +3335,80 @@ test("enlarged iPhone text and supported large amounts remain accessible without
     fullPage: true,
   });
 });
+
+test("iPhone subscription bucket totals active monthly equivalents and refreshes when a plan is paused", async ({
+  page,
+}) => {
+  const calls = await mock(page, true);
+  const subs = [
+    {
+      name: "Fixture monthly",
+      amount_paise: 10029,
+      cadence: "monthly",
+      active: true,
+    },
+    {
+      name: "Fixture yearly",
+      amount_paise: 12001,
+      cadence: "yearly",
+      active: true,
+    },
+    {
+      name: "Fixture weekly",
+      amount_paise: 100,
+      cadence: "weekly",
+      active: true,
+    },
+    {
+      name: "Fixture paused",
+      amount_paise: 999999,
+      cadence: "monthly",
+      active: false,
+    },
+  ].map((s) => ({
+    ...s,
+    id: crypto.randomUUID(),
+    account_id: accountId,
+    next_due_on: "2026-12-01",
+  }));
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({ json: { ...snapshot(true), subscriptions: subs } }),
+  );
+  await page.route("**/rest/v1/subscriptions?*", (r) => {
+    const id = new URL(r.request().url()).searchParams
+      .get("id")
+      ?.replace("eq.", "");
+    const sub = subs.find((s) => s.id === id);
+    if (sub) sub.active = r.request().postDataJSON().active;
+    return r.fulfill({ json: null });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await navigate(page, "Loans & subscriptions");
+  const bucket = page.getByRole("region", {
+    name: "Monthly subscription bucket",
+  });
+  await expect(bucket).toContainText("₹114.62");
+  await expect(bucket).toContainText("3 active subscriptions");
+  await expect(bucket).toContainText("per month · estimated");
+  await bucket.screenshot({ path: "/tmp/folio-subscription-bucket.png" });
+  await page
+    .locator(".ledger-row")
+    .filter({ hasText: "Fixture monthly" })
+    .getByRole("button", { name: "Pause", exact: true })
+    .click();
+  await expect(bucket).toContainText("₹14.33");
+  await expect(bucket).toContainText("2 active subscriptions");
+  await navigate(page, "Monthly plan");
+  await expect(bucket).toContainText("₹14.33");
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  expect(
+    calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+});
