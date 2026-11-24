@@ -45,6 +45,7 @@ import { RecurringDeductions } from "./RecurringDeductions";
 import { LoanProgress } from "./LoanProgress";
 import { FinancialInsights } from "./FinancialInsights";
 import { MonthlySummary } from "./MonthlySummary";
+import { MonthlyCommitmentBucket } from "./MonthlyCommitmentBucket";
 import { monthlySubscriptions } from "./monthlyPlan";
 import { CsvImport } from "./CsvImport";
 import "./private.css";
@@ -267,44 +268,40 @@ function Workspace({
   const subscriptionMonthly = s ? monthlySubscriptions(s) : null;
   const activeSubscriptions =
     s?.subscriptions.filter((sub) => sub.active).length ?? 0;
+  const activeLoans =
+    s?.loans.filter(
+      (loan) => loan.status === "active" && loan.outstanding_paise > 0,
+    ).length ?? 0;
+  const loanBucket = s && (
+    <MonthlyCommitmentBucket
+      title="Monthly EMI bucket"
+      amountPaise={s.summary.existing_emi_paise}
+      count={activeLoans}
+      item="loan"
+      icon={CalendarClock}
+      headingLevel={2}
+      periodLabel="per month · scheduled"
+    >
+      Uses quoted EMIs where saved, otherwise estimates. Closed and fully repaid
+      loans are excluded. Actual repayments stay in Transactions.
+    </MonthlyCommitmentBucket>
+  );
   const subscriptionsPanel = s && (
     <section className="card private-panel">
       <div className="panel-heading">
         <h2>Subscriptions</h2>
         {add("subscription", "Add subscription")}
       </div>
-      <section
-        className="subscription-bucket"
-        aria-label="Monthly subscription bucket"
+      <MonthlyCommitmentBucket
+        title="Monthly subscription bucket"
+        amountPaise={subscriptionMonthly}
+        count={activeSubscriptions}
+        item="subscription"
+        icon={Wallet}
       >
-        <div className="subscription-bucket-heading">
-          <Wallet size={22} aria-hidden="true" />
-          <div>
-            <h3>Monthly subscription bucket</h3>
-            <span>
-              {activeSubscriptions} active subscription
-              {activeSubscriptions === 1 ? "" : "s"}
-            </span>
-          </div>
-        </div>
-        <div className="subscription-bucket-value">
-          <strong
-            data-long={
-              subscriptionMonthly !== null &&
-              money(subscriptionMonthly).length > 13
-            }
-          >
-            {subscriptionMonthly === null
-              ? "Over supported range"
-              : money(subscriptionMonthly)}
-          </strong>
-          <span>per month · estimated</span>
-        </div>
-        <p>
-          Active plans only. Yearly and weekly charges are averaged to a monthly
-          equivalent; paused plans are excluded.
-        </p>
-      </section>
+        Active plans only. Yearly and weekly charges are averaged to a monthly
+        equivalent; paused plans are excluded.
+      </MonthlyCommitmentBucket>
       <p>
         Planned recurring charges stay inside your living budget. Statement
         imports record actual expenses once; review recurring charges in your
@@ -908,6 +905,7 @@ function Workspace({
               )}
               {page === "commitments" && (
                 <>
+                  {loanBucket}
                   <div className="page-actions">
                     {add("loan", "Track loan")}
                     <Button
@@ -1091,6 +1089,7 @@ function Workspace({
               )}
               {page === "settings" && (
                 <>
+                  {loanBucket}
                   <MonthlySummary snapshot={s} />
                   <RecurringDeductions
                     snapshot={s}

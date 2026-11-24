@@ -3412,3 +3412,92 @@ test("iPhone subscription bucket totals active monthly equivalents and refreshes
     ),
   ).toBe(false);
 });
+
+test("iPhone loan bucket uses scheduled EMI totals, excludes closed/repaid loans and updates after closing tracking", async ({
+  page,
+}) => {
+  const calls = await mock(page, true),
+    card = crypto.randomUUID();
+  const loan = (name: string, extra: Record<string, unknown> = {}) => ({
+    id: crypto.randomUUID(),
+    name,
+    principal_paise: 500000,
+    apr: 12,
+    tenure_months: 12,
+    start_date: "2026-01-01",
+    status: "active",
+    emi_paise: 1000,
+    outstanding_paise: 500000,
+    reported_emi_paise: null,
+    card_account_id: null,
+    has_document: false,
+    ...extra,
+  });
+  const loans = [
+    loan("Fixture quoted loan", { reported_emi_paise: 2001 }),
+    loan("Fixture calculated loan", { emi_paise: 5000 }),
+    loan("Fixture card plan", {
+      reported_emi_paise: 2950,
+      card_account_id: card,
+    }),
+    loan("Fixture closed loan", { status: "closed", emi_paise: 99999 }),
+    loan("Fixture repaid loan", { outstanding_paise: 0, emi_paise: 99999 }),
+  ];
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({
+      json: {
+        ...snapshot(true),
+        accounts: [
+          ...snapshot(true).accounts,
+          {
+            ...snapshot(true).accounts[0],
+            id: card,
+            type: "credit_card",
+            name: "Fixture credit card",
+            balance_paise: "-500000",
+          },
+        ],
+        loans,
+        summary: {
+          ...snapshot(true).summary,
+          existing_emi_paise: loans[0].status === "active" ? "9951" : "7950",
+        },
+      },
+    }),
+  );
+  await page.route("**/rest/v1/loans?*", (r) => {
+    const id = new URL(r.request().url()).searchParams
+      .get("id")
+      ?.replace("eq.", "");
+    const l = loans.find((l) => l.id === id);
+    if (l) l.status = r.request().postDataJSON().status;
+    return r.fulfill({ json: null });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await navigate(page, "Loans & subscriptions");
+  const bucket = page.getByRole("region", { name: "Monthly EMI bucket" });
+  await expect(bucket).toContainText("₹99.51");
+  await expect(bucket).toContainText("3 active loans");
+  await expect(bucket).toContainText("per month · scheduled");
+  await bucket.screenshot({ path: "/tmp/folio-loan-bucket.png" });
+  await page
+    .locator(".ledger-row")
+    .filter({ hasText: "Fixture quoted loan" })
+    .getByRole("button", { name: "Close tracking", exact: true })
+    .click();
+  await expect(bucket).toContainText("₹79.50");
+  await expect(bucket).toContainText("2 active loans");
+  await navigate(page, "Monthly plan");
+  await expect(bucket).toContainText("₹79.50");
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  expect(
+    calls.some((c) =>
+      /record_entry|record_transfer|record_loan_payment/.test(c.path),
+    ),
+  ).toBe(false);
+});
