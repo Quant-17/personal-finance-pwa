@@ -150,46 +150,46 @@ export function Simulator({
             />
           </span>
         </label>
-        <label>
-          Payment method
-          <select
-            value={method}
-            onChange={(e) => update("method", e.target.value)}
-          >
-            <option value="emi">Monthly EMI</option>
-            <option value="cash">Pay in full</option>
-            <option value="delay">Save & buy later</option>
-            <option value="skip">Skip for now</option>
-          </select>
-        </label>
-        <label>
-          Annual interest (%)
-          <input
-            type="number"
-            min="0"
-            max="60"
-            step="0.1"
-            value={apr}
-            onChange={(e) => update("apr", e.target.value)}
-          />
-        </label>
-        <label>
-          EMI tenure (months)
-          <input
-            type="number"
-            min="1"
-            max="120"
-            step="1"
-            value={months}
-            onChange={(e) => update("months", e.target.value)}
-          />
-        </label>
       </div>
       {!valid && (
         <p role="alert" id="simulator-error" className="error">
           Enter a price from ₹0.01 to ₹1 crore, APR from 0–60%, and a whole
           tenure from 1–120 months.
         </p>
+      )}
+      {financialContext && (
+        <section className="decision-brief" aria-label="Purchase summary">
+          <h3>Your financial position</h3>
+          <dl>
+            <div>
+              <dt>Monthly surplus after EMIs</dt>
+              <dd>{formatExactMoney(freeCash)}</dd>
+            </div>
+            <div>
+              <dt>Cash above your reserve</dt>
+              <dd>
+                {formatExactMoney(
+                  Math.max(0, context.liquidCash - context.reserve),
+                )}
+              </dd>
+            </div>
+          </dl>
+          {loan && (
+            <p>
+              {freeCash < 0
+                ? `Wait for now. Your monthly plan already has a ${formatExactMoney(-freeCash)} shortfall.`
+                : context.liquidCash - context.reserve >= pricePaise!
+                  ? `Paying in full fits your cash balance and keeps your reserve covered. It leaves ${formatExactMoney(context.liquidCash - context.reserve - pricePaise!)} above your reserve.`
+                  : context.liquidCash < context.reserve
+                    ? `Prioritise your reserve. You need another ${formatExactMoney(context.reserve - context.liquidCash)} to reach your target before buying.`
+                    : savedMonthly <= freeCash
+                      ? `Saving ${formatExactMoney(savedMonthly)} a month for ${delay} months fits your plan and avoids borrowing.`
+                      : loan.emiPaise <= freeCash
+                        ? `If you need it now, an EMI of ${formatExactMoney(loan.emiPaise)} fits your surplus. Estimated interest totals ${formatExactMoney(loan.interestPaise)}.`
+                        : "Skip for now or extend the saving period. Both the EMI and the monthly saving target exceed your surplus."}
+            </p>
+          )}
+        </section>
       )}
       <div className="scenario-grid">
         {choices.map((choice) => (
@@ -242,6 +242,42 @@ export function Simulator({
             </>
           )}
         </p>
+      </div>
+      <div className="simulator-inputs">
+        <label>
+          Payment method
+          <select
+            value={method}
+            onChange={(e) => update("method", e.target.value)}
+          >
+            <option value="emi">Monthly EMI</option>
+            <option value="cash">Pay in full</option>
+            <option value="delay">Save & buy later</option>
+            <option value="skip">Skip for now</option>
+          </select>
+        </label>
+        <label>
+          Annual interest (%)
+          <input
+            type="number"
+            min="0"
+            max="60"
+            step="0.1"
+            value={apr}
+            onChange={(e) => update("apr", e.target.value)}
+          />
+        </label>
+        <label>
+          EMI tenure (months)
+          <input
+            type="number"
+            min="1"
+            max="120"
+            step="1"
+            value={months}
+            onChange={(e) => update("months", e.target.value)}
+          />
+        </label>
       </div>
       {!compact && (
         <div className="assumptions">
