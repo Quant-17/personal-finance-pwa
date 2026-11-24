@@ -53,11 +53,13 @@ const titles: Record<EditorKind, string> = {
   subscriptionCharge: "Record subscription deduction",
 };
 export function Editor({
+  recent = [],
   intent,
   snapshot: s,
   onClose,
   onSaved,
 }: {
+  recent?: Entry[];
   intent: EditIntent;
   snapshot: Snapshot;
   onClose: () => void;
@@ -165,10 +167,21 @@ export function Editor({
         : kind === "entry"
           ? [
               {
+                name: "amount",
+                label: "Amount (₹)",
+                value: entry ? moneyToInput(Math.abs(entry.amount_paise)) : "",
+              },
+              {
                 name: "account",
                 label: "Account",
                 options: accounts,
-                value: entry?.account_id,
+                value:
+                  entry?.account_id ??
+                  recent.find(
+                    (e) =>
+                      e.kind === "expense" &&
+                      accounts.some(([id]) => id === e.account_id),
+                  )?.account_id,
               },
               {
                 name: "kind",
@@ -184,11 +197,6 @@ export function Editor({
                 label: "Category (match transaction type)",
                 options: categoryOptions,
                 value: entry?.category_id ?? undefined,
-              },
-              {
-                name: "amount",
-                label: "Amount (₹)",
-                value: entry ? moneyToInput(Math.abs(entry.amount_paise)) : "",
               },
               {
                 name: "date",
@@ -276,6 +284,13 @@ export function Editor({
                   ? [
                       { name: "name", label: "Subscription name" },
                       { name: "amount", label: "Charge (₹)" },
+                      {
+                        name: "windowStart",
+                        label: "Manual payment window starts on day",
+                        type: "number",
+                        optional: true,
+                        hint: "For a monthly bill you pay yourself, enter its first payment day and use the due date below as the deadline. Leave blank for a fixed charge date.",
+                      },
                       {
                         name: "cadence",
                         label: "Repeats",
@@ -549,11 +564,23 @@ export function Editor({
           }),
         );
       if (kind === "subscription") {
+        const start = v.windowStart ? Number(v.windowStart) : null;
+        if (
+          start !== null &&
+          (v.cadence !== "monthly" ||
+            !Number.isInteger(start) ||
+            start < 1 ||
+            start > Number(v.date.slice(-2)))
+        )
+          throw new Error(
+            "Choose a monthly payment window starting on or before the deadline.",
+          );
         const values = {
           name: v.name.trim(),
           amount_paise: amount(),
           cadence: v.cadence,
           next_due_on: v.date,
+          payment_window_start: start,
         };
         check(
           await (record
@@ -722,6 +749,32 @@ export function Editor({
         </p>
       )}
       <form className="auth-form" onSubmit={(event) => void submit(event)}>
+        {kind === "entry" && !entry && (
+          <div className="page-actions" aria-label="Recent categories">
+            {Array.from(
+              new Set(
+                recent
+                  .filter((e) => e.kind === values.kind && e.category_id)
+                  .map((e) => e.category_id!),
+              ),
+            )
+              .slice(0, 3)
+              .map((id) => (
+                <Button
+                  key={id}
+                  type="button"
+                  variant={id === values.category ? "default" : "outline"}
+                  aria-pressed={id === values.category}
+                  onClick={() => {
+                    setValues({ ...values, category: id });
+                    request.current = crypto.randomUUID();
+                  }}
+                >
+                  {s.categories.find((c) => c.id === id)?.name}
+                </Button>
+              ))}
+          </div>
+        )}
         {fields.map((field) => (
           <label key={field.name}>
             {field.label}

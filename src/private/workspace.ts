@@ -1,3 +1,4 @@
+import { recurringDate } from "./recurring";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "./client";
 import { parseTransactions, snapshotSchema } from "./domain";
@@ -9,7 +10,11 @@ export const db = () => {
 export function check(result: { error: { message: string } | null }) {
   if (result.error) throw new Error(result.error.message);
 }
-export function useWorkspace() {
+export function useWorkspace(
+  account?: string,
+  category?: string,
+  month?: string,
+) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [page, setPage] = useState(0);
@@ -47,6 +52,15 @@ export function useWorkspace() {
         let ledgerQuery = db()
           .from("transactions")
           .select("*", { count: "exact" });
+        if (account) ledgerQuery = ledgerQuery.eq("account_id", account);
+        if (category)
+          ledgerQuery = ledgerQuery
+            .eq("category_id", category)
+            .eq("kind", "expense");
+        if (month)
+          ledgerQuery = ledgerQuery
+            .gte("occurred_on", month + "-01")
+            .lt("occurred_on", recurringDate(month + "-01", 1));
         if (parsed.profile.tracking_start_date && !includeEarlier)
           ledgerQuery = ledgerQuery.gte(
             "occurred_on",
@@ -84,7 +98,7 @@ export function useWorkspace() {
       active = false;
       controller.abort();
     };
-  }, [revision, page, includeEarlier]);
+  }, [revision, page, includeEarlier, account, category, month]);
   return {
     snapshot,
     entries,

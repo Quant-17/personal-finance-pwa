@@ -243,42 +243,47 @@ export function Simulator({
           )}
         </p>
       </div>
-      <div className="simulator-inputs">
-        <label>
-          Payment method
-          <select
-            value={method}
-            onChange={(e) => update("method", e.target.value)}
-          >
-            <option value="emi">Monthly EMI</option>
-            <option value="cash">Pay in full</option>
-            <option value="delay">Save & buy later</option>
-            <option value="skip">Skip for now</option>
-          </select>
-        </label>
-        <label>
-          Annual interest (%)
-          <input
-            type="number"
-            min="0"
-            max="60"
-            step="0.1"
-            value={apr}
-            onChange={(e) => update("apr", e.target.value)}
-          />
-        </label>
-        <label>
-          EMI tenure (months)
-          <input
-            type="number"
-            min="1"
-            max="120"
-            step="1"
-            value={months}
-            onChange={(e) => update("months", e.target.value)}
-          />
-        </label>
-      </div>
+      <details open={financialContext ? undefined : true}>
+        <summary>Adjust purchase assumptions</summary>
+        <div className="simulator-inputs">
+          {!financialContext && (
+            <label>
+              Payment method
+              <select
+                value={method}
+                onChange={(e) => update("method", e.target.value)}
+              >
+                <option value="emi">Monthly EMI</option>
+                <option value="cash">Pay in full</option>
+                <option value="delay">Save & buy later</option>
+                <option value="skip">Skip for now</option>
+              </select>
+            </label>
+          )}
+          <label>
+            Annual interest (%)
+            <input
+              type="number"
+              min="0"
+              max="60"
+              step="0.1"
+              value={apr}
+              onChange={(e) => update("apr", e.target.value)}
+            />
+          </label>
+          <label>
+            EMI tenure (months)
+            <input
+              type="number"
+              min="1"
+              max="120"
+              step="1"
+              value={months}
+              onChange={(e) => update("months", e.target.value)}
+            />
+          </label>
+        </div>
+      </details>
       {!compact && (
         <div className="assumptions">
           <div>

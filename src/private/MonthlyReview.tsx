@@ -7,11 +7,21 @@ import { recurringDate } from "./recurring";
 import { db, check } from "./workspace";
 import { monthReportSchema } from "./workflowSchemas";
 import type { AccountReport, MonthReport } from "./workflowSchemas";
-export function MonthlyReview({ snapshot: s }: { snapshot: Snapshot }) {
+export function MonthlyReview({
+  snapshot: s,
+  initial,
+  onReconciled,
+}: {
+  snapshot: Snapshot;
+  initial?: { account: string; month: string } | null;
+  onReconciled?: (account: string, month: string) => void;
+}) {
   const [month, setMonth] = useState(
-      recurringDate(indiaMonth(), -1).slice(0, 7),
+      initial?.month ?? recurringDate(indiaMonth(), -1).slice(0, 7),
     ),
-    [account, setAccount] = useState(s.accounts[0]?.id ?? "");
+    [account, setAccount] = useState(
+      initial?.account ?? s.accounts[0]?.id ?? "",
+    );
   const [report, setReport] = useState<MonthReport | null>(null),
     [accountReport, setAccountReport] = useState<AccountReport | null>(null);
   const [opening, setOpening] = useState(""),
@@ -88,6 +98,7 @@ export function MonthlyReview({ snapshot: s }: { snapshot: Snapshot }) {
             ? "Account reconciled. No balances were changed."
             : "Month marked reviewed. Later edits will show this review as stale.",
         );
+        if (kind === "account") onReconciled?.(account, month);
         setConfirmed(false);
         setMonthConfirmed(false);
         setReload((n) => n + 1);

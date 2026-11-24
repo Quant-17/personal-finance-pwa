@@ -244,6 +244,11 @@ export function DebtSimulator({
         : p.months !== null
           ? monthLabel(recurringDate(scenario.start + "-01", p.months - 1))
           : "Not cleared in model";
+  const firstExtra =
+    recommended?.lumpPayments[0] ??
+    recommended?.rows
+      .find((r) => r.payments.some((p) => p.extra > 0))
+      ?.payments.find((p) => p.extra > 0);
   const graph = plans
     ? Array.from(
         { length: Math.max(...plans.map((p) => p.rows.length)) + 1 },
@@ -293,6 +298,13 @@ export function DebtSimulator({
                   ? `${labels[recommended.strategy]}. ${recommended.strategy === "minimum" ? "Make the scheduled minimum payments." : `Cover minimum payments and direct up to ${money(cap.extra)} extra per month toward ${recommended.strategy === "avalanche" ? "the highest-rate eligible debt" : "the smallest eligible balance"}.${cap.lump ? ` Apply ${money(cap.lump)} upfront.` : ""}`} Estimated payoff: ${dateFor(recommended)}. Modelled interest and fees total ${money(recommended.interest + recommended.fees)}.`
                   : "The current budget and terms do not produce a complete payoff within 360 months. Review your minimums and available surplus below.")}
           </p>
+          {firstExtra && (
+            <p>
+              First extra payment ·{" "}
+              {source.debts.find((d) => d.id === firstExtra.id)?.name} ·{" "}
+              {money(firstExtra.extra)}
+            </p>
+          )}
         </section>
         <p className="small-note">
           Balances update after saved transactions/imports, when you return to

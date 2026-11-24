@@ -14,6 +14,12 @@ export type Database = {
   };
   public: {
     Tables: {
+      account_reconciliations: {
+        Row: { account_id: string; month: string; user_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       audit_events: {
         Row: {
           id: string;
@@ -460,6 +466,7 @@ export type Database = {
       };
       subscriptions: {
         Row: {
+          payment_window_start: number | null;
           removed_at: string | null;
           account_id: string | null;
           active: boolean;
@@ -471,6 +478,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          payment_window_start?: number | null;
           removed_at?: string | null;
           account_id?: string | null;
           active?: boolean;
@@ -482,6 +490,7 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          payment_window_start?: number | null;
           removed_at?: string | null;
           account_id?: string | null;
           active?: boolean;

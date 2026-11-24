@@ -182,20 +182,23 @@ export function Investments({
                   </div>
                   <div className="investment-value">
                     <strong>{money(h.value_paise)}</strong>
-                    <small>Reported {displayDate(h.valued_on)}</small>
+                    <small>Valued on {displayDate(h.valued_on)}</small>
                   </div>
                 </div>
-                <div className="investment-holding-meta">
-                  <span>
-                    Your recorded contributions <b>{money(h.self_paise)}</b>
-                  </span>
-                  <span>
-                    Employer <b>{money(h.employer_paise)}</b>
-                  </span>
-                  <span>
-                    Withdrawals <b>{money(h.withdrawn_paise)}</b>
-                  </span>
-                </div>
+                <details>
+                  <summary>Contribution breakdown</summary>
+                  <div className="investment-holding-meta">
+                    <span>
+                      Your recorded contributions <b>{money(h.self_paise)}</b>
+                    </span>
+                    <span>
+                      Employer <b>{money(h.employer_paise)}</b>
+                    </span>
+                    <span>
+                      Withdrawals <b>{money(h.withdrawn_paise)}</b>
+                    </span>
+                  </div>
+                </details>
                 {h.locked_until && (
                   <p className="investment-hint">
                     Lock-in / target access date: {displayDate(h.locked_until)}{" "}

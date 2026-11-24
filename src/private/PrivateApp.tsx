@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
+import { PaymentAgenda } from "./PaymentAgenda";
+import { deductionsInMonth, recurringDate } from "./recurring";
 import { MonthlyReview } from "./MonthlyReview";
 import { CashForecast } from "./CashForecast";
 import { StatementTransfers } from "./StatementTransfers";
@@ -36,7 +38,7 @@ import { AuthGate } from "./AuthGate";
 import { Editor } from "./Editor";
 import type { EditIntent, EditorKind } from "./Editor";
 import { useWorkspace, db, check } from "./workspace";
-import { displayDate, moneyToInput, safeTotal } from "./domain";
+import { indiaDate, displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
 import { Investments } from "./Investments";
@@ -141,6 +143,16 @@ function Workspace({
   theme: string;
   toggleTheme: () => void;
 }) {
+  const [filter, setFilter] = useState<{
+    account?: string;
+    category?: string;
+    month?: string;
+  }>({});
+  const showLedger = (next: typeof filter) => {
+    setFilter(next);
+    setLedgerPage(0);
+    window.location.assign("#activity");
+  };
   const {
     snapshot: s,
     entries,
@@ -152,7 +164,7 @@ function Workspace({
     refresh,
     includeEarlier,
     setIncludeEarlier,
-  } = useWorkspace();
+  } = useWorkspace(filter.account, filter.category, filter.month);
   const { page, setPage } = useContext(Navigation)!;
   const openingPage = useRef(page);
   const sectionMenu = useRef<HTMLDetailsElement>(null);
@@ -160,6 +172,49 @@ function Workspace({
   const [documentReview, setDocumentReview] = useState<{
     id: string | null;
   } | null>(null);
+  const checkpointKey = "folio-review-route-" + user.id;
+  const [checkpoint, updateCheckpoint] = useState<{
+    account: string;
+    month: string;
+  } | null>(() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(checkpointKey) ?? "null");
+      return v &&
+        typeof v.account === "string" &&
+        /^\d{4}-(0[1-9]|1[0-2])$/.test(v.month)
+        ? v
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  function setCheckpoint(next: typeof checkpoint) {
+    updateCheckpoint(next);
+    try {
+      if (next) sessionStorage.setItem(checkpointKey, JSON.stringify(next));
+      else sessionStorage.removeItem(checkpointKey);
+    } catch {
+      /* Session-only navigation works with storage disabled. */
+    }
+  }
+  const [asOf, setAsOf] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!s) return;
+    const c = new AbortController();
+    void (async () => {
+      const r = await db()
+        .from("account_reconciliations")
+        .select("account_id,month")
+        .order("month", { ascending: false })
+        .abortSignal(c.signal);
+      if (!c.signal.aborted && !r.error) {
+        const dates: Record<string, string> = {};
+        for (const x of r.data ?? []) dates[x.account_id] ??= x.month;
+        setAsOf(dates);
+      }
+    })();
+    return () => c.abort();
+  }, [s]);
   const [loanNotice, setLoanNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [importNotice, setImportNotice] = useState("");
@@ -284,6 +339,16 @@ function Workspace({
     >
       Uses quoted EMIs where saved, otherwise estimates. Closed and fully repaid
       loans are excluded. Actual repayments stay in Transactions.
+      <details>
+        <summary>View included EMIs</summary>
+        {s.loans
+          .filter((l) => l.status === "active" && l.outstanding_paise > 0)
+          .map((l) => (
+            <div key={l.id}>
+              {l.name} · {money(l.reported_emi_paise ?? l.emi_paise)}
+            </div>
+          ))}
+      </details>
     </MonthlyCommitmentBucket>
   );
   const subscriptionsPanel = s && (
@@ -319,53 +384,57 @@ function Workspace({
             </span>
           </div>
           <strong>{money(sub.amount_paise)}</strong>
-          <Button
-            variant="ghost"
-            onClick={() =>
-              setEditor({
-                kind: "subscription",
-                record: {
-                  id: sub.id,
-                  values: {
-                    name: sub.name,
-                    amount: moneyToInput(sub.amount_paise),
-                    cadence: sub.cadence,
-                    date: sub.next_due_on,
+          <details>
+            <summary>Manage {sub.name}</summary>
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setEditor({
+                  kind: "subscription",
+                  record: {
+                    id: sub.id,
+                    values: {
+                      name: sub.name,
+                      amount: moneyToInput(sub.amount_paise),
+                      cadence: sub.cadence,
+                      windowStart: sub.payment_window_start?.toString() ?? "",
+                      date: sub.next_due_on,
+                    },
                   },
-                },
-              })
-            }
-          >
-            Edit subscription
-          </Button>
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() =>
-              void action(async () => {
-                check(
-                  await db()
-                    .from("subscriptions")
-                    .update({ active: !sub.active })
-                    .eq("id", sub.id),
-                );
-              })
-            }
-          >
-            {sub.active ? "Pause" : "Resume"}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={pending}
-            onClick={() =>
-              setEditor({
-                kind: "removeSubscription",
-                record: { id: sub.id, values: {} },
-              })
-            }
-          >
-            Delete
-          </Button>
+                })
+              }
+            >
+              Edit subscription
+            </Button>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                void action(async () => {
+                  check(
+                    await db()
+                      .from("subscriptions")
+                      .update({ active: !sub.active })
+                      .eq("id", sub.id),
+                  );
+                })
+              }
+            >
+              {sub.active ? "Pause" : "Resume"}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={pending}
+              onClick={() =>
+                setEditor({
+                  kind: "removeSubscription",
+                  record: { id: sub.id, values: {} },
+                })
+              }
+            >
+              Delete
+            </Button>
+          </details>
         </article>
       ))}
       {!s.subscriptions.length && empty("No recurring subscriptions.")}
@@ -499,11 +568,55 @@ function Workspace({
                       {money(s.summary.liquid_cash_paise)}
                     </strong>
                     <p>Active cash accounts less goal earmarks</p>
+                    <details>
+                      <summary>Balance dates by account</summary>
+                      {s.accounts
+                        .filter((a) => !a.archived_at)
+                        .map((a) => (
+                          <p key={a.id}>
+                            {a.name} ·{" "}
+                            {asOf[a.id]
+                              ? "Last reconciled month " +
+                                asOf[a.id].slice(0, 7)
+                              : "Opening balance dated " +
+                                displayDate(a.opening_date)}
+                          </p>
+                        ))}
+                    </details>
                     <div className="balance-net-worth">
                       <span>Net worth</span>
                       <strong>{money(s.summary.net_worth_paise)}</strong>
                     </div>
                     <small>Accounts and separate investments, less debt</small>
+                  </section>
+                  <section className="card private-panel">
+                    <h2>Next action</h2>
+                    {checkpoint ? (
+                      <a href="#review">
+                        Continue reconciliation ·{" "}
+                        {accountName(checkpoint.account)} · {checkpoint.month}
+                      </a>
+                    ) : (
+                      (() => {
+                        const today = indiaDate();
+                        const due = [
+                          ...deductionsInMonth(s, today.slice(0, 7)),
+                          ...deductionsInMonth(
+                            s,
+                            recurringDate(today, 1).slice(0, 7),
+                          ),
+                        ].find((d) => d.due_on >= today);
+                        return due ? (
+                          <a href="#commitments">
+                            Next scheduled · {due.name} ·{" "}
+                            {displayDate(due.due_on)} ·{" "}
+                            {money(due.amount_paise)}
+                          </a>
+                        ) : (
+                          <a href="#activity">Review a monthly statement</a>
+                        );
+                      })()
+                    )}
                   </section>
                   <section
                     className="card monthly-pulse"
@@ -619,6 +732,12 @@ function Workspace({
                           {a.archived_at ? " · Archived" : ""}
                         </span>
                         <h2>{a.name}</h2>
+                        <Button
+                          variant="ghost"
+                          onClick={() => showLedger({ account: a.id })}
+                        >
+                          View account activity
+                        </Button>
                         <strong className="large-amount">
                           {money(a.balance_paise)}
                         </strong>
@@ -691,16 +810,24 @@ function Workspace({
                     </label>
                   )}
                   {importNotice && <p role="status">{importNotice}</p>}
-                  <StatementTransfers snapshot={s} onSaved={refresh} />
+
                   <StatementImport
                     snapshot={s}
-                    onImported={({ inserted, skipped }) => {
+                    onImported={({ inserted, skipped, account, month }) => {
+                      setCheckpoint({ account, month });
                       setImportNotice(
                         `Statement import complete: ${inserted} added, ${skipped} matched existing entries.`,
                       );
                       refresh();
                     }}
                   />
+                  {checkpoint && (
+                    <a href="#review">
+                      Reconcile {accountName(checkpoint.account)} ·{" "}
+                      {checkpoint.month}
+                    </a>
+                  )}
+                  <StatementTransfers snapshot={s} onSaved={refresh} />
                   <details className="other-import">
                     <summary>Other: CSV import</summary>
                     <CsvImport
@@ -720,6 +847,15 @@ function Workspace({
                   </div>
                   <section className="card private-panel">
                     <h2>Your ledger</h2>
+                    {(filter.account || filter.category) && (
+                      <Button variant="outline" onClick={() => showLedger({})}>
+                        Clear filter ·{" "}
+                        {filter.account
+                          ? accountName(filter.account)
+                          : categoryName(filter.category!)}{" "}
+                        {filter.month}
+                      </Button>
+                    )}
                     <p>
                       Income, expenses, paired transfers and loan repayments.
                       Transfer legs cancel each other. Deleting a loan payment
@@ -824,9 +960,24 @@ function Workspace({
                         <div>
                           <strong>{categoryName(b.category_id)}</strong>
                           <span>
-                            {money(b.spent_paise)} of {money(b.limit_paise)}
+                            {money(b.spent_paise)} of {money(b.limit_paise)} ·{" "}
+                            {money(Math.abs(b.limit_paise - b.spent_paise))}{" "}
+                            {b.spent_paise > b.limit_paise
+                              ? "over budget"
+                              : "remaining"}
                           </span>
                         </div>
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            showLedger({
+                              category: b.category_id,
+                              month: b.month.slice(0, 7),
+                            })
+                          }
+                        >
+                          View category spending
+                        </Button>
                         <progress
                           max={Math.max(1, b.limit_paise)}
                           value={b.spent_paise}
@@ -910,6 +1061,7 @@ function Workspace({
               )}
               {page === "commitments" && (
                 <>
+                  <PaymentAgenda snapshot={s} />
                   {loanBucket}
                   <div className="page-actions">
                     {add("loan", "Track loan")}
@@ -964,66 +1116,70 @@ function Workspace({
                           </span>
                         </div>
                         <strong>{money(l.outstanding_paise)} remaining</strong>
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            l.has_document
-                              ? setDocumentReview({ id: l.id })
-                              : setEditor({
-                                  kind: "loan",
-                                  record: {
-                                    id: l.id,
-                                    values: {
-                                      name: l.name,
-                                      amount: moneyToInput(l.principal_paise),
-                                      apr: String(l.apr),
-                                      tenure: String(l.tenure_months),
-                                      date: l.start_date,
+                        <details>
+                          <summary>Manage {l.name}</summary>
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              l.has_document
+                                ? setDocumentReview({ id: l.id })
+                                : setEditor({
+                                    kind: "loan",
+                                    record: {
+                                      id: l.id,
+                                      values: {
+                                        name: l.name,
+                                        amount: moneyToInput(l.principal_paise),
+                                        apr: String(l.apr),
+                                        tenure: String(l.tenure_months),
+                                        date: l.start_date,
+                                      },
                                     },
-                                  },
-                                })
-                          }
-                        >
-                          Edit loan
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() =>
-                            setEditor({
-                              kind: "removeLoan",
-                              record: { id: l.id, values: {} },
-                            })
-                          }
-                        >
-                          Delete loan
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={
-                            pending ||
-                            (l.status === "closed" && l.outstanding_paise === 0)
-                          }
-                          onClick={() =>
-                            void action(async () => {
-                              check(
-                                await db()
-                                  .from("loans")
-                                  .update({
-                                    status:
-                                      l.status === "active"
-                                        ? "closed"
-                                        : "active",
                                   })
-                                  .eq("id", l.id),
-                              );
-                            })
-                          }
-                        >
-                          {l.status === "active"
-                            ? "Close tracking"
-                            : "Reopen tracking"}
-                        </Button>
+                            }
+                          >
+                            Edit loan
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={pending}
+                            onClick={() =>
+                              setEditor({
+                                kind: "removeLoan",
+                                record: { id: l.id, values: {} },
+                              })
+                            }
+                          >
+                            Delete loan
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={
+                              pending ||
+                              (l.status === "closed" &&
+                                l.outstanding_paise === 0)
+                            }
+                            onClick={() =>
+                              void action(async () => {
+                                check(
+                                  await db()
+                                    .from("loans")
+                                    .update({
+                                      status:
+                                        l.status === "active"
+                                          ? "closed"
+                                          : "active",
+                                    })
+                                    .eq("id", l.id),
+                                );
+                              })
+                            }
+                          >
+                            {l.status === "active"
+                              ? "Close tracking"
+                              : "Reopen tracking"}
+                          </Button>
+                        </details>
                         {!l.has_document && (
                           <details className="loan-schedule">
                             <summary>Estimated repayment schedule</summary>
@@ -1092,7 +1248,19 @@ function Workspace({
               {page === "investments" && (
                 <Investments snapshot={s} onRefresh={refresh} />
               )}
-              {page === "review" && <MonthlyReview snapshot={s} />}
+              {page === "review" && (
+                <MonthlyReview
+                  snapshot={s}
+                  initial={checkpoint}
+                  onReconciled={(account, month) => {
+                    if (
+                      account === checkpoint?.account &&
+                      month === checkpoint.month
+                    )
+                      setCheckpoint(null);
+                  }}
+                />
+              )}
               {page === "forecast" && (
                 <CashForecast snapshot={s} onRefresh={refresh} />
               )}
@@ -1108,6 +1276,26 @@ function Workspace({
                 <>
                   {loanBucket}
                   <MonthlySummary snapshot={s} />
+                  {s.budgets.length > 0 && (
+                    <section className="card private-panel">
+                      <h2>Remaining by category</h2>
+                      {s.budgets.map((b) => (
+                        <Button
+                          key={b.id}
+                          variant="ghost"
+                          onClick={() =>
+                            showLedger({
+                              category: b.category_id,
+                              month: b.month.slice(0, 7),
+                            })
+                          }
+                        >
+                          {categoryName(b.category_id)} ·{" "}
+                          {money(b.limit_paise - b.spent_paise)} remaining
+                        </Button>
+                      ))}
+                    </section>
+                  )}
                   <RecurringDeductions
                     snapshot={s}
                     onRefresh={refresh}
@@ -1183,6 +1371,7 @@ function Workspace({
               )}
               {editor && (
                 <Editor
+                  recent={entries}
                   intent={editor}
                   snapshot={s}
                   onClose={() => setEditor(null)}
