@@ -75,6 +75,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/data_controls.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/finance_workflows.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/commitment_removal.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/subscription_windows.sql
           bash supabase/tests/removal_concurrency.sh
           bash supabase/tests/workflows_concurrency.sh
           bash supabase/tests/statements_concurrency.sh

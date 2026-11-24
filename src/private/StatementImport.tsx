@@ -12,6 +12,8 @@ import {
   RememberStatementRow,
   RememberedStatementRules,
 } from "./StatementRules";
+import { StatementMatches } from "./StatementMatches";
+import { ViewToggle } from "./ViewToggle";
 import { statementRuleSchema, suggestStatementRule } from "./statementRules";
 import type { StatementRule, RuleInput } from "./statementRules";
 const countsSchema = z.object({
@@ -23,7 +25,12 @@ export function StatementImport({
   onImported,
 }: {
   snapshot: Snapshot;
-  onImported: (counts: { inserted: number; skipped: number }) => void;
+  onImported: (counts: {
+    inserted: number;
+    skipped: number;
+    account: string;
+    month: string;
+  }) => void;
 }) {
   const accounts = s.accounts.filter(
     (a) =>
@@ -34,6 +41,8 @@ export function StatementImport({
   const [ruleError, setRuleError] = useState("");
   const [rulePending, setRulePending] = useState(false);
   const [month, setMonth] = useState(indiaDate().slice(0, 7));
+  const [issuer, setIssuer] = useState("");
+  const [view, setView] = useState("All rows");
   const [password, setPassword] = useState("");
   const [hash, setHash] = useState("");
   const [rows, setRows] = useState<StatementDraft[]>([]);
@@ -163,6 +172,8 @@ export function StatementImport({
   };
   const clear = () => {
     controller.current?.abort();
+    setIssuer("");
+    setView("All rows");
     setRows([]);
     setHash("");
     setPageCount(0);
@@ -190,6 +201,23 @@ export function StatementImport({
       };
     }
   });
+  const attention = parsed.filter(
+    (p) => !p.entry && !p.row.note?.startsWith("Remembered exclusion"),
+  );
+  const visible =
+    view === "Needs attention"
+      ? attention
+      : view === "Remembered"
+        ? parsed.filter(
+            (p) =>
+              p.row.note?.startsWith("Remembered recipient") ||
+              p.row.note?.startsWith("Remembered exclusion"),
+          )
+        : parsed;
+  const dates = rows
+    .map((r) => r.date)
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .sort();
   const selected = parsed.filter(
     (p): p is typeof p & { entry: StatementEntry } =>
       p.row.selected && !!p.entry && !duplicates.includes(p.row.source_row),
@@ -221,6 +249,14 @@ export function StatementImport({
       )
         throw new Error("Choose the statement ending month.");
       const doc = await readPdfText(file, c.signal, localPassword || undefined);
+      const header = doc.pages[0]?.text.slice(0, 650) ?? "";
+      const lenders = [
+        [/\b(?:SBI|State Bank of India)\b/i, "SBI"],
+        [/\bKotak(?: Mahindra)?\b/i, "Kotak"],
+      ] as const;
+      const detected = lenders.filter(([pattern]) => pattern.test(header));
+      if (!c.signal.aborted && mounted.current)
+        setIssuer(detected.length === 1 ? detected[0][1] : "");
       const drafts = extractStatement(
         doc.lines,
         month,
@@ -347,7 +383,7 @@ export function StatementImport({
         throw new Error("Unexpected import result.");
       if (mounted.current) {
         clear();
-        onImported(counts);
+        onImported({ ...counts, account, month });
       }
     } catch {
       if (mounted.current)
@@ -511,11 +547,17 @@ export function StatementImport({
               variant="outline"
               disabled={pending || rulePending || !valid.length}
               onClick={() => {
-                const ids = new Set(valid.map((p) => p.row.source_row));
+                const ids = new Set(
+                  visible
+                    .filter(
+                      (p) => p.entry && !duplicates.includes(p.row.source_row),
+                    )
+                    .map((p) => p.row.source_row),
+                );
                 setRows((current) =>
                   current.map((r) => ({
                     ...r,
-                    selected: ids.has(r.source_row),
+                    selected: r.selected || ids.has(r.source_row),
                   })),
                 );
                 invalidate();
@@ -531,6 +573,24 @@ export function StatementImport({
               Clear statement preview
             </Button>
           </div>
+          <p>
+            {attention.length} of {rows.length} rows need classification or
+            correction. {selected.length} selected for import.
+          </p>
+          <p>
+            {issuer && issuer + " PDF · "}Reviewing{" "}
+            {s.accounts.find((a) => a.id === account)?.name} · statement ending{" "}
+            {month}
+            {dates.length > 0 &&
+              " · Row dates " + dates[0] + " to " + dates[dates.length - 1]}
+          </p>
+          {visible.length === 0 && <p>No rows in this view.</p>}
+          <ViewToggle
+            label="Review statement rows"
+            options={["All rows", "Needs attention", "Remembered"]}
+            value={view}
+            onChange={setView}
+          />
           <div
             className="csv-preview-scroll"
             tabIndex={0}
@@ -550,9 +610,9 @@ export function StatementImport({
                 </tr>
               </thead>
               <tbody>
-                {parsed.map(({ row: r, entry, error: issue }) => (
+                {visible.map(({ row: r, entry, error: issue }) => (
                   <tr key={r.source_row}>
-                    <td>
+                    <td data-label="Include">
                       <input
                         type="checkbox"
                         aria-label={`Select statement row ${r.source_row}`}
@@ -565,15 +625,26 @@ export function StatementImport({
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="Statement detail">
                       <details>
                         <summary>
                           Page {r.page}, row {r.source_row}
                         </summary>
                         <p>{r.source}</p>
+                        {entry && (
+                          <StatementMatches
+                            key={account + r.date + r.amount + r.direction}
+                            account={account}
+                            date={r.date}
+                            amount={
+                              (r.direction === "credit" ? 1 : -1) *
+                              entry.entry.amount_paise
+                            }
+                          />
+                        )}
                       </details>
                     </td>
-                    <td>
+                    <td data-label="Posting date">
                       <input
                         aria-label={`Date ${r.source_row}`}
                         disabled={pending || rulePending}
@@ -584,7 +655,7 @@ export function StatementImport({
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="Description">
                       <input
                         aria-label={`Description ${r.source_row}`}
                         disabled={pending || rulePending}
@@ -595,7 +666,7 @@ export function StatementImport({
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="Type">
                       <select
                         aria-label={`Type ${r.source_row}`}
                         disabled={pending || rulePending}
@@ -620,7 +691,7 @@ export function StatementImport({
                         </option>
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Amount (₹)">
                       <input
                         aria-label={`Amount ${r.source_row}`}
                         disabled={pending || rulePending}
@@ -631,7 +702,7 @@ export function StatementImport({
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="Category or loan">
                       {r.kind === "loan_payment" ? (
                         <>
                           <select
@@ -713,7 +784,7 @@ export function StatementImport({
                         </>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Review">
                       {r.kind === "expense" && (
                         <label>
                           Subscription (optional)

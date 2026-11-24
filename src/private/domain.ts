@@ -76,6 +76,7 @@ const loanSchema = z.object({
   has_document: z.boolean().optional().default(false),
 });
 const subscriptionSchema = z.object({
+  payment_window_start: z.number().int().min(1).max(31).nullable().optional(),
   id,
   name: z.string(),
   account_id: id.nullable(),

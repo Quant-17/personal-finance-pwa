@@ -42,7 +42,7 @@ export function MonthlyCommitmentBucket({
         </strong>
         <span>{periodLabel}</span>
       </div>
-      <p>{children}</p>
+      <div>{children}</div>
     </section>
   );
 }

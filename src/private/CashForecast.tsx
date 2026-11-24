@@ -166,6 +166,7 @@ export function CashForecast({
       if (mounted.current) clear();
     });
   const value = projection.value,
+    lowest = value?.rows.reduce((a, b) => (b.cash < a.cash ? b : a)),
     day = value?.rows[Math.min(inspect, 90)];
   return (
     <div className="workflow-page">
@@ -309,6 +310,19 @@ export function CashForecast({
                 ? `First potential shortfall: ${value.firstLow}`
                 : "No modelled shortfall in this period."}
             </p>
+            {lowest && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setInspect(value.rows.indexOf(lowest));
+                  document
+                    .getElementById("forecast-day")
+                    ?.scrollIntoView({ block: "center" });
+                }}
+              >
+                Lowest projected cash · {money(lowest.cash)} on {lowest.date}
+              </Button>
+            )}
             {value.warnings.map((w) => (
               <p className="form-error" key={w}>
                 {w}
@@ -354,7 +368,7 @@ export function CashForecast({
             </label>
             {day && (
               <>
-                <h3>{day.date}</h3>
+                <h3 id="forecast-day">{day.date}</h3>
                 <p>
                   Projected cash {money(day.cash)} · Above reserve / earmarks{" "}
                   {money(day.spendable)}

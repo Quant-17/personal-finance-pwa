@@ -430,7 +430,7 @@ test("saved comparisons retry safely, survive refresh, restore assumptions and d
   await login(page);
   await page.goto("/#simulator");
   await page.getByLabel("Purchase price").fill("50000.29");
-  await page.getByLabel("Payment method").selectOption("emi");
+  await page.getByRole("button", { name: /Monthly EMI.*per month/ }).click();
   await page.getByLabel("Comparison name").fill("Fixture laptop");
   await page
     .getByRole("button", { name: "Save comparison", exact: true })
@@ -459,7 +459,9 @@ test("saved comparisons retry safely, survive refresh, restore assumptions and d
     .getByRole("button", { name: "Open Fixture laptop", exact: true })
     .click();
   await expect(page.getByLabel("Purchase price")).toHaveValue("50000.29");
-  await expect(page.getByLabel("Payment method")).toHaveValue("emi");
+  await expect(
+    page.getByRole("button", { name: /Monthly EMI.*per month/ }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.getByText("Planned monthly income", { exact: false }),
   ).toContainText("₹50,000");
@@ -737,7 +739,9 @@ test("saved assumptions survive a CSV import that changes current available cash
   await login(page);
   await page.goto("/#simulator");
   await page.getByLabel("Purchase price").fill("5000");
-  await page.getByLabel("Payment method").selectOption("cash");
+  await page
+    .getByRole("button", { name: /Pay in full.*one-time payment/ })
+    .click();
   await page.getByLabel("Comparison name").fill("Before CSV");
   await page
     .getByRole("button", { name: "Save comparison", exact: true })
@@ -1075,6 +1079,11 @@ test("saved document terms can be edited without the PDF and failed saves reuse 
   });
   await login(page);
   await navigate(page, "Loans & subscriptions");
+  await page
+    .locator(".ledger-row summary")
+    .filter({ hasText: /^Manage / })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Edit loan", exact: true }).click();
   await expect(
     page.getByLabel("Quoted monthly EMI", { exact: false }),
@@ -1538,6 +1547,14 @@ test("PDF statement stays local; reviewed rows require duplicate checking and in
     .click();
   await expect(
     page.getByText("Statement import complete: 2 added", { exact: false }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("link", { name: /Continue reconciliation/ }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /Continue reconciliation/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Statement reconciliation" }),
   ).toBeVisible();
   expect(commits).toHaveLength(2);
   expect(commits[0]).toEqual(commits[1]);
@@ -3399,6 +3416,7 @@ test("iPhone subscription bucket totals active monthly equivalents and refreshes
   await expect(bucket).toContainText("3 active subscriptions");
   await expect(bucket).toContainText("per month · estimated");
   await bucket.screenshot({ path: "/tmp/folio-subscription-bucket.png" });
+  await page.getByText("Manage Fixture monthly", { exact: true }).click();
   await page
     .locator(".ledger-row")
     .filter({ hasText: "Fixture monthly" })
@@ -3488,6 +3506,7 @@ test("iPhone loan bucket uses scheduled EMI totals, excludes closed/repaid loans
   await expect(bucket).toContainText("3 active loans");
   await expect(bucket).toContainText("per month · scheduled");
   await bucket.screenshot({ path: "/tmp/folio-loan-bucket.png" });
+  await page.getByText("Manage Fixture quoted loan", { exact: true }).click();
   await page
     .locator(".ledger-row")
     .filter({ hasText: "Fixture quoted loan" })
@@ -3572,6 +3591,9 @@ test("iPhone deleting commitments preserves transactions and refreshes budgets a
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   await navigate(page, "Loans & subscriptions");
+  await page
+    .getByText("Manage Synthetic removable loan", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Delete loan", exact: true }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toContainText("Outstanding tracked principal: ₹800.00");
@@ -3594,6 +3616,9 @@ test("iPhone deleting commitments preserves transactions and refreshes budgets a
     p_expected_balance: 80000,
     p_confirmation: "DELETE",
   });
+  await page
+    .getByText("Manage Synthetic removable plan", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(sheet).toContainText(
     "Saved comparisons keep their original figures",
@@ -3676,6 +3701,9 @@ test("iPhone deletion can be cancelled and keeps the review open on a stale-data
   });
   await login(page);
   await navigate(page, "Loans & subscriptions");
+  await page
+    .getByText("Manage Synthetic cancellable plan", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("button", { name: "Close editor" }).click();
   expect(attempts).toBe(0);
@@ -3689,4 +3717,41 @@ test("iPhone deletion can be cancelled and keeps the review open on a stale-data
     "DELETE",
   );
   expect(attempts).toBe(1);
+});
+
+test("iPhone payment agenda shows a manual deadline and switches to recorded deductions", async ({
+  page,
+}) => {
+  await mock(page, true);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const sub = {
+    id: crypto.randomUUID(),
+    name: "Synthetic manual bill",
+    next_due_on: today,
+    amount_paise: 85000,
+    cadence: "monthly",
+    active: true,
+    account_id: accountId,
+    payment_window_start: 1,
+  };
+  await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
+    r.fulfill({ json: { ...snapshot(true), subscriptions: [sub] } }),
+  );
+  await login(page);
+  await navigate(page, "Loans & subscriptions");
+  const agenda = page
+    .getByRole("heading", { name: "Payment agenda" })
+    .locator("..");
+  await expect(agenda).toContainText("Pay by");
+  await expect(agenda).toContainText("Window opens");
+  await agenda.getByRole("button", { name: "Recorded" }).click();
+  await expect(agenda).toContainText("No deductions recorded this month");
+  await expect(
+    agenda.getByRole("button", { name: "Recorded" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
