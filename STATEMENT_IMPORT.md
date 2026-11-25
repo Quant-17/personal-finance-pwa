@@ -12,6 +12,13 @@ The owner requested complete Gmail/Google removal and a month-end PDF workflow f
 
 ## PDF workflow
 
+In **Needs attention**, review one draft at a time. Its heading gives the row's
+position in the PDF preview and the status below identifies the next correction.
+The row stays open while editing. **Next unresolved row** moves focus to the next
+draft that needs attention, wrapping to an earlier unfinished row when needed.
+Use **Back to all rows** to review the batch. Navigation alone never selects a
+row, checks duplicates or confirms an import.
+
 1. Add/reconcile the target bank or credit-card account, with the **opening date/balance before the statement's included transactions**. Do not set an end-of-month closing balance and then post all its historical transactions again.
 2. Transactions → Import monthly PDF statement. Select the account and statement ending month. For an encrypted file, enter its password **before** choosing the PDF; processing is local and the password clears when reading starts. A wrong/missing password shows a retry/unlock message.
 3. The app reads date-led rows from a readable PDF. Common numeric/English-month dates, bank Debit/Credit/Balance or Withdrawal/Deposit/Balance columns and card amounts/CR markers are supported. Missing years use the chosen ending month, allowing prior December in a January statement; all inferred dates need review. The supplied SBI grid prints Value Date then Post Date; its adapter uses **Post Date** for the ledger and preserves both labeled dates in local source details. It reassembles narration above/below centered date cells even when table headings are not readable. The Kotak adapter skips the printed row number, reads spaced English-month dates, uses right-aligned amount-column boundaries, and joins wrapped/next-page narration. Other layouts still need explicit date review.
