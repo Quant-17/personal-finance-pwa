@@ -1574,14 +1574,39 @@ test("PDF statement stays local; reviewed rows require duplicate checking and in
   expect(previews).toHaveLength(0);
   expect(commits).toHaveLength(0);
   await expect(page.getByLabel("PDF password (optional)")).toHaveValue("");
+  await page.getByRole("button", { name: "Needs attention", exact: true }).click();
+  const next = page.getByRole("button", { name: "Next unresolved row" });
+  const first = page.getByRole("heading", { name: "Row 1 of 2" });
+  const second = page.getByRole("heading", { name: "Row 2 of 2" });
+  await expect(first).toBeFocused();
+  await expect(first).toHaveAccessibleDescription(/Choose income, expense or EMI/);
+  await next.click();
+  await expect(second).toBeFocused();
+  await next.click();
+  await expect(first).toBeFocused();
   for (const row of ["1:3", "1:4"]) {
     await page
       .getByLabel(`Type ${row}`, { exact: true })
       .selectOption("expense");
+    const heading = row === "1:3" ? first : second;
+    await expect(heading).toHaveAccessibleDescription(/Choose a category/);
     await page
       .getByLabel(`Category ${row}`, { exact: true })
       .selectOption(categoryId);
+    await expect(heading).toHaveAccessibleDescription("Ready for selection.");
+    await expect(page.getByLabel(`Select statement row ${row}`)).not.toBeChecked();
+    if (row === "1:3") {
+      await next.click();
+      await expect(second).toBeFocused();
+    }
   }
+  await expect(next).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Check statement duplicates" })).toBeDisabled();
+  expect(previews).toHaveLength(0);
+  expect(commits).toHaveLength(0);
+  await page.getByRole("button", { name: "Back to all rows" }).click();
+  await expect(first).toBeVisible();
+  await expect(second).toBeVisible();
   await page
     .getByRole("button", { name: "Select reviewed valid rows" })
     .click();
@@ -1666,6 +1691,11 @@ test("PDF statement duplicate matches are excluded and edits reset confirmation"
     .click();
   await expect(page.getByLabel("Select statement row 1:3")).toBeDisabled();
   await expect(page.getByLabel("Select statement row 1:3")).not.toBeChecked();
+  await expect(page.getByRole("heading", { name: "Row 1 of 2" }))
+    .toHaveAccessibleDescription("Already imported / ledger match");
+  await page.getByRole("button", { name: "Needs attention", exact: true }).click();
+  await expect(page.getByText("No unresolved rows.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Back to all rows" }).click();
   await page
     .getByLabel("I compared the selected rows", { exact: false })
     .check();
@@ -1893,8 +1923,11 @@ test("PDF EMI review requires exact principal/interest and posts a linked repaym
     .getByLabel("Type 1:3", { exact: true })
     .selectOption("loan_payment");
   await page.getByLabel("Loan 1:3", { exact: true }).selectOption(loanId);
+  const emi = page.getByRole("heading", { name: "Row 1 of 2" });
+  await expect(emi).toHaveAccessibleDescription(/Enter both principal and interest/);
   await page.getByLabel("Principal 1:3", { exact: true }).fill("90.00");
   await page.getByLabel("Interest 1:3", { exact: true }).fill("10.28");
+  await expect(emi).toHaveAccessibleDescription(/must equal the statement debit exactly/);
   await expect(page.getByLabel("Select statement row 1:3")).toBeDisabled();
   await page.getByLabel("Interest 1:3", { exact: true }).fill("10.29");
   await page.getByLabel("Select statement row 1:3").check();

@@ -43,6 +43,12 @@ export function StatementImport({
   const [month, setMonth] = useState(indiaDate().slice(0, 7));
   const [issuer, setIssuer] = useState("");
   const [view, setView] = useState("All rows");
+  const [reviewRow, setReviewRow] = useState("");
+  const rowHeading = useRef<HTMLHeadingElement>(null);
+  const reviewSummary = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (view === "Needs attention" && reviewRow) rowHeading.current?.focus();
+  }, [view, reviewRow]);
   const [password, setPassword] = useState("");
   const [hash, setHash] = useState("");
   const [rows, setRows] = useState<StatementDraft[]>([]);
@@ -174,6 +180,7 @@ export function StatementImport({
     controller.current?.abort();
     setIssuer("");
     setView("All rows");
+    setReviewRow("");
     setRows([]);
     setHash("");
     setPageCount(0);
@@ -190,23 +197,36 @@ export function StatementImport({
     );
     invalidate();
   };
-  const parsed = rows.map((row) => {
+  const parsed = rows.map((row, index) => {
+    let entry: StatementEntry | null = null;
+    let issue = "";
     try {
-      return { row, entry: reviewedStatementEntry(row, s, account), error: "" };
+      entry = reviewedStatementEntry(row, s, account);
     } catch (e) {
-      return {
-        row,
-        entry: null,
-        error: e instanceof Error ? e.message : "Review this row.",
-      };
+      issue = e instanceof Error ? e.message : "Review this row.";
     }
+    const excluded = !row.kind && row.note.startsWith("Remembered exclusion");
+    let status = issue || (row.selected ? "Selected for import." : "Ready for selection.");
+    if (excluded) status = "Excluded by remembered rule.";
+    if (duplicates.includes(row.source_row)) status = "Already imported / ledger match";
+    return { row, index, entry, status, unresolved: !entry && !excluded };
   });
-  const attention = parsed.filter(
-    (p) => !p.entry && !p.row.note?.startsWith("Remembered exclusion"),
-  );
+  const attention = parsed.filter((p) => p.unresolved);
+  // Keep the active draft on screen until the reviewer advances, even when
+  // typing a single character makes the row valid.
+  const current = parsed.find((p) => p.row.source_row === reviewRow);
+  const next =
+    attention.find((p) => p.index > (current?.index ?? -1)) ??
+    attention.find((p) => p !== current);
+  const changeView = (value: string) => {
+    setReviewRow(
+      value === "Needs attention" ? attention[0]?.row.source_row ?? "" : "",
+    );
+    setView(value);
+  };
   const visible =
     view === "Needs attention"
-      ? attention
+      ? parsed.filter((p) => p === current)
       : view === "Remembered"
         ? parsed.filter(
             (p) =>
@@ -573,7 +593,7 @@ export function StatementImport({
               Clear statement preview
             </Button>
           </div>
-          <p>
+          <p ref={reviewSummary} tabIndex={-1}>
             {attention.length} of {rows.length} rows need classification or
             correction. {selected.length} selected for import. Leaving Import clears
             this preview and any unposted edits.
@@ -585,13 +605,15 @@ export function StatementImport({
             {dates.length > 0 &&
               " · Row dates " + dates[0] + " to " + dates[dates.length - 1]}
           </p>
-          {visible.length === 0 && <p>No rows in this view.</p>}
           <ViewToggle
             label="Review statement rows"
             options={["All rows", "Needs attention", "Remembered"]}
             value={view}
-            onChange={setView}
+            onChange={changeView}
           />
+          {visible.length === 0 && (
+            <p>{view === "Needs attention" ? "No unresolved rows." : "No rows in this view."}</p>
+          )}
           <div
             className="csv-preview-scroll"
             tabIndex={0}
@@ -600,7 +622,7 @@ export function StatementImport({
             <table className="csv-preview statement-preview">
               <thead>
                 <tr>
-                  <th>Select</th>
+                  <th>Row status and selection</th>
                   <th>Source</th>
                   <th>Date</th>
                   <th>Description</th>
@@ -611,20 +633,34 @@ export function StatementImport({
                 </tr>
               </thead>
               <tbody>
-                {visible.map(({ row: r, entry, error: issue }) => (
+                {visible.map(({ row: r, index, entry, status }) => (
                   <tr key={r.source_row}>
-                    <td data-label="Include">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select statement row ${r.source_row}`}
-                        checked={r.selected}
-                        disabled={
-                          pending || !entry || duplicates.includes(r.source_row)
-                        }
-                        onChange={(e) =>
-                          update(r.source_row, { selected: e.target.checked })
-                        }
-                      />
+                    <td className="statement-row-status">
+                      <h3
+                        ref={view === "Needs attention" ? rowHeading : undefined}
+                        tabIndex={-1}
+                        aria-describedby={`statement-status-${r.source_row}`}
+                      >
+                        Row {index + 1} of {rows.length}
+                      </h3>
+                      <p
+                        id={`statement-status-${r.source_row}`}
+                        aria-live={view === "Needs attention" ? "polite" : undefined}
+                      >
+                        {status}
+                      </p>
+                      <label>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select statement row ${r.source_row}`}
+                          checked={r.selected}
+                          disabled={pending || !entry || duplicates.includes(r.source_row)}
+                          onChange={(e) =>
+                            update(r.source_row, { selected: e.target.checked })
+                          }
+                        />
+                        Include
+                      </label>
                     </td>
                     <td data-label="Statement detail">
                       <details>
@@ -821,15 +857,29 @@ export function StatementImport({
                         pending={pending || rulePending}
                         onSave={saveRule}
                       />
-                      {duplicates.includes(r.source_row)
-                        ? "Already imported / ledger match"
-                        : issue || r.note}
+                      {r.note}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {view === "Needs attention" && (
+            <div className="page-actions">
+              {next && (
+                <Button variant="outline" disabled={pending || rulePending}
+                  onClick={() => setReviewRow(next.row.source_row)}>
+                  Next unresolved row
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => {
+                changeView("All rows");
+                reviewSummary.current?.focus();
+              }}>
+                Back to all rows
+              </Button>
+            </div>
+          )}
           <p>
             Selected expenses {money(total("expense"))} · Selected income{" "}
             {money(total("income"))} · Selected EMIs{" "}
