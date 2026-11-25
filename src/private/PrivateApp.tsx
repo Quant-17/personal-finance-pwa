@@ -67,11 +67,12 @@ const pages = [
   ["review", "Monthly review", ReceiptText],
   ["forecast", "Cash-flow forecast", CalendarClock],
 ] as const;
-type Page = (typeof pages)[number][0] | "activity/import";
-const currentPage = (): Page =>
-  window.location.hash === "#activity/import"
-    ? "activity/import"
-    : pages.find(([id]) => "#" + id === window.location.hash)?.[0] ?? "overview";
+type Page = (typeof pages)[number][0] | "activity/import" | "commitments/agenda";
+const currentPage = (): Page => {
+  const route = window.location.hash.slice(1);
+  if (route === "activity/import" || route === "commitments/agenda") return route;
+  return pages.find(([id]) => id === route)?.[0] ?? "overview";
+};
 const Navigation = createContext<{
   page: Page;
   setPage: Dispatch<SetStateAction<Page>>;
@@ -169,7 +170,7 @@ function Workspace({
     setIncludeEarlier,
   } = useWorkspace(filter.account, filter.category, filter.month);
   const { page, setPage } = useContext(Navigation)!;
-  const section = page === "activity/import" ? "activity" : page;
+  const section = page.split("/")[0];
   const openingPage = useRef(page);
   const sectionMenu = useRef<HTMLDetailsElement>(null);
   const [editor, setEditor] = useState<EditIntent | null>(null);
@@ -619,7 +620,7 @@ function Workspace({
                           ),
                         ].find((d) => d.due_on >= today);
                         return due ? (
-                          <a href="#commitments">
+                          <a href="#commitments/agenda">
                             Next scheduled · {due.name} ·{" "}
                             {displayDate(due.due_on)} ·{" "}
                             {money(due.amount_paise)}
@@ -678,6 +679,14 @@ function Workspace({
                       <span>
                         Plan this month
                         <small>Income, EMIs and subscriptions</small>
+                      </span>
+                      <ArrowUpRight size={16} aria-hidden="true" />
+                    </a>
+                    <a href="#commitments/agenda">
+                      <CalendarClock size={21} aria-hidden="true" />
+                      <span>
+                        Payment agenda
+                        <small>Open windows and upcoming deductions</small>
                       </span>
                       <ArrowUpRight size={16} aria-hidden="true" />
                     </a>
@@ -1087,9 +1096,9 @@ function Workspace({
                   </section>
                 </>
               )}
-              {page === "commitments" && (
+              {section === "commitments" && (
                 <>
-                  <PaymentAgenda snapshot={s} />
+                  <PaymentAgenda snapshot={s} focusHeading={page === "commitments/agenda"} />
                   {loanBucket}
                   <div className="page-actions">
                     {add("loan", "Track loan")}

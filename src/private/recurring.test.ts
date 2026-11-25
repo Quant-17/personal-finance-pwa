@@ -49,6 +49,19 @@ describe("deduction date projection", () => {
       },
     ],
   } as Snapshot;
+  it("keeps a manual opening day within shorter months and leaves fixed dates alone", () => {
+    const data = {
+      ...s,
+      subscriptions: s.subscriptions.map((sub) =>
+        sub.id === "monthly" ? { ...sub, payment_window_start: 30 } : sub),
+    };
+    const rows = deductionsInMonth(data, "2027-02");
+    expect(rows.find((r) => r.id === "monthly")).toMatchObject({
+      due_on: "2027-02-28",
+      window_opens_on: "2027-02-28",
+    });
+    expect(rows.find((r) => r.id === "weekly")?.window_opens_on).toBeUndefined();
+  });
   it("begins on the tracking date, handles weekly/yearly recurrence and retains quoted EMI", () => {
     const rows = deductionsInMonth(s, "2026-12");
     expect(rows.filter((x) => x.id === "weekly").map((x) => x.due_on)).toEqual([

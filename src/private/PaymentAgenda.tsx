@@ -1,11 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { db } from "./workspace";
 import { planningSchema } from "./forecast";
 import { ViewToggle } from "./ViewToggle";
 import { deductionsInMonth, recurringDate } from "./recurring";
 import { displayDate, indiaDate, type Snapshot } from "./domain";
 import { formatExactMoney as money } from "../lib/finance";
-export function PaymentAgenda({ snapshot: s }: { snapshot: Snapshot }) {
+export function PaymentAgenda({
+  snapshot: s,
+  focusHeading,
+}: {
+  snapshot: Snapshot;
+  focusHeading: boolean;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusHeading) {
+      heading.current?.focus({ preventScroll: true });
+      heading.current?.scrollIntoView({ block: "center" });
+    }
+  }, [focusHeading]);
   const [view, setView] = useState("Next 7 days");
   const [funding, setFunding] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -30,14 +43,19 @@ export function PaymentAgenda({ snapshot: s }: { snapshot: Snapshot }) {
   const dues = [
     ...deductionsInMonth(s, month),
     ...deductionsInMonth(s, recurringDate(today, 1).slice(0, 7)),
-  ].filter(
-    (d) =>
-      d.due_on >= today &&
-      (view === "Next 7 days" ? d.due_on < end : d.due_on.startsWith(month)),
-  );
+  ]
+    .map((d) => {
+      const start = d.window_opens_on;
+      return { ...d, windowOpen: !!start && start <= today && today <= d.due_on };
+    })
+    .filter((d) =>
+      d.due_on >= today && (view === "Next 7 days"
+        ? d.due_on < end || d.windowOpen
+        : d.due_on.startsWith(month)),
+    );
   return (
     <section className="card private-panel">
-      <h2>Payment agenda</h2>
+      <h2 ref={heading} tabIndex={-1}>Payment agenda</h2>
       <ViewToggle
         label="Agenda period"
         options={["Next 7 days", "This month", "Recorded"]}
@@ -64,7 +82,7 @@ export function PaymentAgenda({ snapshot: s }: { snapshot: Snapshot }) {
       ) : (
         <>
           {dues.map((d) => {
-            const loan = s.loans.find((l) => l.id === d.id),
+            const loan = d.kind === "loan" ? s.loans.find((l) => l.id === d.id) : undefined,
               account = s.accounts.find(
                 (a) =>
                   a.id ===
@@ -72,9 +90,11 @@ export function PaymentAgenda({ snapshot: s }: { snapshot: Snapshot }) {
                     funding[d.id] ??
                     s.subscriptions.find((x) => x.id === d.id)?.account_id),
               );
-            const start = s.subscriptions.find(
-              (x) => x.id === d.id,
-            )?.payment_window_start;
+            const start = d.window_opens_on;
+            let status = d.due_on < end ? "Due soon" : "Scheduled";
+            if (d.windowOpen) status = "Window open";
+            if (loan?.payments_reported_through && loan.payments_reported_through >= d.due_on)
+              status = "Reported paid";
             return (
               <p key={d.key}>
                 <strong>
@@ -82,19 +102,8 @@ export function PaymentAgenda({ snapshot: s }: { snapshot: Snapshot }) {
                   {displayDate(d.due_on)} · {d.name}
                 </strong>
                 <br />
-                {money(d.amount_paise)} ·{" "}
-                {loan?.payments_reported_through &&
-                loan.payments_reported_through >= d.due_on
-                  ? "Reported paid"
-                  : "Scheduled"}
-                {start &&
-                  " · Window opens " +
-                    displayDate(
-                      d.due_on.slice(0, 8) +
-                        String(
-                          Math.min(start, Number(d.due_on.slice(8))),
-                        ).padStart(2, "0"),
-                    )}
+                {money(d.amount_paise)} · {status}
+                {start && (d.windowOpen ? " · Open since " : " · Window opens ") + displayDate(start)}
                 {account && " · " + account.name}
               </p>
             );
