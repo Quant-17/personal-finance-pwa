@@ -3816,39 +3816,57 @@ test("iPhone deletion can be cancelled and keeps the review open on a stale-data
   expect(attempts).toBe(1);
 });
 
-test("iPhone payment agenda shows a manual deadline and switches to recorded deductions", async ({
+test("iPhone Overview opens the payment agenda with open windows and separate recorded deductions", async ({
   page,
 }) => {
   await mock(page, true);
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  await page.clock.setFixedTime(new Date("2026-02-10T08:00:00+05:30"));
   const sub = {
     id: crypto.randomUUID(),
     name: "Synthetic manual bill",
-    next_due_on: today,
+    next_due_on: "2026-01-31",
     amount_paise: 85000,
     cadence: "monthly",
     active: true,
     account_id: accountId,
-    payment_window_start: 1,
+    payment_window_start: 10,
   };
+  const subscriptions = [
+    sub,
+    { ...sub, id: crypto.randomUUID(), name: "Future window", payment_window_start: 11 },
+    { ...sub, id: crypto.randomUUID(), name: "Distant fixed bill", payment_window_start: null },
+    { ...sub, id: crypto.randomUUID(), name: "Soon fixed bill", payment_window_start: null, next_due_on: "2026-02-16" },
+    { ...sub, id: crypto.randomUUID(), name: "Expired window", next_due_on: "2026-02-09", payment_window_start: 1 },
+    { ...sub, id: crypto.randomUUID(), name: "March fixed bill", next_due_on: "2026-03-02", payment_window_start: null },
+  ];
   await page.route("**/rest/v1/rpc/workspace_snapshot", (r) =>
-    r.fulfill({ json: { ...snapshot(true), subscriptions: [sub] } }),
+    r.fulfill({ json: { ...snapshot(true), subscriptions } }),
   );
   await login(page);
-  await navigate(page, "Loans & subscriptions");
-  const agenda = page
-    .getByRole("heading", { name: "Payment agenda" })
-    .locator("..");
-  await expect(agenda).toContainText("Pay by");
-  await expect(agenda).toContainText("Window opens");
+  await page.getByRole("link", { name: /^Payment agenda/ }).click();
+  const heading = page.getByRole("heading", { name: "Payment agenda" });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  const agenda = heading.locator("..");
+  const open = agenda.locator("p").filter({ hasText: "Synthetic manual bill" });
+  await expect(open).toContainText("Pay by");
+  await expect(open).toContainText("Window open");
+  await expect(agenda).toContainText("Soon fixed bill");
+  await expect(agenda).not.toContainText("Future window");
+  await expect(agenda).not.toContainText("Distant fixed bill");
+  await expect(agenda).not.toContainText("Expired window");
+  await agenda.getByRole("button", { name: "This month" }).click();
+  await expect(agenda.locator("p").filter({ hasText: "Future window" })).toContainText("Window opens");
+  await expect(agenda).toContainText("Distant fixed bill");
   await agenda.getByRole("button", { name: "Recorded" }).click();
   await expect(agenda).toContainText("No deductions recorded this month");
   await expect(
     agenda.getByRole("button", { name: "Recorded" }),
   ).toHaveAttribute("aria-pressed", "true");
+  await page.clock.setFixedTime(new Date("2026-02-28T12:00:00+05:30"));
+  await agenda.getByRole("button", { name: "Next 7 days" }).click();
+  await expect(open).toContainText("Window open");
+  await expect(agenda).toContainText("March fixed bill");
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
 });

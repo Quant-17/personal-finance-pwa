@@ -5,6 +5,7 @@ export type DueItem = {
   kind: "loan" | "subscription";
   name: string;
   due_on: string;
+  window_opens_on?: string;
   amount_paise: number;
   card: boolean;
 };
@@ -32,6 +33,7 @@ export function deductionsInMonth(s: Snapshot, month: string): DueItem[] {
     cadence: string,
     amount: number,
     card = false,
+    windowStart?: number | null,
   ) => {
     if (!anchor) return;
     let dates: string[] = [];
@@ -64,6 +66,10 @@ export function deductionsInMonth(s: Snapshot, month: string): DueItem[] {
           name,
           kind,
           due_on,
+          ...(windowStart && cadence === "monthly" ? {
+            window_opens_on: due_on.slice(0, 8) +
+              String(Math.min(windowStart, Number(due_on.slice(8)))).padStart(2, "0"),
+          } : {}),
           amount_paise: amount,
           card,
         }),
@@ -79,6 +85,8 @@ export function deductionsInMonth(s: Snapshot, month: string): DueItem[] {
         x.next_due_on,
         x.cadence,
         x.amount_paise,
+        false,
+        x.payment_window_start,
       ),
     );
   s.loans
