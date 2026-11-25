@@ -320,8 +320,17 @@ export function reviewedStatementEntry(
       throw new Error(
         "Payment predates the loan tracking balance. Do not import payments already included in that balance.",
       );
-    const principal = moneyInput(row.principal ?? ""),
-      interest = moneyInput(row.interest ?? "");
+    if (!row.principal?.trim() || !row.interest?.trim())
+      throw new Error("Enter both principal and interest from the lender’s EMI split.");
+    const splitAmount = (value: string, field: string) => {
+      try {
+        return moneyInput(value);
+      } catch (error) {
+        throw new Error(`${field}: ${error instanceof Error ? error.message : "Check this amount."}`);
+      }
+    };
+    const principal = splitAmount(row.principal, "Principal");
+    const interest = splitAmount(row.interest, "Interest");
     if (principal + interest !== amount)
       throw new Error(
         "Reviewed principal + interest must equal the statement debit exactly.",

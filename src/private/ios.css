@@ -863,6 +863,8 @@
   background: color-mix(in srgb, currentColor 7%, transparent);
 }
 .view-toggle button { flex: 1 1 auto; border: 0; white-space: normal; }
+.statement-row-status h3 { font-size: 1rem; margin: 0; scroll-margin-block-start: 5rem; }
+.statement-row-status p { margin: .25rem 0 .5rem; }
 .private-shell .ledger-row details summary,
 .private-shell .simulator details summary { cursor: pointer; padding-block: .75rem; }
 @media (max-width: 640px) {
@@ -871,6 +873,7 @@
   .private-shell .statement-preview tbody { display: grid; gap: .75rem; }
   .private-shell .statement-preview tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: .65rem; border: 1px solid var(--border); border-radius: .85rem; }
   .private-shell .statement-preview td { display: block; min-width: 0; width: auto; max-width: 100%; border: 0; overflow-wrap: anywhere; }
+  .private-shell .statement-preview td.statement-row-status,
   .private-shell .statement-preview td:nth-child(4),
   .private-shell .statement-preview td:nth-child(7),
   .private-shell .statement-preview td:last-child { grid-column: 1/-1; }
