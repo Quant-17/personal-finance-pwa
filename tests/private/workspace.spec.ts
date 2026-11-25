@@ -123,6 +123,62 @@ async function login(page: Page) {
     page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
 }
+test("iPhone Transactions destinations preserve account and budget ledger filters", async ({
+  page,
+}) => {
+  await mock(page, true);
+  await page.route("**/rpc/workspace_snapshot", (route) =>
+    route.fulfill({
+      json: {
+        ...snapshot(true),
+        budgets: [{
+          id: categoryId,
+          category_id: categoryId,
+          month: "2026-11-01",
+          limit_paise: 30000,
+          spent_paise: 1000,
+        }],
+      },
+    }),
+  );
+  const ledgerQueries: URLSearchParams[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/rest/v1/transactions") {
+      ledgerQueries.push(url.searchParams);
+    }
+  });
+  await login(page);
+  const ledger = page.getByRole("heading", { name: "Your ledger" });
+  const pdf = page.getByLabel("Choose statement PDF");
+  await navigate(page, "Transactions");
+  await expect(ledger).toBeVisible();
+  await expect(pdf).toHaveCount(0);
+  await navigate(page, "Overview");
+  await page.getByRole("link", { name: /Import a statement/ }).click();
+  await expect(pdf).toBeEnabled();
+  await expect(ledger).toHaveCount(0);
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+  await navigate(page, "Accounts");
+  await page.getByRole("button", { name: "View account activity" }).click();
+  await expect(ledger).toBeVisible();
+  await expect(page.getByRole("button", { name: /Clear filter.*Fixture checking/ })).toBeVisible();
+  await expect.poll(() => ledgerQueries.at(-1)?.get("account_id")).toBe("eq." + accountId);
+  await navigate(page, "Budgets & goals");
+  await page.getByRole("button", { name: "View category spending" }).click();
+  await expect(ledger).toBeVisible();
+  const filter = page.getByRole("button", { name: /Clear filter.*Food & groceries.*2026-11/ });
+  await expect(filter).toBeVisible();
+  await expect.poll(() => ledgerQueries.at(-1)?.get("category_id")).toBe("eq." + categoryId);
+  expect(ledgerQueries.at(-1)?.getAll("occurred_on")).toEqual(["gte.2026-11-01", "lt.2026-12-01"]);
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(pdf).toBeEnabled();
+  await page.getByRole("button", { name: "Ledger", exact: true }).click();
+  await expect(filter).toBeVisible();
+  await navigate(page, "Transactions");
+  await expect(filter).toHaveCount(0);
+});
 test("signed-out routes are guarded and signup/reset are available", async ({
   page,
 }) => {
@@ -568,7 +624,7 @@ test("CSV preview excludes invalid/repeated/existing rows and requires confirmat
     },
   );
   await login(page);
-  await page.goto("/#activity");
+  await page.goto("/#activity/import");
   await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
     (el.parentElement as HTMLDetailsElement).open = true;
   });
@@ -626,6 +682,7 @@ test("CSV preview excludes invalid/repeated/existing rows and requires confirmat
       description: "CSV new",
     },
   ]);
+  await page.getByRole("button", { name: "Ledger", exact: true }).click();
   await expect(page.getByText("CSV new", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(() => Object.values(localStorage).join(" ")),
@@ -643,7 +700,7 @@ test("CSV invalid files stay local, preview clears offline, and mobile layout re
   const calls = await mock(page, true);
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
-  await page.goto("/#activity");
+  await page.goto("/#activity/import");
   await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
     (el.parentElement as HTMLDetailsElement).open = true;
   });
@@ -749,7 +806,7 @@ test("saved assumptions survive a CSV import that changes current available cash
   await expect(
     page.getByRole("button", { name: "Open Before CSV", exact: true }),
   ).toBeVisible();
-  await page.goto("/#activity");
+  await page.goto("/#activity/import");
   await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
     (el.parentElement as HTMLDetailsElement).open = true;
   });
@@ -813,7 +870,7 @@ test("CSV total-range rejection keeps the preview and reports that nothing was p
       }),
   );
   await login(page);
-  await page.goto("/#activity");
+  await page.goto("/#activity/import");
   await page.getByText("Other: CSV import", { exact: true }).evaluate((el) => {
     (el.parentElement as HTMLDetailsElement).open = true;
   });
@@ -1497,6 +1554,7 @@ test("PDF statement stays local; reviewed rows require duplicate checking and in
   });
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Import monthly PDF statement" }),
   ).toBeVisible();
@@ -1584,6 +1642,7 @@ test("PDF statement duplicate matches are excluded and edits reset confirmation"
   });
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByLabel("Statement ending month").fill("2026-11");
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "synthetic-statement.pdf",
@@ -1623,6 +1682,7 @@ test("statement preview clears on lock, rejects invalid PDF and fits mobile with
   await mock(page, true);
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "bad.pdf",
     mimeType: "application/pdf",
@@ -1753,6 +1813,7 @@ for (const bank of ["sbi", "kotak"] as const)
     const calls = await mock(page, true);
     await login(page);
     await navigate(page, "Transactions");
+    await page.getByRole("button", { name: "Import", exact: true }).click();
     await page.getByLabel("Statement ending month").fill("2026-05");
     await page.getByLabel("Choose statement PDF").setInputFiles({
       name: `synthetic-${bank}.pdf`,
@@ -1821,6 +1882,7 @@ test("PDF EMI review requires exact principal/interest and posts a linked repaym
   });
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByLabel("Statement ending month").fill("2026-11");
   await page.getByLabel("Choose statement PDF").setInputFiles({
     name: "synthetic.pdf",
@@ -2415,6 +2477,7 @@ test("recipient rules can be saved without importing, suggest next PDF and be di
   });
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.getByLabel("Statement ending month").fill("2026-05");
   const read = () =>
     page.getByLabel("Choose statement PDF").setInputFiles({
@@ -2907,6 +2970,7 @@ test("paired statement transfer reads PDFs locally and links an existing payment
   });
   await login(page);
   await navigate(page, "Transactions");
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   await page
     .getByText("Match transfers and card repayments from statements", {
       exact: true,

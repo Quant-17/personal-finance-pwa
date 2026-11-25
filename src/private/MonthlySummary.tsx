@@ -44,7 +44,7 @@ export function MonthlySummary({ snapshot: s }: { snapshot: Snapshot }) {
         settled expenses and category budgets. Subscription forecasts do not
         post money or add a second expense.
       </p>
-      <a className="text-link" href="#activity">
+      <a className="text-link" href="#activity/import">
         Import monthly statement →
       </a>
     </section>
