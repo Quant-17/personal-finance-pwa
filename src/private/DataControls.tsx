@@ -200,7 +200,7 @@ export function DataControls({
           <a className="text-link" href="#commitments">
             Review loans →
           </a>
-          <a className="text-link" href="#activity">
+          <a className="text-link" href="#activity/import">
             Review statement →
           </a>
         </div>

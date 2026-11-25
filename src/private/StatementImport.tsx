@@ -11,7 +11,7 @@ import { check, db } from "./workspace";
 import {
   RememberStatementRow,
   RememberedStatementRules,
-} from "./StatementRules";
+} from "./StatementRules.tsx";
 import { StatementMatches } from "./StatementMatches";
 import { ViewToggle } from "./ViewToggle";
 import { statementRuleSchema, suggestStatementRule } from "./statementRules";
@@ -406,27 +406,6 @@ export function StatementImport({
         Review and import the month’s settled transactions together. The
         original PDF and password are never uploaded or stored.
       </p>
-      <p className="small-note">
-        Text-based tables with dates and debit/credit columns, or card amounts
-        with CR/DR markers, can be detected. Layouts vary; compare every
-        selected row and total with the PDF. Scanned images need manual entry;
-        OCR is not included.
-      </p>
-      <p className="small-note">
-        Before your first full-month import,{" "}
-        <a className="text-link" href="#data">
-          check opening balances and loan baselines
-        </a>
-        . Rule-only teaching never requires importing an older payment.
-      </p>
-      <RememberedStatementRules
-        rules={rules}
-        snapshot={s}
-        pending={pending || rulePending}
-        onToggle={(r) => mutateRule(r, false)}
-        onDelete={(r) => mutateRule(r, true)}
-      />
-      {ruleError && <p role="status">{ruleError}</p>}
       <div className="statement-controls">
         <label>
           Statement account
@@ -481,6 +460,27 @@ export function StatementImport({
           />
         </label>
       </div>
+      <p className="small-note">
+        Text-based tables with dates and debit/credit columns, or card amounts
+        with CR/DR markers, can be detected. Layouts vary; compare every
+        selected row and total with the PDF. Scanned images need manual entry;
+        OCR is not included.
+      </p>
+      <p className="small-note">
+        Before your first full-month import,{" "}
+        <a className="text-link" href="#data">
+          check opening balances and loan baselines
+        </a>
+        . Rule-only teaching never requires importing an older payment.
+      </p>
+      <RememberedStatementRules
+        rules={rules}
+        snapshot={s}
+        pending={pending || rulePending}
+        onToggle={(r) => mutateRule(r, false)}
+        onDelete={(r) => mutateRule(r, true)}
+      />
+      {ruleError && <p role="status">{ruleError}</p>}
       <p className="small-note">
         For a protected PDF, enter its password before choosing the file.
         Limits: 10 MiB, 60 pages, 500 detected rows. Missing years use the
@@ -575,7 +575,8 @@ export function StatementImport({
           </div>
           <p>
             {attention.length} of {rows.length} rows need classification or
-            correction. {selected.length} selected for import.
+            correction. {selected.length} selected for import. Leaving Import clears
+            this preview and any unposted edits.
           </p>
           <p>
             {issuer && issuer + " PDF · "}Reviewing{" "}

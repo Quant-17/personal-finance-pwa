@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../components/ui/button";
+import { ViewToggle } from "./ViewToggle";
 import { PaymentAgenda } from "./PaymentAgenda";
 import { deductionsInMonth, recurringDate } from "./recurring";
 import { MonthlyReview } from "./MonthlyReview";
@@ -41,10 +42,10 @@ import { useWorkspace, db, check } from "./workspace";
 import { indiaDate, displayDate, moneyToInput, safeTotal } from "./domain";
 import { loanSchedule } from "./schedule";
 import { LoanDocumentImport } from "./LoanDocumentImport";
-import { Investments } from "./Investments";
+import { Investments } from "./Investments.tsx";
 import { StatementImport } from "./StatementImport";
 import { RecurringDeductions } from "./RecurringDeductions";
-import { LoanProgress } from "./LoanProgress";
+import { LoanProgress } from "./LoanProgress.tsx";
 import { FinancialInsights } from "./FinancialInsights";
 import { MonthlySummary } from "./MonthlySummary";
 import { MonthlyCommitmentBucket } from "./MonthlyCommitmentBucket";
@@ -66,9 +67,11 @@ const pages = [
   ["review", "Monthly review", ReceiptText],
   ["forecast", "Cash-flow forecast", CalendarClock],
 ] as const;
-type Page = (typeof pages)[number][0];
+type Page = (typeof pages)[number][0] | "activity/import";
 const currentPage = (): Page =>
-  pages.find(([id]) => "#" + id === window.location.hash)?.[0] ?? "overview";
+  window.location.hash === "#activity/import"
+    ? "activity/import"
+    : pages.find(([id]) => "#" + id === window.location.hash)?.[0] ?? "overview";
 const Navigation = createContext<{
   page: Page;
   setPage: Dispatch<SetStateAction<Page>>;
@@ -166,6 +169,7 @@ function Workspace({
     setIncludeEarlier,
   } = useWorkspace(filter.account, filter.category, filter.month);
   const { page, setPage } = useContext(Navigation)!;
+  const section = page === "activity/import" ? "activity" : page;
   const openingPage = useRef(page);
   const sectionMenu = useRef<HTMLDetailsElement>(null);
   const [editor, setEditor] = useState<EditIntent | null>(null);
@@ -254,7 +258,11 @@ function Workspace({
     };
     const change = () => {
       close();
-      setPage(currentPage());
+      const destination = currentPage();
+      setPage(destination);
+      if (destination === "activity" || destination === "activity/import") {
+        window.scrollTo(0, 0);
+      }
       setEditor(null);
       setDocumentReview(null);
     };
@@ -441,7 +449,7 @@ function Workspace({
     </section>
   );
   return (
-    <div className="private-shell" data-section={page}>
+    <div className="private-shell" data-section={section}>
       <header className="private-navigationbar">
         <a href="#overview" className="brand" aria-label="Folio overview">
           folio<span className="brand-dot">.</span>
@@ -457,8 +465,12 @@ function Workspace({
                 <a
                   key={id}
                   href={"#" + id}
-                  aria-current={page === id ? "page" : undefined}
+                  aria-current={section === id ? "page" : undefined}
                   onClick={() => {
+                    if (id === "activity") {
+                      setFilter({});
+                      setLedgerPage(0);
+                    }
                     if (sectionMenu.current) {
                       sectionMenu.current.open = false;
                       sectionMenu.current.querySelector("summary")?.focus();
@@ -492,7 +504,7 @@ function Workspace({
                   ? "YOUR MONEY, AT A GLANCE"
                   : "YOUR PRIVATE WORKSPACE"}
               </span>
-              <h1>{pages.find(([id]) => id === page)?.[1]}</h1>
+              <h1>{pages.find(([id]) => id === section)?.[1]}</h1>
               <p>
                 {s?.profile.display_name
                   ? `Welcome, ${s.profile.display_name}. `
@@ -613,7 +625,7 @@ function Workspace({
                             {money(due.amount_paise)}
                           </a>
                         ) : (
-                          <a href="#activity">Review a monthly statement</a>
+                          <a href="#activity/import">Review a monthly statement</a>
                         );
                       })()
                     )}
@@ -653,7 +665,7 @@ function Workspace({
                     className="overview-shortcuts"
                     aria-label="Monthly shortcuts"
                   >
-                    <a href="#activity">
+                    <a href="#activity/import">
                       <Upload size={21} aria-hidden="true" />
                       <span>
                         Import a statement
@@ -793,22 +805,20 @@ function Workspace({
                     empty("No accounts yet. Add your first account to begin.")}
                 </>
               )}
-              {page === "activity" && (
+              {section === "activity" && (
+                <ViewToggle
+                  label="Transactions view"
+                  options={["Ledger", "Import"]}
+                  value={page === "activity" ? "Ledger" : "Import"}
+                  onChange={(view) =>
+                    window.location.assign(
+                      view === "Ledger" ? "#activity" : "#activity/import",
+                    )
+                  }
+                />
+              )}
+              {page === "activity/import" && (
                 <>
-                  {s.profile.tracking_start_date && (
-                    <label className="history-toggle">
-                      <input
-                        type="checkbox"
-                        checked={includeEarlier}
-                        onChange={(e) => {
-                          setIncludeEarlier(e.target.checked);
-                          setLedgerPage(0);
-                        }}
-                      />{" "}
-                      Show earlier records for reference (excluded from tracking
-                      reports)
-                    </label>
-                  )}
                   {importNotice && <p role="status">{importNotice}</p>}
 
                   <StatementImport
@@ -840,6 +850,24 @@ function Workspace({
                       }}
                     />
                   </details>
+                </>
+              )}
+              {page === "activity" && (
+                <>
+                  {s.profile.tracking_start_date && (
+                    <label className="history-toggle">
+                      <input
+                        type="checkbox"
+                        checked={includeEarlier}
+                        onChange={(e) => {
+                          setIncludeEarlier(e.target.checked);
+                          setLedgerPage(0);
+                        }}
+                      />{" "}
+                      Show earlier records for reference (excluded from tracking
+                      reports)
+                    </label>
+                  )}
                   <div className="page-actions">
                     {add("entry", "Add transaction")}
                     {add("transfer", "Transfer")}
